@@ -6,11 +6,14 @@ REMOTE_DIR="/opt/kammich"
 REMOTE_JAR="kammich.jar"
 LOCAL_JAR="build/libs/Kammich-0.0.1-SNAPSHOT.jar"
 
+KILL_CMD='pkill -9 -f "java.*kammich.jar"'
+
 cleanup() {
     echo -e "\n>>> Avbryter..."
     kill "$LOG_PID" 2>/dev/null
 
-    ssh "$REMOTE_USER@$REMOTE_HOST" "pkill -f $REMOTE_JAR" 2>/dev/null
+    echo ">>> Stopper remote kammich.jar..."
+    ssh "$REMOTE_USER@$REMOTE_HOST" "$KILL_CMD" 2>/dev/null
 
     exit
 }
@@ -19,6 +22,9 @@ trap cleanup SIGINT
 
 echo ">>> Bygger første versjon..."
 ./gradlew clean bootJar -x test || exit 1
+
+echo ">>> Stopper remote kammich.jar..."
+ssh "$REMOTE_USER@$REMOTE_HOST" "$KILL_CMD"
 
 echo ">>> Overfører første jar..."
 scp "$LOCAL_JAR" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/$REMOTE_JAR"
@@ -39,7 +45,7 @@ while true; do
 
     if ./gradlew clean bootJar -x test; then
         echo ">>> Stopper remote jar..."
-        ssh "$REMOTE_USER@$REMOTE_HOST" "pkill -f $REMOTE_JAR"
+        ssh "$REMOTE_USER@$REMOTE_HOST" "$KILL_CMD"
 
         echo ">>> Overfører ny jar..."
         scp "$LOCAL_JAR" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/$REMOTE_JAR"
