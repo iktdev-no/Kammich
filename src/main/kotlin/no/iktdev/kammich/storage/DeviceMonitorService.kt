@@ -61,84 +61,65 @@ class DeviceMonitorService(
         }.start()
     }
 
-    private fun resolveInterfaceNode(sysPath: String): String {
-        val root = File(sysPath)
-
-        // Finn interface-noden (f.eks. 1-11:1.0)
-        val iface = root.listFiles()?.firstOrNull {
-            it.isDirectory && it.name.matches(Regex(".*:\\d+\\.\\d+"))
-        }
-
-        return iface?.absolutePath ?: sysPath
-    }
-
 
     private fun identifyAndHandleDevice(sysPath: String) {
         try {
-            val idVendor = File("$sysPath/idVendor").readText().trim()
+            // Vent litt på at filene skal bli tilgjengelige (idVendor etc)
+            val idVendor = readWithRetry("$sysPath/idVendor") ?: throw Exception("Kunne ikke lese idVendor")
             val idProduct = File("$sysPath/idProduct").readText().trim()
-
-            val serialFile = File("$sysPath/serial")
-            val serial = if (serialFile.exists()) serialFile.readText().trim() else "N/A"
-
+            val serial = File("$sysPath/serial").let { if (it.exists()) it.readText().trim() else "N/A" }
             val busNum = File("$sysPath/busnum").readText().trim().toInt()
             val devNum = File("$sysPath/devnum").readText().trim().toInt()
 
-            // Sjekk om dette er en lagringsenhet (rekursiv sysfs-sjekk)
-            val isBlock = isBlockDevice(sysPath)
-            log.info("Block sjekk ferdig")
+            // JUSTERING: Sjekk om dette er Mass Storage før vi starter den tunge while-loopen
+            val isMassStorage = isMassStorageDevice(sysPath)
+            val isBlock = if (isMassStorage) isBlockDevice(sysPath) else false
 
-            log.info("Enhet detektert: $idVendor:$idProduct (Block: $isBlock)")
+            log.info("Enhet detektert: $idVendor:$idProduct (MassStorage: $isMassStorage, Block: $isBlock)")
 
-            eventPublisher.publishEvent(
-                DeviceDetectedEvent(
-                    sysPath = sysPath,
-                    vendor = idVendor,
-                    product = idProduct,
-                    serial = serial,
-                    gphotoPort = "usb:%03d,%03d".format(busNum, devNum),
-                    isBlockDevice = isBlock
-                )
-            )
+            eventPublisher.publishEvent(DeviceDetectedEvent(
+                sysPath = sysPath, vendor = idVendor, product = idProduct,
+                serial = serial, gphotoPort = "usb:%03d,%03d".format(busNum, devNum),
+                isBlockDevice = isBlock
+            ))
         } catch (e: Exception) {
-            log.error("Feil ved inspeksjon av enhet: ${e.message}", e)
+            log.error("Feil ved inspeksjon av enhet: ${e.message}")
         }
     }
 
+    private fun isMassStorageDevice(sysPath: String): Boolean {
+        // Ser etter "bInterfaceClass" == 08 i USB-hierarkiet (Mass Storage)
+        return File(sysPath).walkTopDown().maxDepth(2).any { file ->
+            file.name == "bInterfaceClass" && file.readText().trim() == "08"
+        }
+    }
 
     fun isBlockDevice(sysPath: String): Boolean {
-        log.info("Kjører block sjekk via /sys/class/block")
-
-        val blockClass = File("/sys/class/block")
-
-        val timeoutMs = 10_000      // maks 10 sekunder
-        val intervalMs = 1_000      // sjekk hvert sekund
+        log.info("Venter på blokkenhet for $sysPath...")
+        val blockDir = File("/sys/class/block")
         val start = System.currentTimeMillis()
 
-        while (System.currentTimeMillis() - start < timeoutMs) {
-            val entries = blockClass.listFiles() ?: emptyArray()
-
+        while (System.currentTimeMillis() - start < 5000) { // 5 sek er nok for disk
+            val entries = blockDir.listFiles() ?: emptyArray()
             for (entry in entries) {
-                val realPath = entry.canonicalPath
-
-                if (realPath.contains(sysPath)) {
-                    log.info("Block device funnet: ${entry.name} -> $realPath")
+                if (entry.canonicalPath.contains(sysPath)) {
+                    log.info("Block device funnet: ${entry.name}")
                     return true
-                } else {
-                    log.info("Block device: ${entry.name} -> $realPath, stemmer ikke med $sysPath")
                 }
             }
-
-            Thread.sleep(intervalMs.toLong())
+            Thread.sleep(500)
         }
-
-        log.info("Ingen block device funnet for $sysPath innen timeout")
         return false
     }
 
-
-
-
+    private fun readWithRetry(path: String, retries: Int = 3): String? {
+        repeat(retries) {
+            val file = File(path)
+            if (file.exists()) return file.readText().trim()
+            Thread.sleep(200)
+        }
+        return null
+    }
 
 
 }
