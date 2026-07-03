@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: Kammich
+
+  datasource:
+    hikari:
+      maximum-pool-size: 1
+    # URL til databasen din.
+    # Bruk en absolutt sti (f.eks. /var/lib/kammich/kammich.db)
+    # så den ikke havner i en tilfeldig mappe når du starter appen.
+    url: jdbc:sqlite:./kammich.db
+    driver-class-name: org.sqlite.JDBC
+
+  flyway:
+    enabled: true
+    locations: classpath:flyway
+    # 'baseline-on-migrate' er bra for å unngå feil ved første oppstart på tom db
+    baseline-on-migrate: true
+
+# Valgfritt: Hvis du vil at loggene skal være mer lesbare
+logging:
+  level:
+    org.flywaydb: INFO
