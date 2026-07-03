@@ -1,8 +1,12 @@
+import cz.habarta.typescript.generator.JsonLibrary
+import cz.habarta.typescript.generator.TypeScriptOutputKind
+
 plugins {
 	kotlin("jvm") version "2.3.21"
 	kotlin("plugin.spring") version "2.3.21"
 	id("org.springframework.boot") version "4.1.0"
 	id("io.spring.dependency-management") version "1.1.7"
+	id("cz.habarta.typescript-generator") version "4.1.1"
 }
 
 group = "no.iktdev"
@@ -51,6 +55,7 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	testImplementation("io.mockk:mockk:1.13.9")
 }
 
 kotlin {
@@ -58,6 +63,24 @@ kotlin {
 		freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
 	}
 }
+
+tasks {
+	generateTypeScript {
+		// Hvor TypeScript-filen skal havne
+		outputFile = "$projectDir/web/types/types.d.ts"
+
+		// Hva slags TS-output du vil ha
+		outputKind = TypeScriptOutputKind.module
+
+		// Hvilket JSON-bibliotek Kotlin bruker
+		jsonLibrary = JsonLibrary.jackson2
+
+		// Valgfritt: litt bedre defaults
+		classPatterns = listOf("no.iktdev.kammich.models.**")
+	}
+}
+
+
 
 tasks.withType<Test> {
 	useJUnitPlatform()

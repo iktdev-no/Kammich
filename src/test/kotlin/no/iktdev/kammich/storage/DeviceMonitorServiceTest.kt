@@ -1,13 +1,16 @@
 package no.iktdev.kammich.storage
 
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
+import org.springframework.context.ApplicationEventPublisher
 import kotlin.test.Test
 
 class DeviceMonitorServiceTest {
+    val eventPublisher = mockk<ApplicationEventPublisher>()
 
     @Test
     fun `skal parse korrekt add event for hovedenhet`() {
-        val service = DeviceMonitorService()
+        val service = DeviceMonitorService(eventPublisher)
         val line = "KERNEL[35934.080102] add      /devices/pci0000:00/0000:00:14.0/usb1/1-11 (usb)"
         val result = service.parseUdevEvent(line)
 
@@ -17,7 +20,7 @@ class DeviceMonitorServiceTest {
 
     @Test
     fun `skal ignorere interfaces med kolon`() {
-        val service = DeviceMonitorService()
+        val service = DeviceMonitorService(eventPublisher)
         val line = "KERNEL[12345] bind     /devices/pci0000:00/usb1/1-11/1-11:1.0"
         val result = service.parseUdevEvent(line)
 
