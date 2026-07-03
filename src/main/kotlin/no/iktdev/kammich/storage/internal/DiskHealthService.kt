@@ -2,6 +2,7 @@ package no.iktdev.kammich.storage.internal
 
 import com.google.gson.Gson
 import com.google.gson.JsonParser
+import jakarta.annotation.PostConstruct
 import no.iktdev.kammich.models.storage.DiskHealth
 import no.iktdev.kammich.models.storage.NvmeRoot
 import no.iktdev.kammich.models.storage.SataRoot
@@ -19,6 +20,12 @@ class DiskHealthService(
 
     // Vi cacher nå helsen for alle disker
     private val healthCache = mutableMapOf<String, DiskHealth>()
+
+    @PostConstruct
+    fun init() {
+        log.info("Kjører første helsesjekk ved oppstart...")
+        runHealthCheck()
+    }
 
     @Scheduled(cron = "0 0 * * * *") // Sjekk hver time
     fun runHealthCheck() {
