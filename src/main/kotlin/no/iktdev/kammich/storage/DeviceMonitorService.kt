@@ -21,8 +21,6 @@ class DeviceMonitorService(
     private val eventPublisher: ApplicationEventPublisher,
 ) {
     private val log = LoggerFactory.getLogger(DeviceMonitorService::class.java)
-    private val activeDevices = ConcurrentHashMap<String, DeviceDetectedEvent>()
-
     // Funksjon for testing: Tar en rå tekstlinje og returnerer et event hvis det er en hovedenhet
     fun parseUdevEvent(line: String): UdevEvent? {
         val parts = line.split(Regex("\\s+"))
@@ -34,10 +32,16 @@ class DeviceMonitorService(
         // Vi henter ut siste del av stien (f.eks. "1-11:1.0" eller "1-11")
         val lastPart = path.substringAfterLast("/")
 
+        log.info(line)
+        log.info("$event: $path")
+        log.info("path = $path\npath.contains('usb'): ${path.contains("usb")}")
+        log.info("lastPart = $lastPart \n!lastPart.contains(':'): ${!lastPart.contains(":")}")
         // Vi sjekker om 'usb' er i stien, OG at siste del (enhetsnavnet) IKKE har kolon
         if (path.contains("usb") && !lastPart.contains(":")) {
             return UdevEvent(event, path)
         }
+
+
         return null
     }
 
@@ -64,12 +68,9 @@ class DeviceMonitorService(
                                 }
                             }
                             "remove" -> {
-                                val removedDevice = activeDevices.remove(udevEvent.path)
-                                if (removedDevice != null) {
-                                    log.info("--- ENHET FJERNET: ${udevEvent.path} ---")
-                                    // Send event til FE om at den er borte
-                                    eventPublisher.publishEvent(DeviceRemovedEvent(removedDevice.sysPath))
-                                }
+                                log.info("--- ENHET FJERNET: ${udevEvent.path} ---")
+                                // Send event til FE om at den er borte
+                                eventPublisher.publishEvent(DeviceRemovedEvent("/sys${udevEvent.path}"))
                             }
                         }
                     }

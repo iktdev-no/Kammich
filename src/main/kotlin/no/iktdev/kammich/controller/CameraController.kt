@@ -15,17 +15,17 @@ import org.springframework.web.servlet.HandlerMapping
 @RequestMapping("/api/camera")
 class CameraController(private val deviceManager: DeviceManagerService) {
 
-    @GetMapping("/{port}")
-    fun getDeviceInfo(@PathVariable("port") port: String): DeviceInfo? {
+    @GetMapping("/{deviceId}")
+    fun getDeviceInfo(@PathVariable("deviceId") port: String): DeviceInfo? {
         return deviceManager.getDeviceInfo(port)
     }
 
-    @GetMapping("/{port}/files/**")
+    @GetMapping("/{deviceId}/files/**")
     fun getFiles(
-        @PathVariable port: String,
+        @PathVariable deviceId: String,
         request: HttpServletRequest // Trenger denne for å hente ut resten av stien
     ): List<KFile> {
-        val device = deviceManager.getDevice(port) ?: throw IllegalStateException("Device not found: $port")
+        val device = deviceManager.getDevice(deviceId) ?: throw IllegalStateException("Device not found: $deviceId")
 
         // Hent ut stien etter "/files/"
         val fullPath = request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE) as String

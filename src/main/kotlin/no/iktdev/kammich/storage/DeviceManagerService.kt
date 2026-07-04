@@ -41,8 +41,6 @@ class DeviceManagerService(
 
     fun getDeviceInfo(deviceId: String): DeviceInfo? {
         val device = getDevice(deviceId) ?: return null
-        val provider = providerFactory.getProvider(device)
-
         // Her er "hacker-stabilt" trikset:
         // Hvis det er et PTP-kamera, hent detaljer via GPhoto2-biblioteket
         // Hvis det er BLOCK, returner "hardkodet" info eller les fra disk-metadata
@@ -53,7 +51,7 @@ class DeviceManagerService(
     }
 
     private fun mapGPhoto2ToInfo(device: Device): DeviceInfo {
-        val gd = gPhoto2.getDeviceInfo(device.id)
+        val gd = gPhoto2.getDeviceInfo(device.path!!)
 
         // 1. Map kapabiliteter basert på GPhoto2-logikk
         val caps = mutableListOf<Capability>()
@@ -110,13 +108,18 @@ class DeviceManagerService(
 
     @EventListener
     fun handleDeviceDetected(event: DeviceDetectedEvent) {
+        val stableId = generateStableId(event.sysPath)
+
+        // Hvis vi allerede har en enhet med denne ID-en, oppdaterer vi bare path
+        // i stedet for å legge til en duplikat.
+        val existingDevice = activeDevices.values.find { it.id == stableId }
         when (event) {
             is PTPDeviceDetectedEvent -> {
                 val device = gPhoto2.getDeviceInfo(event.devicePath!!)
-                activeDevices[event.sysPath] = device.toDevice(DeviceType.PTP)
+                activeDevices[event.sysPath] = device.toDevice(stableId,DeviceType.PTP)
             } is MTPDeviceDetectedEvent -> {
             val device = gPhoto2.getDeviceInfo(event.devicePath!!)
-            activeDevices[event.sysPath] = device.toDevice(DeviceType.MTP)
+            activeDevices[event.sysPath] = device.toDevice(stableId, DeviceType.MTP)
             }
             is BlockDeviceDetectedEvent -> {
 
@@ -143,14 +146,31 @@ class DeviceManagerService(
     }
 
     fun updateSSE() {
-        log.info("Sender ${Gson().toJson(activeDevices)}")
-        sseManager.send(ssePayload())
+        val payload = ssePayload()
+        log.info("Sender ${payload}")
+        sseManager.send(payload)
+    }
+
+    private fun generateStableId(sysPath: String): String {
+        // Les rådata fra sysfs - dette er stabilt uansett protokoll
+        val vid = File("$sysPath/idVendor").takeIf { it.exists() }?.readText()?.trim() ?: "unknown"
+        val pid = File("$sysPath/idProduct").takeIf { it.exists() }?.readText()?.trim() ?: "unknown"
+
+        // Hvis vi har serienummer tilgjengelig, bruk det for å skille to like telefoner
+        val serial = File("$sysPath/serial").takeIf { it.exists() }?.readText()?.trim() ?: ""
+
+        return if (serial.isNotEmpty()) {
+            "$serial"
+        } else {
+            "$vid:$pid"
+        }
     }
 
 
-    fun GPhoto2Device.toDevice(type: DeviceType): Device {
+
+    fun GPhoto2Device.toDevice(id: String, type: DeviceType): Device {
         return Device(
-            id = this.connection,                     // usb:001,004 → unikt nok
+            id = id,                     // usb:001,004 → unikt nok
             name = "${summary.manufacturer} ${summary.model}",
             type = type,                              // PTP eller MTP
             path = this.connection,                   // gphoto2-port

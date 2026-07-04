@@ -11,7 +11,7 @@ const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'camera/:port/*', element: <Camera />},
+      { path: 'camera/:sn/*', element: <Camera />},
       { path: 'upload', element: <Upload />},
       { path: 'settings', element: <Settings /> },
     ],
