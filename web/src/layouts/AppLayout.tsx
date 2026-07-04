@@ -18,7 +18,7 @@ export default function AppLayout() {
 
 
   return (
-    <Box sx={{ display: "flex", height: "100vh", width: "100vw" }}>
+    <Box sx={{ display: "flex", height: "100vh"}}>
       <Header onToggleSidebar={() => setVisible(!visible)} />
 
       {isMobile ? (
@@ -33,7 +33,7 @@ export default function AppLayout() {
           flexGrow: 1,
           overflowY: "auto",
           paddingTop: `${headerHeight}px`,
-          marginLeft: isMobile ? 0 : "240px", // desktop sidebar always open
+          marginLeft: isMobile ? 0 : "270px", // desktop sidebar always open
           transition: "margin-left 0.2s ease",
         }}
       >

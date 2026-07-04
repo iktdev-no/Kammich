@@ -14,7 +14,7 @@ export function useSseSelector<T>(selector: (state: SseState) => T): T {
         return () => {
             unsubscribe(); // ignorer returverdien
         };
-    }, [dispatcher]);
+    }, [dispatcher, selector]);
 
     return value;
 }

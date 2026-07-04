@@ -2,13 +2,13 @@ package no.iktdev.kammich.storage
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import no.iktdev.kammich.models.storage.Device
+import no.iktdev.kammich.models.storage.BlockDevice
 import org.springframework.stereotype.Service
 
 @Service
 class DeviceService {
 
-    fun getAllDevices(): List<Device> {
+    fun getAllDevices(): List<BlockDevice> {
         val process = ProcessBuilder(
             "lsblk", "--json", "-o", "NAME,PATH,MOUNTPOINT,MODEL,SERIAL,TYPE"
         ).start()
@@ -17,7 +17,7 @@ class DeviceService {
         val root = JsonParser.parseString(json).asJsonObject
         val blockDevices = root.getAsJsonArray("blockdevices")
 
-        val devices = mutableListOf<Device>()
+        val devices = mutableListOf<BlockDevice>()
 
         for (dev in blockDevices) {
             val obj = dev.asJsonObject
@@ -32,7 +32,7 @@ class DeviceService {
             val mountPoint = getMountPoint(obj)
 
             devices.add(
-                Device(
+                BlockDevice(
                     path = path,
                     mountPoint = mountPoint,
                     serialNumber = serial,

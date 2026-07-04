@@ -1,6 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
-// Generated using typescript-generator version 4.1.1 on 2026-07-03 21:53:38.
+// Generated using typescript-generator version 4.1.1 on 2026-07-04 17:14:52.
 
 export interface ImmichAuth {
 }
@@ -22,24 +22,25 @@ export interface DeviceConfig {
 
 export interface KammichConfig {
     cachePath: string;
+    mediaPath: string;
     apiKey: string | null;
     devices: DeviceConfig[];
 }
 
-export interface Device {
+export interface KFile {
+    id: string;
+    device: Device;
+    name: string;
+    type: KFileType;
+    size: number;
+    path: string;
+}
+
+export interface BlockDevice {
     path: string;
     mountPoint: string;
     serialNumber: string;
     modelName: string;
-}
-
-export interface DeviceDetectedEvent {
-    sysPath: string;
-    vendor: string;
-    product: string;
-    serial: string;
-    gphotoPort: string;
-    blockDevice: boolean;
 }
 
 export interface DiskHealth {
@@ -50,12 +51,6 @@ export interface DiskHealth {
     percentageUsed: number;
     temperatureCelsius: number;
     healthy: boolean;
-}
-
-export interface DiskInfo {
-    path: string;
-    type: string;
-    transport: string;
 }
 
 export interface NvmeLog {
@@ -73,6 +68,9 @@ export interface RawValue {
 
 export interface SataAttribute {
     name: string;
+    value: number | null;
+    worst: number | null;
+    thresh: number | null;
     raw: RawValue;
 }
 
@@ -107,7 +105,71 @@ export interface StorageStats {
     mounted: boolean;
 }
 
+export interface BlockDeviceDetectedEvent extends DeviceDetectedEvent {
+    devicePath: string;
+}
+
+export interface DeviceDetectedEvent extends DeviceEvent {
+    vendor: string;
+    product: string;
+    serial: string;
+    devicePath: string | null;
+}
+
+export interface DeviceEvent {
+    sysPath: string;
+}
+
+export interface DeviceRemovedEvent extends DeviceEvent {
+}
+
+export interface DiskInfo {
+    path: string;
+    type: string;
+    transport: string;
+}
+
+export interface MTPDeviceDetectedEvent extends DeviceDetectedEvent {
+    devicePath: string;
+}
+
+export interface PTPDeviceDetectedEvent extends DeviceDetectedEvent {
+}
+
 export interface UdevEvent {
     event: string;
     path: string;
 }
+
+export interface Device {
+    id: string;
+    name: string;
+    type: DeviceType;
+    path: string | null;
+    vendor: string | null;
+    model: string | null;
+}
+
+export interface DeviceInfo {
+    id: string;
+    type: DeviceType;
+    friendlyName: string | null;
+    manufacturer: string | null;
+    model: string | null;
+    capabilities: Capability[];
+    storage: DeviceStorageStats[];
+    attributes: { [index: string]: any };
+}
+
+export interface DeviceStorageStats {
+    id: string;
+    description: string;
+    capacityBytes: number;
+    freeSpaceBytes: number;
+}
+
+export type KFileType = "FILE" | "DIRECTORY";
+
+export type DeviceType = "BLOCK" | "MTP" | "PTP";
+
+export type Capability = "CAPTURE" | "DELETE" | "UPLOAD" | "PREVIEW" | "CONFIGURE";

@@ -1,7 +1,7 @@
 import { Box, useTheme } from "@mui/material";
 
 interface StatusProps {
-  label: string;
+  label: string | undefined;
   state: "online" | "offline" | "connecting";
 }
 
@@ -14,6 +14,7 @@ export function StatusIndicator({ label, state }: StatusProps) {
     connecting: theme.palette.warning.main,
   };
 
+  const formattedState = state.charAt(0).toUpperCase() + state.slice(1);
   return (
     <Box
       sx={{
@@ -37,7 +38,7 @@ export function StatusIndicator({ label, state }: StatusProps) {
           backgroundColor: colors[state],
         }}
       />
-      {label}
+      {label} {formattedState}
     </Box>
   );
 }

@@ -4,6 +4,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.iktdev.kammich.sse.SseManager
+import no.iktdev.kammich.sse.SseStateService
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -12,7 +13,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 @RestController
 @RequestMapping("/api/sse")
 class SseController(
-    private val sseManager: SseManager
+    private val sseManager: SseManager,
+    private val sseStateService: SseStateService
 ) {
 
     @GetMapping("/stream")
@@ -24,6 +26,8 @@ class SseController(
             "type" to "ping",
             "timestamp" to System.currentTimeMillis()
         ))
+
+        sseStateService.sendCurrentState(emitter)
 
         return emitter
     }

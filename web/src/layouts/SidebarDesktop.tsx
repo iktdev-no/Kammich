@@ -1,6 +1,5 @@
 import { Box, useTheme } from "@mui/material";
-import SidebarMenu from "../menu/SidebarMenu";
-
+import SidebarMenu from "../components/sidebar/SidebarMenu";
 
 export default function SidebarDesktop() {
     const theme = useTheme();

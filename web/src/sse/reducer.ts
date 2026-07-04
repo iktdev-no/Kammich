@@ -23,6 +23,21 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
 
     case 'custom':
       return state;
+    case 'removable-devices':
+      return {
+            ...state,
+        devices: event.payload
+      }
+
+
+    case 'sse-online':
+      return { ...state, connectionStatus: 'online' };
+
+    case 'sse-connecting':
+      return { ...state, connectionStatus: 'connecting' };
+
+    case 'sse-offline':
+      return { ...state, connectionStatus: 'offline' };
 
     default:
       return state;

@@ -17,12 +17,21 @@ class GPhoto2CommandBuilder {
 
     // Utforsker en spesifikk sti
     fun explore(path: String) = apply {
-        args.add("--folder")
-        args.add(path)
         // Her kjører vi to operasjoner på samme path
         args.add("--list-folders")
         args.add("--list-files")
         args.add("--no-recurse")
+        args.add("--folder")
+        args.add(path)
+    }
+
+    fun getThumbnail(destination: File, file: GPhoto2File) = apply {
+        args.add("--folder")
+        args.add(file.folderPath)
+        args.add("--get-thumbnail")
+        args.add(file.name)
+        args.add("--filename")
+        args.add("${destination.absolutePath}/${file.name.substringBeforeLast(".")}_thumb.jpg")
     }
 
     fun copy(destination: File, file: GPhoto2File) = apply {
@@ -43,7 +52,11 @@ class GPhoto2CommandBuilder {
         args.add(file.name)
     }
 
-    fun build() = args.toTypedArray()
+    fun build(): Array<String> {
+        val built = args.toTypedArray()
+        args.clear()
+        return built
+    }
 }
 
 // Et lite hjelpeobjekt for å kjøre kommandoen

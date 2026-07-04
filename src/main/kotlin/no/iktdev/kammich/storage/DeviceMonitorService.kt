@@ -1,18 +1,27 @@
 package no.iktdev.kammich.storage
 
 import jakarta.annotation.PostConstruct
-import no.iktdev.kammich.models.storage.DeviceDetectedEvent
-import no.iktdev.kammich.models.storage.UdevEvent
+import no.iktdev.kammich.models.storage.DeviceType
+import no.iktdev.kammich.models.storage.internal.BlockDeviceDetectedEvent
+import no.iktdev.kammich.models.storage.internal.DeviceDetectedEvent
+import no.iktdev.kammich.models.storage.internal.DeviceRemovedEvent
+import no.iktdev.kammich.models.storage.internal.MTPDeviceDetectedEvent
+import no.iktdev.kammich.models.storage.internal.PTPDeviceDetectedEvent
+import no.iktdev.kammich.models.storage.internal.UdevEvent
 import org.slf4j.LoggerFactory
+import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class DeviceMonitorService(
     private val eventPublisher: ApplicationEventPublisher,
 ) {
     private val log = LoggerFactory.getLogger(DeviceMonitorService::class.java)
+    private val activeDevices = ConcurrentHashMap<String, DeviceDetectedEvent>()
 
     // Funksjon for testing: Tar en rå tekstlinje og returnerer et event hvis det er en hovedenhet
     fun parseUdevEvent(line: String): UdevEvent? {
@@ -54,6 +63,14 @@ class DeviceMonitorService(
                                     identifyAndHandleDevice("/sys${udevEvent.path}")
                                 }
                             }
+                            "remove" -> {
+                                val removedDevice = activeDevices.remove(udevEvent.path)
+                                if (removedDevice != null) {
+                                    log.info("--- ENHET FJERNET: ${udevEvent.path} ---")
+                                    // Send event til FE om at den er borte
+                                    eventPublisher.publishEvent(DeviceRemovedEvent(removedDevice.sysPath))
+                                }
+                            }
                         }
                     }
                 }
@@ -61,31 +78,120 @@ class DeviceMonitorService(
         }.start()
     }
 
+    @EventListener(ApplicationReadyEvent::class)
+    fun onApplicationReady() {
+        log.info("Applikasjon klar, starter rescan...")
+        rescanExistingDevices()
+    }
+    fun rescanExistingDevices() {
+        log.info("Scanning for already connected devices...")
+        val usbDir = File("/sys/bus/usb/devices")
+        usbDir.listFiles { _, name -> name.matches(Regex("\\d+-\\d+(\\.\\d+)*")) }?.forEach { deviceDir ->
+            // Sjekk om dette er en hovedenhet (uten kolon i navnet)
+            if (!deviceDir.name.contains(":")) {
+                val sysPath = deviceDir.canonicalPath
+                log.info("Found existing device: $sysPath")
+                identifyAndHandleDevice(sysPath)
+            }
+        }
+    }
 
     private fun identifyAndHandleDevice(sysPath: String) {
         try {
-            // Vent litt på at filene skal bli tilgjengelige (idVendor etc)
-            val idVendor = readWithRetry("$sysPath/idVendor") ?: throw Exception("Kunne ikke lese idVendor")
+            val idVendor = readWithRetry("$sysPath/idVendor")!!
             val idProduct = File("$sysPath/idProduct").readText().trim()
             val serial = File("$sysPath/serial").let { if (it.exists()) it.readText().trim() else "N/A" }
-            val busNum = File("$sysPath/busnum").readText().trim().toInt()
-            val devNum = File("$sysPath/devnum").readText().trim().toInt()
 
-            // JUSTERING: Sjekk om dette er Mass Storage før vi starter den tunge while-loopen
-            val isMassStorage = isMassStorageDevice(sysPath)
-            val isBlock = if (isMassStorage) isBlockDevice(sysPath) else false
+            val type = detectDeviceType(sysPath)
 
-            log.info("Enhet detektert: $idVendor:$idProduct (MassStorage: $isMassStorage, Block: $isBlock)")
+            val event = when (type) {
 
-            eventPublisher.publishEvent(DeviceDetectedEvent(
-                sysPath = sysPath, vendor = idVendor, product = idProduct,
-                serial = serial, gphotoPort = "usb:%03d,%03d".format(busNum, devNum),
-                isBlockDevice = isBlock
-            ))
+                DeviceType.BLOCK -> {
+                    val blockDev = findBlockDevice(sysPath) ?: "/dev/unknown"
+                    BlockDeviceDetectedEvent(
+                        sysPath = sysPath,
+                        vendor = idVendor,
+                        product = idProduct,
+                        serial = serial,
+                        devicePath = blockDev
+                    )
+                }
+
+                DeviceType.PTP -> {
+                    val port = buildUsbPort(sysPath)
+                    PTPDeviceDetectedEvent(
+                        sysPath = sysPath,
+                        vendor = idVendor,
+                        product = idProduct,
+                        serial = serial,
+                        devicePath = port
+                    )
+                }
+
+                DeviceType.MTP -> {
+                    val port = buildUsbPort(sysPath)
+                    MTPDeviceDetectedEvent(
+                        sysPath = sysPath,
+                        vendor = idVendor,
+                        product = idProduct,
+                        serial = serial,
+                        devicePath = port
+                    )
+                }
+            }
+
+            eventPublisher.publishEvent(event)
+
         } catch (e: Exception) {
             log.error("Feil ved inspeksjon av enhet: ${e.message}")
         }
     }
+
+
+
+    fun detectDeviceType(sysPath: String): DeviceType {
+        // BLOCK
+        if (isMassStorageDevice(sysPath) && isBlockDevice(sysPath)) {
+            return DeviceType.BLOCK
+        }
+
+        // PTP/MTP
+        val usbType = detectPtpOrMtp(sysPath)
+        if (usbType != null) {
+            return usbType
+        }
+
+        // Default fallback
+        return DeviceType.PTP
+    }
+
+    fun buildUsbPort(sysPath: String): String {
+        val bus = File("$sysPath/busnum").readText().trim().toInt()
+        val dev = File("$sysPath/devnum").readText().trim().toInt()
+        return "usb:%03d,%03d".format(bus, dev)
+    }
+
+
+    fun detectPtpOrMtp(sysPath: String): DeviceType? {
+        File(sysPath).walkTopDown().maxDepth(3).forEach { file ->
+            if (file.name == "bInterfaceClass" && file.readText().trim() == "06") {
+                val parent = file.parentFile
+                val sub = File("${parent}/bInterfaceSubClass").readText().trim()
+                val proto = File("${parent}/bInterfaceProtocol").readText().trim()
+
+                if (sub == "01") {
+                    return when (proto) {
+                        "01" -> DeviceType.PTP
+                        "00" -> DeviceType.MTP
+                        else -> null
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+
 
     private fun isMassStorageDevice(sysPath: String): Boolean {
         // Ser etter "bInterfaceClass" == 08 i USB-hierarkiet (Mass Storage)
@@ -93,6 +199,19 @@ class DeviceMonitorService(
             file.name == "bInterfaceClass" && file.readText().trim() == "08"
         }
     }
+
+    fun findBlockDevice(sysPath: String): String? {
+        val blockDir = File("/sys/class/block")
+        val entries = blockDir.listFiles() ?: return null
+
+        for (entry in entries) {
+            if (entry.canonicalPath.contains(sysPath)) {
+                return "/dev/${entry.name}"
+            }
+        }
+        return null
+    }
+
 
     fun isBlockDevice(sysPath: String): Boolean {
         log.info("Venter på blokkenhet for $sysPath...")

@@ -1,6 +1,6 @@
 package no.iktdev.kammich.storage.internal
 
-import no.iktdev.kammich.models.storage.Device
+import no.iktdev.kammich.models.storage.BlockDevice
 import no.iktdev.kammich.models.storage.StorageInfo
 import no.iktdev.kammich.sse.SseManager
 import no.iktdev.kammich.storage.DeviceService
@@ -23,9 +23,9 @@ class StorageInfoPublisher(
         publish(devices)
     }
 
-    fun getStorageInfo(device: Device): StorageInfo {
-        val stats = diskStorageService.getStorageStats(device)
-        val health = smartCtlService.getSMART(device.path).getOrThrow()
+    fun getStorageInfo(blockDevice: BlockDevice): StorageInfo {
+        val stats = diskStorageService.getStorageStats(blockDevice)
+        val health = smartCtlService.getSMART(blockDevice.path).getOrThrow()
         return StorageInfo(stats, health)
     }
 

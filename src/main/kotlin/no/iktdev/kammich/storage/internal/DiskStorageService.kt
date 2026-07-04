@@ -1,16 +1,15 @@
 package no.iktdev.kammich.storage.internal
 
-import no.iktdev.kammich.models.storage.Device
+import no.iktdev.kammich.models.storage.BlockDevice
 import no.iktdev.kammich.models.storage.StorageStats
-import no.iktdev.kammich.storage.DeviceDiscoveryService
 import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
 class DiskStorageService() {
-    fun getStorageStats(device: Device): StorageStats {
+    fun getStorageStats(blockDevice: BlockDevice): StorageStats {
         // Vi bruker mountPoint som vi forhåpentligvis har i Device-objektet
-        val file = File(device.mountPoint)
+        val file = File(blockDevice.mountPoint)
 
         return StorageStats(
             totalBytes = file.totalSpace,
@@ -21,9 +20,9 @@ class DiskStorageService() {
         )
     }
 
-    fun getStagingDirectory(device: Device): File {
+    fun getStagingDirectory(blockDevice: BlockDevice): File {
         // Sjekk at vi har et serienummer, ellers vil stien bli ødelagt
-        val serial = device.serialNumber.ifBlank { "unknown" }
+        val serial = blockDevice.serialNumber.ifBlank { "unknown" }
         val dir = File("/var/lib/kammich/staging/$serial")
 
         if (!dir.exists() && !dir.mkdirs()) {

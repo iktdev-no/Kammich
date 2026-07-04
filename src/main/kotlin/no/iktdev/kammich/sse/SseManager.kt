@@ -5,7 +5,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.util.concurrent.CopyOnWriteArrayList
 
 @Component
-class SseManager {
+class SseManager() {
 
     private val emitters = CopyOnWriteArrayList<SseEmitter>()
 

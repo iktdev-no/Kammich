@@ -2,7 +2,7 @@ import {
   Drawer,
   useTheme,
 } from "@mui/material";
-import SidebarMenu from "../menu/SidebarMenu";
+import SidebarMenu from "../components/sidebar/SidebarMenu";
 
 export interface SidebarMobileProps {
   visible: boolean;

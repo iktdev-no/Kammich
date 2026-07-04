@@ -41,8 +41,14 @@ object DiskVendorParsing {
         val normalizedWear = wearAttr?.value
         val rawWear = wearAttr?.raw?.value?.toInt()
 
-        val temp = table.find { it.name.contains("Temp", ignoreCase = true) }
-            ?.raw?.value?.toInt() ?: 0
+        val tempString = table.find { it.name.contains("Temp", ignoreCase = true) }?.raw?.value
+
+        // Finn det første numeriske tallet i strengen, eller bruk 0
+        val temp = tempString?.let { str ->
+            // Regex som finner det første tallet
+            val match = Regex("""\d+""").find(str)
+            match?.value?.toInt()
+        } ?: 0
 
         val vendor = DiskVendor.fromModel(root.modelName)
 
