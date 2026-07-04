@@ -67,7 +67,7 @@ kotlin {
 tasks {
 	generateTypeScript {
 		// Hvor TypeScript-filen skal havne
-		outputFile = "$projectDir/web/types/types.d.ts"
+		outputFile = "$projectDir/web/src/types/types.d.ts"
 
 		// Hva slags TS-output du vil ha
 		outputKind = TypeScriptOutputKind.module
@@ -80,7 +80,9 @@ tasks {
 	}
 }
 
-
+tasks.named("generateTypeScript") {
+	dependsOn("compileKotlin")
+}
 
 tasks.withType<Test> {
 	useJUnitPlatform()

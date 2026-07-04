@@ -35,5 +35,11 @@ data class NvmeLog(
     @SerializedName("temperature") val temp: Int
 )
 data class SataAttributes(val table: List<SataAttribute>)
-data class SataAttribute(val name: String, val raw: RawValue)
+data class SataAttribute(
+    val name: String,
+    val value: Int?,        // normalized VALUE
+    val worst: Int?,        // optional
+    val thresh: Int?,       // optional
+    val raw: RawValue
+)
 data class RawValue(@SerializedName("string") val value: String)
