@@ -2,7 +2,7 @@ package no.iktdev.kammich.storage
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import no.iktdev.kammich.models.storage.BlockDevice
+import no.iktdev.kammich.models.shared.storage.BlockDevice
 import org.springframework.stereotype.Service
 
 @Service

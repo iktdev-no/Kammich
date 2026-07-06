@@ -1,8 +1,8 @@
 package no.iktdev.kammich.storage.internal
 
-import no.iktdev.kammich.models.storage.DiskHealth
-import no.iktdev.kammich.models.storage.SataAttribute
-import no.iktdev.kammich.models.storage.SataRoot
+import no.iktdev.kammich.models.shared.storage.DiskHealth
+import no.iktdev.kammich.models.shared.storage.SataAttribute
+import no.iktdev.kammich.models.shared.storage.SataRoot
 
 enum class DiskVendor {
     SAMSUNG,

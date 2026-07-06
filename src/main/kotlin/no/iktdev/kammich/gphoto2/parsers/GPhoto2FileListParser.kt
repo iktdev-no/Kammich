@@ -7,7 +7,7 @@ import no.iktdev.kammich.storage.DeviceManagerService
 import org.slf4j.LoggerFactory
 
 class GPhoto2FileListParser : GPhoto2Parser<List<GPhoto2File>> {
-    private val log = LoggerFactory.getLogger(DeviceManagerService::class.java)
+    private val log = LoggerFactory.getLogger(GPhoto2FileListParser::class.java)
 
     // Den nye Regex-en:
 // #(\d+)       -> ID
@@ -16,7 +16,7 @@ class GPhoto2FileListParser : GPhoto2Parser<List<GPhoto2File>> {
 // \s+(\d+)     -> Størrelse
 // \s+KB        -> Enheten
 // \s+(\S+)     -> MimeType
-    private val fileRegex = Regex("""#(\d+)\s+(.+?)(?:\s+rd)?\s+(\d+)\s+KB\s+(\S+)""")
+    private val fileRegex = Regex("""#(\d+)\s+(.+?)(?:\s+rd)?\s+(\d+)\s+KB\s+(\d+x\d+)\s+(\S+)\s(\d+)""")
 
     override fun parse(input: String): List<GPhoto2File> {
         val nodes = mutableListOf<GPhoto2File>()
@@ -45,9 +45,9 @@ class GPhoto2FileListParser : GPhoto2Parser<List<GPhoto2File>> {
                 trimmed.startsWith("#") -> {
                     val match = fileRegex.find(trimmed)
                     if (match != null) {
-                        val (_, name, size, _) = match.destructured
+                        val (id, name, size, _, mimeType, timestamp) = match.destructured
                         nodes.add(GPhoto2File(
-                            name = name.trim(),
+                            name = sanitizeFileName(name.trim(), mimeType),
                             type = GPhoto2NodeType.FILE,
                             folderPath = currentFolder,
                             sizeBytes = size.toLong() * 1024
@@ -61,4 +61,20 @@ class GPhoto2FileListParser : GPhoto2Parser<List<GPhoto2File>> {
         // eller bare la UI-et håndtere at en tom liste betyr "tomt"
         return nodes.distinctBy { "${it.folderPath}/${it.name}" }
     }
+
+
+    private fun sanitizeFileName(name: String, mimeType: String): String {
+        // Sjekk om det er en JPEG-fil med "feil" Samsung-endelse
+        if (mimeType.startsWith("image/jpeg") && name.endsWith(".jpgrd", ignoreCase = true)) {
+            val newName = name.substringBeforeLast(".") + ".jpg"
+            log.info("Vasket filnavn: Endrer '{}' til '{}' (Mime: {})", name, newName, mimeType)
+            return newName
+        }
+
+        // Her kan du enkelt legge til andre "fixer" etter hvert,
+        // f.eks. fjerning av spesialtegn eller andre rare endelser
+        log.info("Vasket ikke filnavn.. $name, $mimeType")
+        return name
+    }
+
 }

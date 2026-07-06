@@ -1,6 +1,6 @@
 package no.iktdev.kammich.storage
 
-import no.iktdev.kammich.models.storage.internal.DiskInfo
+import no.iktdev.kammich.models.shared.storage.internal.DiskInfo
 import org.springframework.stereotype.Service
 
 @Service

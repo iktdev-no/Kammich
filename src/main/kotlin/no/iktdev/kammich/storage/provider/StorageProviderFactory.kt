@@ -1,7 +1,7 @@
 package no.iktdev.kammich.storage.provider
 
-import no.iktdev.kammich.models.storage.DeviceType
-import no.iktdev.kammich.models.storage.removable.Device
+import no.iktdev.kammich.models.shared.storage.DeviceType
+import no.iktdev.kammich.models.shared.storage.removable.Device
 import org.springframework.stereotype.Service
 
 @Service

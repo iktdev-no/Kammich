@@ -5,11 +5,14 @@ import { toast } from "react-toastify";
 // ------------------------------------------------------------
 export async function apiGet<T>(
   path: string,
+  params?: Record<string, any>,
   opts?: {
     onError?: (status: number, body: any) => void;
   },
 ): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const queryString = params ? `?${buildQuery(params)}` : "";
+
+  const res = await fetch(`/api${path}${queryString}`, {
     headers: {
       Accept: "application/json",
     },

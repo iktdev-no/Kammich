@@ -1,21 +1,19 @@
 package no.iktdev.kammich.storage
 
-import com.google.gson.Gson
 import no.iktdev.kammich.gphoto2.IGPhoto2
 import no.iktdev.kammich.gphoto2.model.GPhoto2Device
-import no.iktdev.kammich.models.files.KFile
-import no.iktdev.kammich.models.storage.DeviceType
-import no.iktdev.kammich.models.storage.internal.BlockDeviceDetectedEvent
-import no.iktdev.kammich.models.storage.internal.DeviceDetectedEvent
-import no.iktdev.kammich.models.storage.internal.DeviceRemovedEvent
-import no.iktdev.kammich.models.storage.internal.MTPDeviceDetectedEvent
-import no.iktdev.kammich.models.storage.internal.PTPDeviceDetectedEvent
-import no.iktdev.kammich.models.storage.removable.Capability
-import no.iktdev.kammich.models.storage.removable.Device
-import no.iktdev.kammich.models.storage.removable.DeviceInfo
-import no.iktdev.kammich.models.storage.removable.DeviceStorageStats
+import no.iktdev.kammich.models.shared.storage.DeviceType
+import no.iktdev.kammich.models.shared.storage.internal.BlockDeviceDetectedEvent
+import no.iktdev.kammich.models.shared.storage.internal.DeviceDetectedEvent
+import no.iktdev.kammich.models.shared.storage.internal.DeviceRemovedEvent
+import no.iktdev.kammich.models.shared.storage.internal.MTPDeviceDetectedEvent
+import no.iktdev.kammich.models.shared.storage.internal.PTPDeviceDetectedEvent
+import no.iktdev.kammich.models.shared.storage.removable.Capability
+import no.iktdev.kammich.models.shared.storage.removable.Device
+import no.iktdev.kammich.models.shared.storage.removable.DeviceInfo
+import no.iktdev.kammich.models.shared.storage.removable.DeviceStorageStats
+import no.iktdev.kammich.repository.DeviceRepository
 import no.iktdev.kammich.sse.SseManager
-import no.iktdev.kammich.storage.provider.StorageProviderFactory
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
@@ -26,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
 class DeviceManagerService(
     private val gPhoto2: IGPhoto2,
     private val sseManager: SseManager,
-    private val providerFactory: StorageProviderFactory
+    private val deviceRepo: DeviceRepository,
 ) {
     private val activeDevices = ConcurrentHashMap<String, Device>()
     private val log = LoggerFactory.getLogger(DeviceManagerService::class.java)
@@ -37,6 +35,11 @@ class DeviceManagerService(
 
     fun getDevice(deviceId: String): Device? {
         return activeDevices.values.find { it.id == deviceId }
+    }
+
+    fun getDeviceBySysPath(sysPath: String): Device? {
+        val stableId = generateStableId(sysPath)
+        return getDevice(stableId)
     }
 
     fun getDeviceInfo(deviceId: String): DeviceInfo? {
@@ -92,18 +95,45 @@ class DeviceManagerService(
     }
 
     private fun mapBlockToInfo(device: Device): DeviceInfo {
-        TODO("Not yet implemented")
-    }
+        // 1. Hent FileStore informasjon (krever at stien er montert)
+        val file = java.io.File(device.path!!)
+        val store = java.nio.file.Files.getFileStore(file.toPath())
 
-    fun getFilesForDevice(device: Device, path: String): List<KFile> {
-        log.info("Getting files for device ${device.id} on path $path")
-        val provider = providerFactory.getProvider(device)
-        return provider.listFiles(device, path)
-    }
+        // 2. Map kapabiliteter for BlockDevice
+        // En block device er stort sett en fil-container
+        val caps = mutableListOf<Capability>()
+        if (file.canWrite()) {
+            caps.add(Capability.UPLOAD)
+            caps.add(Capability.DELETE)
+        }
+        caps.add(Capability.PREVIEW) // Alle filer kan "forhåndsvises"
 
-    fun getThumbnailsForFolder(folder: KFile): List<File> {
-        val provider = providerFactory.getProvider(folder.device)
-        return provider.getThumbnails(folder)
+        // 3. Map lagringsenheter (Block devices har ofte bare én partisjon/store)
+        val storage = listOf(
+            DeviceStorageStats(
+                id = "main",
+                description = "Disk Partition",
+                capacityBytes = store.totalSpace,
+                freeSpaceBytes = store.usableSpace
+            )
+        )
+
+        // 4. Attributes (OS-spesifikk info)
+        val attrs = mutableMapOf<String, Any>()
+        attrs["fileSystem"] = store.type()
+        attrs["readOnly"] = file.canWrite().not()
+        attrs["totalSpace"] = store.totalSpace
+
+        return DeviceInfo(
+            id = device.id,
+            type = DeviceType.BLOCK, // Antar du har en BLOCK type
+            friendlyName = device.name ?: "External Drive",
+            manufacturer = "Generic", // Kan evt. hentes fra udev-info
+            model = store.type(),
+            capabilities = caps,
+            storage = storage,
+            attributes = attrs
+        )
     }
 
     @EventListener
@@ -112,18 +142,30 @@ class DeviceManagerService(
 
         // Hvis vi allerede har en enhet med denne ID-en, oppdaterer vi bare path
         // i stedet for å legge til en duplikat.
-        val existingDevice = activeDevices.values.find { it.id == stableId }
-        when (event) {
+        val device = when (event) {
             is PTPDeviceDetectedEvent -> {
                 val device = gPhoto2.getDeviceInfo(event.devicePath!!)
-                activeDevices[event.sysPath] = device.toDevice(stableId,DeviceType.PTP)
-            } is MTPDeviceDetectedEvent -> {
-            val device = gPhoto2.getDeviceInfo(event.devicePath!!)
-            activeDevices[event.sysPath] = device.toDevice(stableId, DeviceType.MTP)
+                val decodedDevice = device.toDevice(stableId, DeviceType.PTP)
+                activeDevices[event.sysPath] = decodedDevice
+                decodedDevice
             }
-            is BlockDeviceDetectedEvent -> {
 
+            is MTPDeviceDetectedEvent -> {
+                val device = gPhoto2.getDeviceInfo(event.devicePath!!)
+                val decodedDevice = device.toDevice(stableId, DeviceType.MTP)
+                activeDevices[event.sysPath] = decodedDevice
+                decodedDevice
             }
+
+            is BlockDeviceDetectedEvent -> {
+                null
+            }
+            else -> null
+        }
+
+        if (device != null) {
+            val info = getDeviceInfo(stableId)
+            deviceRepo.store(device, info)
         }
 
         log.info("Device ${event.devicePath} was detected")
@@ -165,7 +207,6 @@ class DeviceManagerService(
             "$vid:$pid"
         }
     }
-
 
 
     fun GPhoto2Device.toDevice(id: String, type: DeviceType): Device {

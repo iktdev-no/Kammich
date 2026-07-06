@@ -1,20 +1,18 @@
 package no.iktdev.kammich.storage
 
 import jakarta.annotation.PostConstruct
-import no.iktdev.kammich.models.storage.DeviceType
-import no.iktdev.kammich.models.storage.internal.BlockDeviceDetectedEvent
-import no.iktdev.kammich.models.storage.internal.DeviceDetectedEvent
-import no.iktdev.kammich.models.storage.internal.DeviceRemovedEvent
-import no.iktdev.kammich.models.storage.internal.MTPDeviceDetectedEvent
-import no.iktdev.kammich.models.storage.internal.PTPDeviceDetectedEvent
-import no.iktdev.kammich.models.storage.internal.UdevEvent
+import no.iktdev.kammich.models.shared.storage.DeviceType
+import no.iktdev.kammich.models.shared.storage.internal.BlockDeviceDetectedEvent
+import no.iktdev.kammich.models.shared.storage.internal.DeviceRemovedEvent
+import no.iktdev.kammich.models.shared.storage.internal.MTPDeviceDetectedEvent
+import no.iktdev.kammich.models.shared.storage.internal.PTPDeviceDetectedEvent
+import no.iktdev.kammich.models.shared.storage.internal.UdevEvent
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class DeviceMonitorService(
@@ -144,6 +142,7 @@ class DeviceMonitorService(
             eventPublisher.publishEvent(event)
 
         } catch (e: Exception) {
+            e.printStackTrace()
             log.error("Feil ved inspeksjon av enhet: ${e.message}")
         }
     }

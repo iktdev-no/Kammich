@@ -1,6 +1,6 @@
-package no.iktdev.kammich.models.files
+package no.iktdev.kammich.models.shared.files
 
-import no.iktdev.kammich.models.storage.removable.Device
+import no.iktdev.kammich.models.shared.storage.removable.Device
 
 data class KFile(
     val id: String,

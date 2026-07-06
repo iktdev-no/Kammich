@@ -1,16 +1,16 @@
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
-import Home from './routes/Home';
 import Settings from './routes/Settings';
 import AppLayout from './layouts/AppLayout';
-import Upload from './routes/Home';
 import Camera from './routes/Camera';
+import Upload from './routes/Upload';
+import Photo from './routes/Photo';
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <AppLayout />,
     children: [
-      { index: true, element: <Home /> },
+      { index: true, element: <Photo /> },
       { path: 'camera/:sn/*', element: <Camera />},
       { path: 'upload', element: <Upload />},
       { path: 'settings', element: <Settings /> },

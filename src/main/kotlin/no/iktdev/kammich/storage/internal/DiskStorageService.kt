@@ -1,7 +1,7 @@
 package no.iktdev.kammich.storage.internal
 
-import no.iktdev.kammich.models.storage.BlockDevice
-import no.iktdev.kammich.models.storage.StorageStats
+import no.iktdev.kammich.models.shared.storage.BlockDevice
+import no.iktdev.kammich.models.shared.storage.StorageStats
 import org.springframework.stereotype.Service
 import java.io.File
 

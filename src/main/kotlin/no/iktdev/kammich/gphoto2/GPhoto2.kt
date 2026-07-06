@@ -17,7 +17,6 @@ class GPhoto2: IGPhoto2 {
     private val log = LoggerFactory.getLogger(DeviceManagerService::class.java)
 
     override fun execute(vararg args: String): String {
-        log.info("Executing gphoto2 with ${args.joinToString(" ")}")
         return ProcessBuilder("gphoto2", *args)
             .start()
             .inputStream
@@ -26,23 +25,32 @@ class GPhoto2: IGPhoto2 {
     }
 
     override fun copyFile(
-        device: GPhoto2DiscoveredDevice,
-        file: GPhoto2File,
+        port: String,
+        containingFolder: String,
+        fileName: String,
         destination: File,
         onProgress: (Int) -> Unit
-    ) {
+    ): File {
+        val targetFile = File(destination, fileName)
+        if (targetFile.exists()) {
+            targetFile.delete()
+        }
         val builder = GPhoto2CommandBuilder()
-            .port(device.port)
-            .copy(destination, file)
+            .port(port)
+            .copy(targetFile, containingFolder, fileName)
 
         val process = ProcessBuilder("gphoto2", *builder.build())
             .redirectErrorStream(false) // Viktig: Hold stderr adskilt for progresjon
             .start()
 
+        val errorOutput = StringBuilder()
+
         // 1. Les stderr for progresjon
         val stderrThread = Thread {
             process.errorStream.bufferedReader().useLines { lines ->
                 lines.forEach { line ->
+                    log.error(line)
+                    errorOutput.append(line).append("\n")
                     // Regex for å finne prosenten, f.eks "Downloading: 45%"
                     val match = Regex("""(\d+)%""").find(line)
                     if (match != null) {
@@ -55,11 +63,13 @@ class GPhoto2: IGPhoto2 {
         stderrThread.start()
 
         // 2. Vent på at prosessen fullføres
+        log.info("Waiting for copy of $fileName to $destination for completion")
         val exitCode = process.waitFor()
 
         if (exitCode != 0) {
-            throw CopyException("Feil ved nedlasting, exit kode: $exitCode")
+            throw CopyException("Feil ved nedlasting, exit kode: $exitCode. Detaljer: \n$errorOutput")
         }
+        return File(destination, fileName)
     }
 
     override fun deleteFile(device: GPhoto2DiscoveredDevice, file: GPhoto2File): Boolean {
@@ -126,30 +136,30 @@ class GPhoto2: IGPhoto2 {
         return GPhoto2SummaryParser().parse(out)
     }
 
-    // I GPhoto2-klassen
-    override fun getThumbnail(cachePath: String, device: GPhoto2DiscoveredDevice, file: GPhoto2File): File {
-        val cacheFolder = File(cachePath)
-        val cacheFile = File(cacheFolder, "${file.name.hashCode()}.jpg")
+    override fun getThumbnails(cacheDirectory: File, port: String, folder: String, recurse: Boolean): List<File> {
+        // 1. Sørg for at mappen finnes
+        cacheDirectory.mkdirs()
 
-        // 1. Sjekk cache først
-        if (cacheFile.exists()) return cacheFile
-
-        // 2. Hvis ikke, hent fra kamera (gphoto2)
-        cacheFolder.mkdirs()
+        // 2. Kjør gphoto2-kommandoen
         val builder = GPhoto2CommandBuilder()
-            .port(device.port)
-            // Bruk builder-metoden vi laget
-            .getThumbnail(cacheFile, file)
+            .port(port)
+            .getThumbnail(cacheDirectory, folder, recurse)
 
-        val process = ProcessBuilder("gphoto2", *builder.build()).start()
-        if (process.waitFor() != 0) throw CopyException("Kunne ikke hente thumbnail")
+        val process = ProcessBuilder("gphoto2", *builder.build())
+            .redirectErrorStream(true)
+            .start()
 
-        return cacheFile
+        if (process.waitFor() != 0) {
+            throw CopyException("Kunne ikke synkronisere thumbnails: ${process.inputStream.bufferedReader().readText()}")
+        }
+
+        // 3. Poenget: GPhoto2 har nå dumpet alle .jpg-filene i cacheDirectory.
+        // Vi returnerer bare alle filene som ligger der nå.
+        return cacheDirectory.listFiles { _, name -> name.endsWith(".jpg") }?.toList() ?: emptyList()
     }
 
     override fun getFiles(port: String, path: String?): List<GPhoto2File> {
         val targetPath = if (path.isNullOrBlank()) "/" else path
-        log.info("getFiles path: $targetPath")
         val out = gphoto {
             port(port)
             explore(targetPath) // Bruk explore() for alle stier

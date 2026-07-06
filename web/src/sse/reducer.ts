@@ -12,12 +12,12 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
         jobs: { ...state.jobs, [event.jobId]: event.status },
       };
 
-    case 'notification':
+    case 'notifications':
+      console.log(event.payload)
       return {
         ...state,
-        notifications: [...state.notifications, event.message],
-      };
-
+        notifications: event.payload
+      }
     case 'sync-status':
       return { ...state, syncRunning: event.running };
 

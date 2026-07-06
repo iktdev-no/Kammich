@@ -27,7 +27,7 @@ repositories {
 }
 
 val exposedVersion = "1.3.1"
-
+val flywayVersion = "12.4.0"
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
@@ -40,9 +40,11 @@ dependencies {
 	implementation("com.google.code.gson:gson:2.8.9")
 	implementation("org.json:json:20231013")
 
-	implementation("org.flywaydb:flyway-core")
-	implementation("org.flywaydb:flyway-database-nc-sqlite:12.10.0")
+	implementation("org.flywaydb:flyway-core:${flywayVersion}")
+	implementation("org.flywaydb:flyway-database-nc-sqlite:${flywayVersion}")
 	implementation("org.xerial:sqlite-jdbc:3.45.1.0")
+	implementation("com.zaxxer:HikariCP:7.0.2")
+
 	// SLF4J for logging (Exposed og Flyway trenger en logger)
 
 	// Exposed
@@ -76,7 +78,7 @@ tasks {
 		jsonLibrary = JsonLibrary.jackson2
 
 		// Valgfritt: litt bedre defaults
-		classPatterns = listOf("no.iktdev.kammich.models.**")
+		classPatterns = listOf("no.iktdev.kammich.models.shared.**")
 	}
 }
 

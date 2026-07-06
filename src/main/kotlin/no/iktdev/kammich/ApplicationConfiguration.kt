@@ -1,11 +1,14 @@
 package no.iktdev.kammich
 
+import jakarta.annotation.PostConstruct
 import no.iktdev.kammich.gphoto2.GPhoto2
 import no.iktdev.kammich.gphoto2.IGPhoto2
+import org.flywaydb.core.Flyway
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+import javax.sql.DataSource
 
 @Configuration
 class CorsConfig : WebMvcConfigurer {

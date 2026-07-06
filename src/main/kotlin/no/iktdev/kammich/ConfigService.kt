@@ -1,7 +1,7 @@
 package no.iktdev.kammich
 
 import com.google.gson.GsonBuilder
-import no.iktdev.kammich.models.config.KammichConfig
+import no.iktdev.kammich.models.shared.config.KammichConfig
 import org.springframework.stereotype.Service
 import java.io.File
 

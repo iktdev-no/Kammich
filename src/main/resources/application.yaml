@@ -2,15 +2,6 @@ spring:
   application:
     name: Kammich
 
-  datasource:
-    hikari:
-      maximum-pool-size: 1
-    # URL til databasen din.
-    # Bruk en absolutt sti (f.eks. /var/lib/kammich/kammich.db)
-    # så den ikke havner i en tilfeldig mappe når du starter appen.
-    url: jdbc:sqlite:./kammich.db
-    driver-class-name: org.sqlite.JDBC
-
   flyway:
     enabled: true
     locations: classpath:flyway
@@ -20,4 +11,9 @@ spring:
 # Valgfritt: Hvis du vil at loggene skal være mer lesbare
 logging:
   level:
+    # Sett din egen tjeneste til DEBUG for å se log.info/debug-meldingene dine
+    no.iktdev.kammich: DEBUG
+
+    # Valgfritt: Hvis du vil se hva Spring/GPhoto2 driver med internt
+    org.springframework: INFO
     org.flywaydb: INFO

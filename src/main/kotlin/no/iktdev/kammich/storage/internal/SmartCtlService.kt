@@ -2,9 +2,9 @@ package no.iktdev.kammich.storage.internal
 
 import com.google.gson.Gson
 import com.google.gson.JsonParser
-import no.iktdev.kammich.models.storage.DiskHealth
-import no.iktdev.kammich.models.storage.NvmeRoot
-import no.iktdev.kammich.models.storage.SataRoot
+import no.iktdev.kammich.models.shared.storage.DiskHealth
+import no.iktdev.kammich.models.shared.storage.NvmeRoot
+import no.iktdev.kammich.models.shared.storage.SataRoot
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 

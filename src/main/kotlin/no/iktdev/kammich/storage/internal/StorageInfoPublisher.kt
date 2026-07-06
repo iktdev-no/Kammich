@@ -1,7 +1,7 @@
 package no.iktdev.kammich.storage.internal
 
-import no.iktdev.kammich.models.storage.BlockDevice
-import no.iktdev.kammich.models.storage.StorageInfo
+import no.iktdev.kammich.models.shared.storage.BlockDevice
+import no.iktdev.kammich.models.shared.storage.StorageInfo
 import no.iktdev.kammich.sse.SseManager
 import no.iktdev.kammich.storage.DeviceService
 import org.springframework.scheduling.annotation.Scheduled

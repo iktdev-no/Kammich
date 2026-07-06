@@ -1,17 +1,29 @@
 /* tslint:disable */
 /* eslint-disable */
-// Generated using typescript-generator version 4.1.1 on 2026-07-04 17:14:52.
+// Generated using typescript-generator version 4.1.1 on 2026-07-06 01:44:55.
 
-export interface ImmichAuth {
+export interface Notification {
+    id: string;
+    type: NotificationType;
+    title: string;
+    message: string;
+    severity: Severity;
+    dismissed: boolean;
+    dismissable: boolean;
+    createdAt: number;
 }
 
-export interface ApiKey extends ImmichAuth {
-    key: string;
+export interface PagedResponse<T> {
+    data: T[];
+    totalPages: number;
+    currentPage: number;
+    hasMore: boolean;
 }
 
-export interface OAuth extends ImmichAuth {
-    accessToken: string;
-    refreshToken: string;
+export interface RemoteFile {
+    id: number;
+    deviceId: number;
+    fileName: string;
 }
 
 export interface DeviceConfig {
@@ -145,7 +157,7 @@ export interface Device {
     id: string;
     name: string;
     type: DeviceType;
-    path: string | null;
+    path: string;
     vendor: string | null;
     model: string | null;
 }
@@ -167,6 +179,10 @@ export interface DeviceStorageStats {
     capacityBytes: number;
     freeSpaceBytes: number;
 }
+
+export type NotificationType = "Alert";
+
+export type Severity = "Info" | "Warning" | "Error";
 
 export type KFileType = "FILE" | "DIRECTORY";
 

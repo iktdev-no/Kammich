@@ -1,4 +1,4 @@
-package no.iktdev.kammich.models.storage.internal
+package no.iktdev.kammich.models.shared.storage.internal
 
 abstract class DeviceEvent(
     open val sysPath: String,

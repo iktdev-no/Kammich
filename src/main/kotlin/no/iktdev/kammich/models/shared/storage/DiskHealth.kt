@@ -1,4 +1,4 @@
-package no.iktdev.kammich.models.storage
+package no.iktdev.kammich.models.shared.storage
 
 import com.google.gson.annotations.SerializedName
 

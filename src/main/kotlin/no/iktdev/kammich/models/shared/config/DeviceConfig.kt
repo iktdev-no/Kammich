@@ -1,4 +1,4 @@
-package no.iktdev.kammich.models.config
+package no.iktdev.kammich.models.shared.config
 
 data class DeviceConfig(
     val deviceId: String,          // Unik ID (serienummer)

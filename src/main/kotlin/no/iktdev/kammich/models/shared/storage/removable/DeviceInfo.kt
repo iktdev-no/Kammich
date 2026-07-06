@@ -1,6 +1,6 @@
-package no.iktdev.kammich.models.storage.removable
+package no.iktdev.kammich.models.shared.storage.removable
 
-import no.iktdev.kammich.models.storage.DeviceType
+import no.iktdev.kammich.models.shared.storage.DeviceType
 
 data class DeviceInfo(
     val id: String,

@@ -25,24 +25,28 @@ class GPhoto2CommandBuilder {
         args.add(path)
     }
 
-    fun getThumbnail(destination: File, file: GPhoto2File) = apply {
+    fun getThumbnail(destination: File, folderPath: String, recurse: Boolean) = apply {
         args.add("--folder")
-        args.add(file.folderPath)
-        args.add("--get-thumbnail")
-        args.add(file.name)
+        args.add(folderPath)
+        args.add("--get-all-thumbnails")
+        if (!recurse) {
+            args.add("--no-recurse")
+        }
         args.add("--filename")
-        args.add("${destination.absolutePath}/${file.name.substringBeforeLast(".")}_thumb.jpg")
+        // %f er GPhoto2s innebygde variabel for det originale filnavnet.
+        // Ved å skrive "%f.jpg", beholder vi hele navnet + legger til .jpg
+        args.add("${destination.absolutePath}/%f.jpg")
     }
 
-    fun copy(destination: File, file: GPhoto2File) = apply {
+    fun copy(destination: File, containingFolder: String, fileName: String) = apply {
         args.add("--folder")
-        args.add(file.folderPath)
+        args.add(containingFolder)
         args.add("--get-file")
-        args.add(file.name)
+        args.add(fileName)
         // gphoto2 bruker standard output for filen hvis vi ikke spesifiserer --filename
         // Men det er lurt å sette arbeidsmappen eller destinasjonen
         args.add("--filename")
-        args.add("${destination.absolutePath}/${file.name}")
+        args.add(destination.absolutePath)
     }
 
     fun delete(file: GPhoto2File) = apply {

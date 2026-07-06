@@ -13,9 +13,9 @@ interface IGPhoto2 {
     fun getAbilities(device: GPhoto2DiscoveredDevice): GPhoto2DeviceAbility
     fun getSummary(device: GPhoto2DiscoveredDevice): GPhoto2Summary
     fun getDevices(): List<GPhoto2Device>
-    fun copyFile(device: GPhoto2DiscoveredDevice, file: GPhoto2File, destination: File, onProgress: (Int) -> Unit)
+    fun copyFile(port: String, containingFolder: String, fileName: String, destination: File, onProgress: (Int) -> Unit): File?
     fun deleteFile(device: GPhoto2DiscoveredDevice, file: GPhoto2File): Boolean
-    fun getThumbnail(cachePath: String, device: GPhoto2DiscoveredDevice, file: GPhoto2File): File
+    fun getThumbnails(cacheDirectory: File, port: String, folder: String, recurse: Boolean): List<File>
     fun getAbilities(port: String): GPhoto2DeviceAbility
     fun getSummary(port: String): GPhoto2Summary
     fun getDeviceInfo(port: String): GPhoto2Device
