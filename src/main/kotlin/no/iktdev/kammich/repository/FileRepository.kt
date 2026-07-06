@@ -52,8 +52,8 @@ class FileRepository {
         }.getOrNull() ?: false
     }
 
-    fun saveFiles(deviceId: Int, files: List<Pair<File, ZonedDateTime>>) {
-        withTransaction {
+    fun saveFiles(deviceId: Int, files: List<Pair<File, ZonedDateTime>>): Boolean {
+        return withTransaction {
             ImportedFilesTable.batchInsert(files) {
                 this[ImportedFilesTable.deviceId] = deviceId
                 this[ImportedFilesTable.fileName] = it.first.name
@@ -62,7 +62,7 @@ class FileRepository {
                 this[ImportedFilesTable.extension] = it.first.extension
                 this[ImportedFilesTable.importedAt] = it.second.toString()
             }
-        }
+        }.isSuccess
     }
 
     fun saveFile(deviceId: Int, file: File, importedAt: String) {

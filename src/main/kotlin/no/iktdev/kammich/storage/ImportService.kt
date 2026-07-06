@@ -4,6 +4,7 @@ import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.ensureWritable
+import no.iktdev.kammich.infoNotification
 import no.iktdev.kammich.models.shared.Notification
 import no.iktdev.kammich.models.shared.NotificationType
 import no.iktdev.kammich.models.shared.Severity
@@ -11,6 +12,7 @@ import no.iktdev.kammich.models.shared.files.KFile
 import no.iktdev.kammich.models.shared.storage.removable.Device
 import no.iktdev.kammich.repository.FileRepository
 import no.iktdev.kammich.storage.provider.StorageProviderFactory
+import no.iktdev.kammich.warningNotification
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -39,15 +41,15 @@ class ImportService(
         ) ?: return emptyList()
 
         val deviceId = DevicesTable.getDeviceId(device.id) ?: run {
-            eventPublisher.publishEvent(Notification(
-                id = "ImportService-Device-not-present",
-                title = "Device ${device.id} missing",
-                message = "Device ${device.id} is not stored in database!\nCan't import files untill this is resolved",
-                severity = Severity.Warning,
-                dismissable = false,
-                type = NotificationType.Alert
-            ))
+            eventPublisher.warningNotification("ImportService-Device-not-present-${device.id}",
+                "Device ${device.id} missing",
+                "Device ${device.id} is not stored in database!\nCan't import files untill this is resolved",
+            )
             return emptyList()
+        }
+
+        if (files.isEmpty()) {
+            log.info("No files to import")
         }
 
         val importedFiles = files.mapNotNull { file ->
@@ -57,12 +59,20 @@ class ImportService(
             } else null
         }
 
-        fileRepository.saveFiles(deviceId, importedFiles)
-        log.info("Imported ${importedFiles.size} device ${device.id}")
+        val success = if (importedFiles.isNotEmpty()) {
+            fileRepository.saveFiles(deviceId, importedFiles)
+        } else true
 
+        if (success) {
+            if (importedFiles.isEmpty()) {
+                eventPublisher.infoNotification("ImportService-NoFiles-${device.id}", "No files to import", "All files have already been imported for ${device.model ?: device.id}")
+            } else {
+                eventPublisher.infoNotification("ImportService-Success-${device.id}", "Imported ${importedFiles.size} files", "Imported ${importedFiles.size} files from device ${device.model ?: device.id}")
+            }
+            log.info("Imported ${importedFiles.size} device ${device.id}")
+        } else {
+            log.info("Imported ${importedFiles.size} device ${device.id}, but failed to index them in database.\nThe failed ones will be overwritten on next import")
+        }
         return importedFiles.map { it.first }
     }
-
-
-
 }

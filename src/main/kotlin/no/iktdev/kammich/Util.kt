@@ -57,3 +57,25 @@ fun File.getFileType(): FileType {
         else -> OTHER
     }
 }
+
+fun ApplicationEventPublisher.infoNotification(id: String, title: String, message: String, type: NotificationType = NotificationType.Alert) {
+    this.publishEvent(Notification(
+        id = id,
+        title = title,
+        message = message,
+        severity = Severity.Info,
+        dismissable = true,
+        type = type
+    ))
+}
+
+fun ApplicationEventPublisher.warningNotification(id: String, title: String, message: String, type: NotificationType = NotificationType.Alert) {
+    this.publishEvent(Notification(
+        id = id,
+        title = title,
+        message = message,
+        severity = Severity.Warning,
+        dismissable = true,
+        type = type
+    ))
+}
