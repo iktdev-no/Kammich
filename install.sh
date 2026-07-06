@@ -1,122 +1,185 @@
 #!/bin/bash
 
-# Sjekk om scriptet kjøres som root
+# Sjekk root
 if [[ $EUID -ne 0 ]]; then
-   echo "Dette scriptet må kjøres som root (sudo)"
-   exit 1
-fi
-
-echo "--- Starter forberedelse av Kammich-miljø ---"
-
-# 1. Identifiser pakkebehandler
-if command -v apt-get &> /dev/null; then
-    PKG_MGR="apt-get install -y"
-    UPDATE_CMD="apt-get update"
-elif command -v dnf &> /dev/null; then
-    PKG_MGR="dnf install -y"
-    UPDATE_CMD="dnf check-update"
-elif command -v pacman &> /dev/null; then
-    PKG_MGR="pacman -S --noconfirm"
-    UPDATE_CMD="pacman -Sy"
-else
-    echo "Kunne ikke identifisere pakkebehandler. Installer gphoto2 og smartmontools manuelt."
+    echo "Dette scriptet må kjøres som root (sudo)"
     exit 1
 fi
 
-# 2. Installer dependencies
-echo "Installerer systemavhengigheter..."
-$UPDATE_CMD
-$PKG_MGR gphoto2 smartmontools hdparm
+TARGET_USER=${SUDO_USER:-$USER}
+USER_ID=$(id -u "$TARGET_USER")
+GROUP_ID=$(id -g "$TARGET_USER")
+MOUNT_ROOT="/run/kammich/removable"
+STATE_ROOT="/run/kammich"
 
-# 3. Udev-regler for systemd-automount
-echo "Konfigurerer udev-regler..."
-cat <<EOF > /etc/udev/rules.d/99-kammich.rules
-ACTION=="add", SUBSYSTEM=="block", KERNEL=="sd[a-z][0-9]", ENV{SYSTEMD_WANTS}+="usb-mount@%k.service"
-ACTION=="remove", SUBSYSTEM=="block", KERNEL=="sd[a-z][0-9]", ENV{SYSTEMD_WANTS}+="usb-unmount@%k.service"
+###############################################
+# 1. Setup Base-struktur (Persistent mount path)
+###############################################
+setup_paths() {
+    mkdir -p "$MOUNT_ROOT"
+    # Lag en fil som begge skript kan lese
+    echo "MOUNT_ROOT=\"$MOUNT_ROOT\"" > /etc/kammich.conf
+    echo "STATE_ROOT=\"$STATE_ROOT\"" >> /etc/kammich.conf
+
+    cat <<EOF > /etc/tmpfiles.d/kammich.conf
+d $STATE_ROOT 0755 root root -
 EOF
+}
 
-# 4. Systemd mount-service
-echo "Oppretter systemd mount-service..."
-cat <<EOF > /etc/systemd/system/usb-mount@.service
+
+###############################################
+# 2. Installer dependencies
+###############################################
+install_dependencies() {
+    echo "--- Installerer systemavhengigheter ---"
+    if command -v apt-get &> /dev/null; then
+        apt-get update && apt-get install -y gphoto2 smartmontools hdparm
+    elif command -v dnf &> /dev/null; then
+        dnf check-update && dnf install -y gphoto2 smartmontools hdparm
+    elif command -v pacman &> /dev/null; then
+        pacman -Sy --noconfirm gphoto2 smartmontools hdparm
+    else
+        echo "Kunne ikke identifisere pakkebehandler."
+        exit 1
+    fi
+}
+
+###############################################
+# 3. Udev-regler (kun trigger, ingen RUN)
+###############################################
+configure_udev() {
+    echo "--- Konfigurerer udev-regler ---"
+
+    cat <<EOF > /etc/udev/rules.d/99-kammich.rules
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9]", ENV{SYSTEMD_WANTS}+="usb-mount@%k.service"
+ACTION=="remove", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9]", ENV{SYSTEMD_WANTS}+="usb-unmount@%k.service"
+EOF
+}
+
+###############################################
+# 4. Mount/Unmount Helper
+###############################################
+configure_systemd() {
+    echo "--- Konfigurerer systemd services ---"
+
+    # 1. Oppdatert Helper-script
+    cat <<EOF > /usr/local/bin/kammich-mount-helper
+#!/bin/bash
+source /etc/kammich.conf
+ACTION=\$1; DEV=\$2
+MODEL_FILE="$STATE_ROOT/\${DEV}.model"
+
+# DEBUG: Sjekk om variablene er satt
+if [ -z "\$MOUNT_ROOT" ] || [ -z "\$STATE_ROOT" ]; then
+    echo "ERROR: Konfigurasjon ikke lastet! Sjekk /etc/kammich.conf" >&2
+    exit 1
+fi
+
+MODEL=\$(cat "\$MODEL_FILE" | tr -d '[:space:]')
+MODEL=\${MODEL:-Unknown_Device}
+
+TARGET="\$MOUNT_ROOT/\$MODEL/\$DEV"
+mkdir -p "\$TARGET"
+
+# DEBUG: Vis hva vi prøver
+echo "DEBUG: Mounter /dev/\$DEV til \$TARGET" >&2
+
+if ! mount -o uid=$USER_ID,gid=$GROUP_ID,umask=000,fmask=000,dmask=000 "/dev/\$DEV" "\$TARGET" 2>/dev/null; then
+    mount "/dev/\$DEV" "\$TARGET"
+fi
+EOF
+    chmod +x /usr/local/bin/kammich-mount-helper
+
+    # 2. Oppdatert Mount Service
+    cat <<EOF > /etc/systemd/system/usb-mount@.service
 [Unit]
 Description=Automount USB device %I
-After=systemd-udevd.service
+BindsTo=dev-%i.device
+After=dev-%i.device systemd-udevd.service
 
 [Service]
 Type=oneshot
-Environment=USER_ID=$(id -u $USER)
-Environment=GROUP_ID=$(id -g $USER)
-ExecStart=/usr/bin/mkdir -p /media/removable/%I
-ExecStart=/usr/bin/mount -o uid=${USER_ID},gid=${GROUP_ID},umask=000,fmask=000,dmask=000 /dev/%I /media/removable/%I
-
-[Install]
-WantedBy=multi-user.target
+ExecStartPre=/usr/local/bin/kammich-mount-helper prepare %I
+ExecStart=/usr/local/bin/kammich-mount-helper mount %I
 EOF
 
-
-# 5. Systemd unmount-service
-echo "Oppretter systemd unmount-service..."
-cat <<EOF > /etc/systemd/system/usb-unmount@.service
+    # 3. Unmount Service
+    cat <<EOF > /etc/systemd/system/usb-unmount@.service
 [Unit]
 Description=Auto-unmount USB device %I
-
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/umount /media/removable/%I
-ExecStart=/usr/bin/rmdir /media/removable/%I
+ExecStart=/bin/bash -c 'MODEL=\$(cat $STATE_ROOT/%I.model 2>/dev/null || echo "Unknown_Device"); umount "$MOUNT_ROOT/\$MODEL/%I" 2>/dev/null; rm -f "$STATE_ROOT/%I.model"'
 EOF
+}
 
-# 6. Eject-service (safe removal)
-echo "Oppretter systemd eject-service..."
-cat <<EOF > /etc/systemd/system/usb-eject@.service
-[Unit]
-Description=Safe eject USB device %I
-After=usb-unmount@%I.service
+###############################################
+# 4. Eject Script + Sudoers
+###############################################
+configure_eject() {
+    echo "--- Konfigurerer eject-verktøy og sudoers ---"
 
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/kammich-eject %I
-EOF
-
-# 7. Eject wrapper-script
-echo "Oppretter eject wrapper-script..."
-cat <<'EOF' > /usr/local/bin/kammich-eject
+    # Vi bruker 'EOF' (med apostrof) slik at Bash ikke tolker $ variabler her,
+    # men heller skriver dem direkte inn i filen.
+    cat <<'EOF' > /usr/local/bin/kammich-eject
 #!/bin/bash
+# Hent stiene fra felles konfigurasjonsfil
+source /etc/kammich.conf
+
 DEV="$1"
+MODEL_FILE="${STATE_ROOT}/${DEV}.model"
 
-# Sync all buffers
+# Sjekk at vi har en modell-fil
+if [ ! -f "$MODEL_FILE" ]; then
+    echo "Kunne ikke finne modell-fil for $DEV"
+    exit 1
+fi
+
+MODEL=$(cat "$MODEL_FILE")
+TARGET="${MOUNT_ROOT}/${MODEL}/${DEV}"
+
 sync
+umount "$TARGET" 2>/dev/null
 
-# Unmount if still mounted
-if mountpoint -q /media/removable/"$DEV"; then
-    umount /media/removable/"$DEV"
-fi
+# Strømsparing og sikker utmating
+[[ "$DEV" == sd* ]] && hdparm -Y "/dev/$DEV" 2>/dev/null
 
-# Spindown (hvis disk støtter det)
-hdparm -Y /dev/"$DEV" 2>/dev/null
-
-# Forsøk USB power-off (hvis tilgjengelig)
 USB_PATH=$(readlink -f /sys/block/"$DEV"/device)
-if [[ -e "$USB_PATH/usb_device/authorized" ]]; then
-    echo 0 > "$USB_PATH/usb_device/authorized"
-fi
+[[ -e "$USB_PATH/usb_device/authorized" ]] && echo 0 > "$USB_PATH/usb_device/authorized"
 
-exit 0
+# Valgfritt: Slett modell-filen når enheten er utmatet
+rm -f "$MODEL_FILE"
 EOF
 
-chmod +x /usr/local/bin/kammich-eject
+    chmod +x /usr/local/bin/kammich-eject
+}
 
-# 8. sudoers-konfigurasjon for smartctl og eject
-USER_NAME=${SUDO_USER:-$USER}
-echo "Konfigurerer sudoers..."
-cat <<EOF > /etc/sudoers.d/kammich
-$USER_NAME ALL=(ALL) NOPASSWD: /usr/sbin/smartctl
-$USER_NAME ALL=(ALL) NOPASSWD: /usr/local/bin/kammich-eject
+###############################################
+# 5. Sudoers
+###############################################
+configure_sudo() {
+    cat <<EOF > /etc/sudoers.d/kammich
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/sbin/smartctl, /usr/local/bin/kammich-eject
 EOF
+}
 
-# 9. Reload
-systemctl daemon-reload
-udevadm control --reload-rules && udevadm trigger
+###############################################
+# 6. Reload og trigger
+###############################################
+apply_changes() {
+    echo "--- Reloading daemon and udev ---"
+    systemctl daemon-reload
+    udevadm control --reload-rules && udevadm trigger
+    echo "--- Kammich-miljøet er nå klargjort ---"
+}
 
-echo "--- Installasjon fullført ---"
-echo "Kammich-miljøet er nå klargjort."
+###############################################
+# Hoved-flyt
+###############################################
+install_dependencies
+setup_paths
+configure_udev
+configure_systemd
+configure_eject
+configure_sudo
+apply_changes
