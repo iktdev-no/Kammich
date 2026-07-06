@@ -69,23 +69,29 @@ source /etc/kammich.conf
 ACTION=\$1; DEV=\$2
 MODEL_FILE="$STATE_ROOT/\${DEV}.model"
 
-# DEBUG: Sjekk om variablene er satt
-if [ -z "\$MOUNT_ROOT" ] || [ -z "\$STATE_ROOT" ]; then
-    echo "ERROR: Konfigurasjon ikke lastet! Sjekk /etc/kammich.conf" >&2
-    exit 1
-fi
+if [ "\$ACTION" == "prepare" ]; then
+    PATH_RAW=\$(udevadm info -q path -n "/dev/\$DEV" | sed 's/p[0-9]+\$//')
+    MODEL=\$(udevadm info -q property -p "\$PATH_RAW" | grep "^ID_MODEL=" | cut -d= -f2)
+    echo "\${MODEL:-Unknown_Device}" | tr -d " ()/" > "\$MODEL_FILE"
+elif [ "\$ACTION" == "mount" ]; then
+    MODEL=\$(cat "\$MODEL_FILE" | tr -d '[:space:]')
+    MODEL=\${MODEL:-Unknown_Device}
+    TARGET="\$MOUNT_ROOT/\$MODEL/\$DEV"
+    mkdir -p "\$TARGET"
 
-MODEL=\$(cat "\$MODEL_FILE" | tr -d '[:space:]')
-MODEL=\${MODEL:-Unknown_Device}
+    # Sjekk om enheten allerede er montert (hvis ja, exit 0 for suksess)
+    if grep -qs "\$TARGET" /proc/mounts; then
+        echo "DEBUG: /dev/\$DEV er allerede montert på \$TARGET. Avslutter suksessfullt." >&2
+        exit 0
+    fi
 
-TARGET="\$MOUNT_ROOT/\$MODEL/\$DEV"
-mkdir -p "\$TARGET"
-
-# DEBUG: Vis hva vi prøver
-echo "DEBUG: Mounter /dev/\$DEV til \$TARGET" >&2
-
-if ! mount -o uid=$USER_ID,gid=$GROUP_ID,umask=000,fmask=000,dmask=000 "/dev/\$DEV" "\$TARGET" 2>/dev/null; then
-    mount "/dev/\$DEV" "\$TARGET"
+    # Prøv mount. Hvis den feiler pga filsystemtype, prøv en enkel mount
+    if ! mount -o uid=$USER_ID,gid=$GROUP_ID,umask=000,fmask=000,dmask=000 "/dev/\$DEV" "\$TARGET" 2>/dev/null; then
+        if ! mount "/dev/\$DEV" "\$TARGET"; then
+             echo "ERROR: Mount feilet totalt for /dev/\$DEV" >&2
+             exit 1
+        fi
+    fi
 fi
 EOF
     chmod +x /usr/local/bin/kammich-mount-helper
