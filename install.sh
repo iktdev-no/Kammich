@@ -86,26 +86,38 @@ elif [ "\$ACTION" == "mount" ]; then
     MODEL=\$(cat "\$MODEL_FILE" | tr -d '[:space:]')
     MODEL=\${MODEL:-Unknown_Device}
     TARGET="\$MOUNT_ROOT/\$MODEL/\$DEV"
+
+    # Finn filsystemtype med blkid
+    FSTYPE=\$(blkid -o value -s TYPE "/dev/\$DEV")
+
+    # Hvis ingen filsystem-type, hopp over (f.eks. MSR, swap)
+    if [ -z "\$FSTYPE" ]; then
+        exit 0
+    fi
+
     mkdir -p "\$TARGET"
 
     if grep -qs "\$TARGET" /proc/mounts; then
         exit 0
     fi
 
-    FSTYPE=\$(lsblk -no FSTYPE "/dev/\$DEV" | head -n1)
     case "\$FSTYPE" in
-      ntfs|ntfs-3g) MOUNT_OPTS="uid=$USER_ID,gid=$GROUP_ID,umask=000" ;;
-      vfat|fat|exfat) MOUNT_OPTS="uid=$USER_ID,gid=$GROUP_ID,umask=000,fmask=000,dmask=000" ;;
-      *) MOUNT_OPTS="defaults" ;;
+      ntfs|ntfs-3g)
+        # Bruk systemd-run for å frikoble NTFS/FUSE fra systemd-tjenestens livssyklus
+        systemd-run --scope --collect --property=Description="Mount \$DEV" mount -t ntfs-3g -o uid=$USER_ID,gid=$GROUP_ID,umask=000 "/dev/\$DEV" "\$TARGET"
+        ;;
+      vfat|fat|exfat)
+        mount -o uid=$USER_ID,gid=$GROUP_ID,umask=000,fmask=000,dmask=000 "/dev/\$DEV" "\$TARGET"
+        ;;
+      BitLocker)
+        # Ignorer BitLocker-partisjoner stille
+        exit 0
+        ;;
+      *)
+        # Forsøk standard mount for alt annet (ext4, btrfs, osv.)
+        mount "/dev/\$DEV" "\$TARGET"
+        ;;
     esac
-
-    # LØSNING: Bruk systemd-run --scope for å løsrive mount-prosessen fra tjenestens levetid
-    # Dette hindrer systemd i å sende unmount-signalet når tjenesten "deaktiveres"
-    if [ "\$FSTYPE" == "ntfs" ] || [ "\$FSTYPE" == "ntfs-3g" ]; then
-        systemd-run --scope --collect --property=Description="Mount \$DEV" mount -t ntfs-3g -o "\$MOUNT_OPTS" "/dev/\$DEV" "\$TARGET"
-    else
-        mount -o "\$MOUNT_OPTS" "/dev/\$DEV" "\$TARGET"
-    fi
 fi
 EOF
 
