@@ -14,6 +14,7 @@ import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 import { BreadcrumbPath } from "../components/BreadcrumbPath";
 import { useSseSelector } from "../sse/useSseSelector";
 import UsbOffIcon from '@mui/icons-material/UsbOff';
+import { formatBytes } from "../utils/format";
 
 type CameraState =
     | { type: 'DISCONNECTED' }
@@ -153,19 +154,20 @@ function StatusSpinner({ message, timeout }: { message: string, timeout?: number
 function CameraBanner({ device }: { device: DeviceInfo }) {
     return (
         <Paper sx={{ p: 3, mb: 3, backgroundColor: "background.paper" }}>
-            <Stack direction="row" spacing={2} sx={{
-                alignItems: "center"
-            }}>
+            <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
                 <Avatar sx={{ bgcolor: "primary.main", width: 56, height: 56 }}>
                     <CameraAltOutlinedIcon fontSize="large" />
                 </Avatar>
+                
                 <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="h5" sx={{}}>{device.friendlyName}</Typography>
+                    <Typography variant="h5">{device.friendlyName}</Typography>
                     <Typography variant="body2" color="text.secondary">
                         {device.manufacturer} {device.model} • S/N: {device.attributes.serialNumber ?? "N/A"}
                     </Typography>
                 </Box>
+
                 <Stack direction="row" spacing={1}>
+                    {/* Batteri-chip */}
                     {device.attributes.batteryLevel && (
                         <Chip
                             icon={<BatteryChargingFullIcon />}
@@ -173,11 +175,18 @@ function CameraBanner({ device }: { device: DeviceInfo }) {
                             variant="outlined"
                         />
                     )}
-                    <Chip
-                        icon={<StorageIcon />}
-                        label={`${device.storage[0]?.freeSpaceBytes / 1024 / 1024 / 1024} GB ledig`}
-                        color="primary"
-                    />
+                    
+                    {/* Mapper over alle lagringsenheter */}
+                    {device.storage.map((storage, index) => (
+                        <Chip
+                            key={index}
+                            icon={<StorageIcon />}
+                            // Bruker formatBytes-funksjonen din her
+                            label={`${formatBytes(storage.freeSpaceBytes)} ledig`}
+                            color="primary"
+                            variant="filled"
+                        />
+                    ))}
                 </Stack>
             </Stack>
         </Paper>
