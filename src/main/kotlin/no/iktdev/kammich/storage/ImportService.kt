@@ -5,9 +5,6 @@ import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.ensureWritable
 import no.iktdev.kammich.infoNotification
-import no.iktdev.kammich.models.shared.Notification
-import no.iktdev.kammich.models.shared.NotificationType
-import no.iktdev.kammich.models.shared.Severity
 import no.iktdev.kammich.models.shared.files.KFile
 import no.iktdev.kammich.models.shared.storage.removable.Device
 import no.iktdev.kammich.repository.FileRepository
@@ -53,7 +50,7 @@ class ImportService(
         }
 
         val importedFiles = files.mapNotNull { file ->
-            val imported = provider.getFile(device, storage, file)
+            val imported = provider.copyFile(device, storage, file)
             if (imported != null) {
                 imported to ZonedDateTime.now()
             } else null

@@ -17,13 +17,8 @@ class ConfigService {
             gson.fromJson(configFile.readText(), KammichConfig::class.java)
         } else {
             val defaultConfig = KammichConfig(
-                "/var/lib/kammich/storage/cache",
                 "/var/lib/kammich/storage/media",
             )
-            val cacheFolder = File(defaultConfig.cachePath)
-            if (!cacheFolder.exists()) {
-                cacheFolder.mkdirs()
-            }
             saveConfig(defaultConfig) // Lagre standard om fila ikke finnes
             defaultConfig
         }

@@ -34,16 +34,26 @@ class DeviceManagerService(
     }
 
     fun getDevice(deviceId: String): Device? {
-        return activeDevices.values.find { it.id == deviceId }
+        val active = activeDevices.values.find { it.id == deviceId }
+        if (active == null) {
+            log.info("Device not found: $deviceId in ${activeDevices.values.map { it.id }}")
+        }
+        return active
     }
 
     fun getDeviceBySysPath(sysPath: String): Device? {
-        val stableId = generateStableId(sysPath)
-        return getDevice(stableId)
+        return activeDevices[sysPath]
+    }
+
+    fun getDeviceById(id: String): Device? {
+        return activeDevices.values.find { it.id == id }
     }
 
     fun getDeviceInfo(deviceId: String): DeviceInfo? {
-        val device = getDevice(deviceId) ?: return null
+        val device = getDeviceById(deviceId) ?: run {
+            log.info("Device not found: $deviceId")
+            return null
+        }
         // Her er "hacker-stabilt" trikset:
         // Hvis det er et PTP-kamera, hent detaljer via GPhoto2-biblioteket
         // Hvis det er BLOCK, returner "hardkodet" info eller les fra disk-metadata
@@ -138,12 +148,12 @@ class DeviceManagerService(
 
     @EventListener
     fun handleDeviceDetected(event: DeviceDetectedEvent) {
-        val stableId = generateStableId(event.sysPath)
 
         // Hvis vi allerede har en enhet med denne ID-en, oppdaterer vi bare path
         // i stedet for å legge til en duplikat.
         val device = when (event) {
             is PTPDeviceDetectedEvent -> {
+                val stableId = generateStableId(event.sysPath)
                 val device = gPhoto2.getDeviceInfo(event.devicePath!!)
                 val decodedDevice = device.toDevice(stableId, DeviceType.PTP)
                 activeDevices[event.sysPath] = decodedDevice
@@ -151,6 +161,7 @@ class DeviceManagerService(
             }
 
             is MTPDeviceDetectedEvent -> {
+                val stableId = generateStableId(event.sysPath)
                 val device = gPhoto2.getDeviceInfo(event.devicePath!!)
                 val decodedDevice = device.toDevice(stableId, DeviceType.MTP)
                 activeDevices[event.sysPath] = decodedDevice
@@ -158,13 +169,17 @@ class DeviceManagerService(
             }
 
             is BlockDeviceDetectedEvent -> {
-                null
+                log.info("Decoding DeviceDetected $event to blockDeviceDetectedEvent")
+                val decodedDevice = event.toDevice()
+                activeDevices[event.sysPath] = decodedDevice
+                log.info("Assigned:\n${event.sysPath} to $decodedDevice")
+                decodedDevice
             }
             else -> null
         }
 
         if (device != null) {
-            val info = getDeviceInfo(stableId)
+            val info = getDeviceInfo(event.sysPath)
             deviceRepo.store(device, info)
         }
 
@@ -217,6 +232,17 @@ class DeviceManagerService(
             path = this.connection,                   // gphoto2-port
             vendor = summary.manufacturer,
             model = summary.model
+        )
+    }
+
+    fun BlockDeviceDetectedEvent.toDevice(): Device {
+        return Device(
+            id = this.defaultInfo.serial,
+            name = this.defaultInfo.modelName,
+            type = DeviceType.BLOCK,
+            path = this.defaultInfo.mountPoint,
+            vendor = this.vendor,
+            model = this.defaultInfo.modelName
         )
     }
 

@@ -39,4 +39,14 @@ data class BlockDeviceDetectedEvent(
     override val product: String,
     override val serial: String,
     override val devicePath: String,
+    val defaultInfo: BlockDeviceDefaultInfo
 ): DeviceDetectedEvent(sysPath, vendor, product, serial, devicePath)
+
+data class BlockDeviceDefaultInfo(
+    val name: String,
+    val physical: String,
+    val mountPoint: String,
+    val modelName: String,
+    val serial: String,
+    val transport: String?
+)

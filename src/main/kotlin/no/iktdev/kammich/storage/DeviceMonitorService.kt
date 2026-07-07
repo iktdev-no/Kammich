@@ -1,7 +1,9 @@
 package no.iktdev.kammich.storage
 
 import jakarta.annotation.PostConstruct
+import no.iktdev.kammich.models.shared.Transport
 import no.iktdev.kammich.models.shared.storage.DeviceType
+import no.iktdev.kammich.models.shared.storage.internal.BlockDeviceDefaultInfo
 import no.iktdev.kammich.models.shared.storage.internal.BlockDeviceDetectedEvent
 import no.iktdev.kammich.models.shared.storage.internal.DeviceRemovedEvent
 import no.iktdev.kammich.models.shared.storage.internal.MTPDeviceDetectedEvent
@@ -17,6 +19,7 @@ import java.io.File
 @Service
 class DeviceMonitorService(
     private val eventPublisher: ApplicationEventPublisher,
+    private val deviceService: DeviceService,
 ) {
     private val log = LoggerFactory.getLogger(DeviceMonitorService::class.java)
     // Funksjon for testing: Tar en rå tekstlinje og returnerer et event hvis det er en hovedenhet
@@ -30,10 +33,10 @@ class DeviceMonitorService(
         // Vi henter ut siste del av stien (f.eks. "1-11:1.0" eller "1-11")
         val lastPart = path.substringAfterLast("/")
 
-        log.info(line)
+/*        log.info(line)
         log.info("$event: $path")
         log.info("path = $path\npath.contains('usb'): ${path.contains("usb")}")
-        log.info("lastPart = $lastPart \n!lastPart.contains(':'): ${!lastPart.contains(":")}")
+        log.info("lastPart = $lastPart \n!lastPart.contains(':'): ${!lastPart.contains(":")}")*/
         // Vi sjekker om 'usb' er i stien, OG at siste del (enhetsnavnet) IKKE har kolon
         if (path.contains("usb") && !lastPart.contains(":")) {
             return UdevEvent(event, path)
@@ -106,14 +109,21 @@ class DeviceMonitorService(
             val event = when (type) {
 
                 DeviceType.BLOCK -> {
-                    val blockDev = findBlockDevice(sysPath) ?: "/dev/unknown"
-                    BlockDeviceDetectedEvent(
-                        sysPath = sysPath,
-                        vendor = idVendor,
-                        product = idProduct,
-                        serial = serial,
-                        devicePath = blockDev
-                    )
+                    val defaultInfo = getBlockDeviceDefaultInfo(sysPath)
+                    if (defaultInfo != null) {
+                        BlockDeviceDetectedEvent(
+                            sysPath = sysPath,
+                            vendor = idVendor,
+                            product = idProduct,
+                            serial = serial,
+                            devicePath = defaultInfo.name,
+                            defaultInfo = defaultInfo
+                        )
+                    } else {
+                        log.warn("DeviceInfo not found: $sysPath")
+                        null
+                    }
+
                 }
 
                 DeviceType.PTP -> {
@@ -139,7 +149,9 @@ class DeviceMonitorService(
                 }
             }
 
-            eventPublisher.publishEvent(event)
+            if (event != null) {
+                eventPublisher.publishEvent(event)
+            }
 
         } catch (e: Exception) {
             e.printStackTrace()
@@ -200,16 +212,33 @@ class DeviceMonitorService(
         }
     }
 
-    fun findBlockDevice(sysPath: String): String? {
-        val blockDir = File("/sys/class/block")
-        val entries = blockDir.listFiles() ?: return null
-
-        for (entry in entries) {
-            if (entry.canonicalPath.contains(sysPath)) {
-                return "/dev/${entry.name}"
-            }
+    fun getBlockDeviceDefaultInfo(sysPath: String): BlockDeviceDefaultInfo? {
+        val candidates = File("/sys/class/block").listFiles { it.canonicalPath.startsWith(sysPath) }
+        if (candidates.isEmpty()) return null
+        val physicalDisk = candidates.firstOrNull { entry ->
+            File(entry, "devtype").let { if (it.exists()) it.readText().trim() == "disk" else !entry.name.matches(Regex(".*\\d$")) }
+        }?.let { "/dev/${it.name}" } ?: run {
+            log.info("Could not find disk")
+            return null
         }
-        return null
+
+        val devices = deviceService.getAllMountPoints(physicalDisk)
+        val mount = devices
+            .mapNotNull { it.mountPoint?.substringBeforeLast('/') }
+            .distinct()
+            .firstOrNull() ?: return null
+
+        val source = devices.first()
+        log.info("Fant mountPoint: $mount for disk: ${source.name}")
+        // 5. Returner det ferdig berikede objektet
+        return BlockDeviceDefaultInfo(
+            name = physicalDisk.substringAfterLast("/"),
+            physical = physicalDisk,
+            mountPoint = mount,
+            modelName = source.modelName,
+            serial = source.serialNumber,
+            transport = source.transport.name
+        )
     }
 
 
@@ -220,6 +249,8 @@ class DeviceMonitorService(
 
         while (System.currentTimeMillis() - start < 5000) { // 5 sek er nok for disk
             val entries = blockDir.listFiles() ?: emptyArray()
+            log.info("Looking for block device in ${entries.joinToString(", ")}")
+
             for (entry in entries) {
                 if (entry.canonicalPath.contains(sysPath)) {
                     log.info("Block device funnet: ${entry.name}")

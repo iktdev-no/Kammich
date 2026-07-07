@@ -2,72 +2,35 @@ package no.iktdev.kammich.storage
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import no.iktdev.kammich.models.shared.Transport
 import no.iktdev.kammich.models.shared.storage.BlockDevice
+import no.iktdev.kammich.storage.parser.DiskInfoParser
 import org.springframework.stereotype.Service
 
 @Service
 class DeviceService {
+    val parser = DiskInfoParser()
 
-    fun getAllDevices(): List<BlockDevice> {
+    fun getAllDevices(vararg type: Transport): List<BlockDevice> {
         val process = ProcessBuilder(
-            "lsblk", "--json", "-o", "NAME,PATH,MOUNTPOINT,MODEL,SERIAL,TYPE"
+            "lsblk", "--json", "-o", "NAME,PATH,MOUNTPOINT,MODEL,SERIAL,TYPE,TRAN,PTTYPE"
         ).start()
 
         val json = process.inputStream.bufferedReader().use { it.readText() }
-        val root = JsonParser.parseString(json).asJsonObject
-        val blockDevices = root.getAsJsonArray("blockdevices")
+        val devices = parser.getBlockDevices(json)
 
-        val devices = mutableListOf<BlockDevice>()
-
-        for (dev in blockDevices) {
-            val obj = dev.asJsonObject
-
-            val type = obj.get("type")?.asString ?: continue
-            if (type != "disk") continue
-
-            val path = obj.get("path")?.asString ?: continue
-            val model = obj.get("model")?.asString ?: "Unknown"
-            val serial = obj.get("serial")?.asString ?: "Unknown"
-
-            val mountPoint = getMountPoint(obj)
-
-            devices.add(
-                BlockDevice(
-                    path = path,
-                    mountPoint = mountPoint,
-                    serialNumber = serial,
-                    modelName = model
-                )
-            )
-        }
-
-        return devices
+        return devices.filter { it.transport in type }
     }
 
-    private fun getMountPoint(obj: JsonObject): String {
-        val mpElement = obj.get("mountpoint")
+    fun getAllMountPoints(device: String): List<BlockDevice> {
+        val process = ProcessBuilder(
+            "lsblk", device , "--json", "-o", "NAME,PATH,MOUNTPOINT,MODEL,SERIAL,TYPE,TRAN,PTTYPE"
+        ).start()
 
-        if (mpElement != null && !mpElement.isJsonNull) {
-            val mp = mpElement.asString
-            if (mp.isNotBlank()) return mp
-        }
+        val json = process.inputStream.bufferedReader().use { it.readText() }
+        val devices = parser.getBlockDevices(json)
 
-        if (obj.has("children")) {
-            val children = obj.getAsJsonArray("children")
-            for (child in children) {
-                val childObj = child.asJsonObject
-                val childMpElement = childObj.get("mountpoint")
-
-                if (childMpElement != null && !childMpElement.isJsonNull) {
-                    val childMp = childMpElement.asString
-                    if (childMp.isNotBlank()) {
-                        return childMp
-                    }
-                }
-            }
-        }
-
-        return ""
+        return devices.filter { !it.mountPoint.isNullOrBlank() }
     }
 }
 

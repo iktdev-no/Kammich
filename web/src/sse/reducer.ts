@@ -2,6 +2,8 @@ import type { SseEvent } from './events';
 import type { SseState } from './state';
 
 export function sseReducer(state: SseState, event: SseEvent): SseState {
+  console.log("Reducer mottok event-type:", event.type);
+  console.log("Reducer mottok full payload:", event);
   switch (event.type) {
     case 'ping':
       return { ...state, lastPing: event.timestamp };
@@ -40,6 +42,7 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
       return { ...state, connectionStatus: 'offline' };
 
     default:
+      console.log("Ingen tok seg av ", event)
       return state;
   }
 }

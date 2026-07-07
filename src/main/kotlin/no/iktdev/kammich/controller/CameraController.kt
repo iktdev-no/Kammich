@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest
 import no.iktdev.kammich.models.shared.files.KFile
 import no.iktdev.kammich.models.shared.storage.removable.DeviceInfo
 import no.iktdev.kammich.storage.DeviceManagerService
+import no.iktdev.kammich.storage.FilesService
 import no.iktdev.kammich.storage.media.PhotoService
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -15,7 +16,7 @@ import org.springframework.web.servlet.HandlerMapping
 @RequestMapping("/api/camera")
 class CameraController(
     private val deviceManager: DeviceManagerService,
-    private val photoService: PhotoService
+    private val fileService: FilesService
 ) {
 
     @GetMapping("/{deviceId}")
@@ -34,6 +35,6 @@ class CameraController(
         val fullPath = request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE) as String
         val subPath = fullPath.substringAfter("/files/", "/")
 
-        return emptyList()
+        return fileService.getFilesForDevice(device, subPath)
     }
 }

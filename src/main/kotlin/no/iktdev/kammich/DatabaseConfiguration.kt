@@ -3,7 +3,6 @@ package no.iktdev.kammich
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import jakarta.annotation.PostConstruct
-import no.iktdev.kammich.storage.DiskCacheService
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.slf4j.LoggerFactory
@@ -16,7 +15,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.Environment
 import org.springframework.stereotype.Component
 import javax.sql.DataSource
-import kotlin.collections.contains
 
 
 @Component("ExposedInit")

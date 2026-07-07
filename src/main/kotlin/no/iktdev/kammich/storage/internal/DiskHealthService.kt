@@ -1,15 +1,17 @@
 package no.iktdev.kammich.storage.internal
 
 import jakarta.annotation.PostConstruct
+import no.iktdev.kammich.models.shared.Transport
 import no.iktdev.kammich.models.shared.storage.DiskHealth
 import no.iktdev.kammich.storage.DeviceDiscoveryService
+import no.iktdev.kammich.storage.DeviceService
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
 @Service
 class DiskHealthService(
-    private val discovery: DeviceDiscoveryService,
+    private val diskService: DeviceService,
     private val smartService: SmartCtlService,
 ) {
     private val log = LoggerFactory.getLogger(DiskHealthService::class.java)
@@ -25,7 +27,7 @@ class DiskHealthService(
 
     @Scheduled(cron = "0 0 * * * *") // Sjekk hver time
     fun runHealthCheck() {
-        discovery.getAvailableDisks().forEach { device ->
+        diskService.getAllDevices(Transport.NVME, Transport.SATA).forEach { device ->
             smartService.getSMART(device.path)
                 .onSuccess { health ->
                     healthCache[device.path] = health

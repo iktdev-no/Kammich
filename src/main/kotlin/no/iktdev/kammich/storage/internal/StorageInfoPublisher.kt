@@ -1,9 +1,11 @@
 package no.iktdev.kammich.storage.internal
 
+import no.iktdev.kammich.models.shared.Transport
 import no.iktdev.kammich.models.shared.storage.BlockDevice
 import no.iktdev.kammich.models.shared.storage.StorageInfo
 import no.iktdev.kammich.sse.SseManager
 import no.iktdev.kammich.storage.DeviceService
+import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
@@ -14,19 +16,27 @@ class StorageInfoPublisher(
     private val smartCtlService: SmartCtlService,
     private val sseManager: SseManager
 ) {
+    private val log = LoggerFactory.getLogger(StorageInfoPublisher::class.java)
+
 
     @Scheduled(fixedDelay = 100000)
     fun poll() {
         val devices = deviceService.getAllDevices()
-            .map { getStorageInfo(it) }
+            .mapNotNull { getStorageInfo(it) }
 
         publish(devices)
     }
 
-    fun getStorageInfo(blockDevice: BlockDevice): StorageInfo {
+    fun getStorageInfo(blockDevice: BlockDevice): StorageInfo? {
         val stats = diskStorageService.getStorageStats(blockDevice)
-        val health = smartCtlService.getSMART(blockDevice.path).getOrThrow()
-        return StorageInfo(stats, health)
+        val health = smartCtlService.getSMART(blockDevice.path)
+        if (!health.isSuccess) {
+            if (blockDevice.transport in listOf(Transport.USB, Transport.UNKNOWN)) {
+                log.info("${blockDevice.serialNumber} does not support SMART over ${blockDevice.transport}")
+                return null
+            }
+        }
+        return StorageInfo(stats, health.getOrThrow())
     }
 
     fun publish(storage: List<StorageInfo>) {

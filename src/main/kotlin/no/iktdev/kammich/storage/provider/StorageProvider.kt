@@ -8,6 +8,5 @@ interface StorageProvider {
     fun listFiles(device: Device, path: String? = null): List<KFile>
     fun listAllFiles(device: Device, path: String?): List<KFile>
     fun getDCIM(device: Device): KFile?
-    fun getThumbnails(folder: KFile, recurse: Boolean = false): List<File>
-    fun getFile(device: Device, storeFile: File, importFile: KFile): File?
+    fun copyFile(device: Device, storeFile: File, importFile: KFile): File?
 }

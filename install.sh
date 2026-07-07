@@ -109,7 +109,7 @@ elif [ "\$ACTION" == "mount" ]; then
       vfat|fat|exfat)
         mount -o uid=$USER_ID,gid=$GROUP_ID,umask=000,fmask=000,dmask=000 "/dev/\$DEV" "\$TARGET"
         ;;
-      BitLocker|swap)
+      BitLocker|swap|crypto_LUKS)
         # Ignorer BitLocker-partisjoner stille
         exit 0
         ;;

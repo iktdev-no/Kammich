@@ -53,6 +53,12 @@ function useCameraEngine(sn: string | undefined, currentPath: string): CameraSta
     const [files, setFiles] = useState<KFile[]>([]);
     const [isReconnecting, setIsReconnecting] = useState(false);
 
+    useEffect(() => {
+        // Hvis SN endres, nullstill info med en gang for å trigge ny fetch
+        setInfo(null);
+        setFiles([]);
+    }, [sn]);
+
     // Hent data - trigger på tilkobling eller behov for tillatelse
     useEffect(() => {
         if (!connection) {
