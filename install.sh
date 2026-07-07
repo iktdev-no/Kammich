@@ -51,8 +51,14 @@ configure_udev() {
     echo "--- Konfigurerer udev-regler ---"
 
     cat <<EOF > /etc/udev/rules.d/99-kammich.rules
-ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9]", ENV{SYSTEMD_WANTS}+="usb-mount@%k.service"
-ACTION=="remove", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9]", ENV{SYSTEMD_WANTS}+="usb-unmount@%k.service"
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", \
+  KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9]", \
+  ENV{SYSTEMD_WANTS}+="usb-mount@%k.service"
+
+ACTION=="remove", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", \
+  KERNEL=="sd[a-z]|nvme[0-9]n[0-9]", \
+  ENV{SYSTEMD_WANTS}+="usb-unmount@%k.service"
+
 EOF
 }
 
@@ -66,42 +72,52 @@ configure_systemd() {
     cat <<EOF > /usr/local/bin/kammich-mount-helper
 #!/bin/bash
 source /etc/kammich.conf
-ACTION=\$1; DEV=\$2
+ACTION=\$1
+DEV=\$2
 MODEL_FILE="$STATE_ROOT/\${DEV}.model"
 
 if [ "\$ACTION" == "prepare" ]; then
-    PATH_RAW=\$(udevadm info -q path -n "/dev/\$DEV" | sed 's/p[0-9]+\$//')
-    MODEL=\$(udevadm info -q property -p "\$PATH_RAW" | grep "^ID_MODEL=" | cut -d= -f2)
+    DEVPATH=\$(udevadm info -q path -n "/dev/\$DEV")
+    PARENTPATH=\$(echo "\$DEVPATH" | sed 's/\/[^\/]*\$//')
+    MODEL=\$(udevadm info -q property -p "\$PARENTPATH" | grep "^ID_MODEL=" | cut -d= -f2)
     echo "\${MODEL:-Unknown_Device}" | tr -d " ()/" > "\$MODEL_FILE"
+
 elif [ "\$ACTION" == "mount" ]; then
     MODEL=\$(cat "\$MODEL_FILE" | tr -d '[:space:]')
     MODEL=\${MODEL:-Unknown_Device}
     TARGET="\$MOUNT_ROOT/\$MODEL/\$DEV"
     mkdir -p "\$TARGET"
 
-    # Sjekk om enheten allerede er montert (hvis ja, exit 0 for suksess)
     if grep -qs "\$TARGET" /proc/mounts; then
-        echo "DEBUG: /dev/\$DEV er allerede montert på \$TARGET. Avslutter suksessfullt." >&2
         exit 0
     fi
 
-    # Prøv mount. Hvis den feiler pga filsystemtype, prøv en enkel mount
-    if ! mount -o uid=$USER_ID,gid=$GROUP_ID,umask=000,fmask=000,dmask=000 "/dev/\$DEV" "\$TARGET" 2>/dev/null; then
-        if ! mount "/dev/\$DEV" "\$TARGET"; then
-             echo "ERROR: Mount feilet totalt for /dev/\$DEV" >&2
-             exit 1
-        fi
+    FSTYPE=\$(lsblk -no FSTYPE "/dev/\$DEV" | head -n1)
+    case "\$FSTYPE" in
+      ntfs|ntfs-3g) MOUNT_OPTS="uid=$USER_ID,gid=$GROUP_ID,umask=000" ;;
+      vfat|fat|exfat) MOUNT_OPTS="uid=$USER_ID,gid=$GROUP_ID,umask=000,fmask=000,dmask=000" ;;
+      *) MOUNT_OPTS="defaults" ;;
+    esac
+
+    # LØSNING: Bruk systemd-run --scope for å løsrive mount-prosessen fra tjenestens levetid
+    # Dette hindrer systemd i å sende unmount-signalet når tjenesten "deaktiveres"
+    if [ "\$FSTYPE" == "ntfs" ] || [ "\$FSTYPE" == "ntfs-3g" ]; then
+        systemd-run --scope --collect --property=Description="Mount \$DEV" mount -t ntfs-3g -o "\$MOUNT_OPTS" "/dev/\$DEV" "\$TARGET"
+    else
+        mount -o "\$MOUNT_OPTS" "/dev/\$DEV" "\$TARGET"
     fi
 fi
 EOF
+
+
+
     chmod +x /usr/local/bin/kammich-mount-helper
 
     # 2. Oppdatert Mount Service
     cat <<EOF > /etc/systemd/system/usb-mount@.service
 [Unit]
 Description=Automount USB device %I
-BindsTo=dev-%i.device
-After=dev-%i.device systemd-udevd.service
+After=systemd-udevd.service
 
 [Service]
 Type=oneshot
@@ -109,14 +125,37 @@ ExecStartPre=/usr/local/bin/kammich-mount-helper prepare %I
 ExecStart=/usr/local/bin/kammich-mount-helper mount %I
 EOF
 
+
+
     # 3. Unmount Service
-    cat <<EOF > /etc/systemd/system/usb-unmount@.service
+    cat <<'EOF' > /etc/systemd/system/usb-unmount@.service
 [Unit]
 Description=Auto-unmount USB device %I
+
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'MODEL=\$(cat $STATE_ROOT/%I.model 2>/dev/null || echo "Unknown_Device"); umount "$MOUNT_ROOT/\$MODEL/%I" 2>/dev/null; rm -f "$STATE_ROOT/%I.model"'
+ExecStart=/bin/bash -c '
+DISK="%I"
+
+# Finn alle partisjoner for disken (sdX → sdX1, sdX2 … / nvme0n1 → nvme0n1p1 …)
+for PART in $(lsblk -ln -o NAME "/dev/${DISK}" | tail -n +2); do
+  MODEL_FILE="/run/kammich/${PART}.model"
+
+  # Hopp over hvis vi ikke har modell-fil
+  [ -f "$MODEL_FILE" ] || continue
+
+  MODEL=$(cat "$MODEL_FILE")
+  TARGET="/run/kammich/removable/${MODEL}/${PART}"
+
+  # Unmount partisjonen
+  umount "$TARGET" 2>/dev/null
+
+  # Slett modell-fil
+  rm -f "$MODEL_FILE"
+done
+'
 EOF
+
 }
 
 ###############################################
