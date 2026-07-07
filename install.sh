@@ -48,17 +48,17 @@ install_dependencies() {
 # 3. Udev-regler (kun trigger, ingen RUN)
 ###############################################
 configure_udev() {
-    echo "--- Konfigurerer udev-regler ---"
+    echo "--- Konfigurerer universelle udev-regler ---"
 
     cat <<EOF > /etc/udev/rules.d/99-kammich.rules
-ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", \
-  KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9]", \
-  ENV{SYSTEMD_WANTS}+="usb-mount@%k.service"
+# 1. Standardregel for korrekte USB-enheter
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9]", ENV{SYSTEMD_WANTS}+="usb-mount@%k.service"
 
-ACTION=="remove", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", \
-  KERNEL=="sd[a-z]|nvme[0-9]n[0-9]", \
-  ENV{SYSTEMD_WANTS}+="usb-unmount@%k.service"
+# 2. Robust regel for SATA-adaptere: Sjekk om det finnes en USB-forelder (SUBSYSTEMS)
+ACTION=="add", SUBSYSTEM=="block", SUBSYSTEMS=="usb", KERNEL=="sd[a-z][0-9]", ENV{SYSTEMD_WANTS}+="usb-mount@%k.service"
 
+# Unmount-regel (fungerer på tvers av busstype så lenge partisjonen finnes)
+ACTION=="remove", SUBSYSTEM=="block", KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9]", ENV{SYSTEMD_WANTS}+="usb-unmount@%k.service"
 EOF
 }
 
@@ -109,7 +109,7 @@ elif [ "\$ACTION" == "mount" ]; then
       vfat|fat|exfat)
         mount -o uid=$USER_ID,gid=$GROUP_ID,umask=000,fmask=000,dmask=000 "/dev/\$DEV" "\$TARGET"
         ;;
-      BitLocker)
+      BitLocker|swap)
         # Ignorer BitLocker-partisjoner stille
         exit 0
         ;;
