@@ -3,6 +3,8 @@ package no.iktdev.kammich.sse
 import no.iktdev.kammich.models.NotificationDismissed
 import no.iktdev.kammich.models.shared.Notification
 import no.iktdev.kammich.storage.DeviceManagerService
+import no.iktdev.kammich.storage.internal.DiskStorageService
+import no.iktdev.kammich.storage.internal.StorageInfoPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
@@ -12,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap
 @Service
 class SseStateService(
     private val deviceManagerService: DeviceManagerService,
+    private val storageService: StorageInfoPublisher,
+    private val dss: DiskStorageService,
     private val sseManager: SseManager,
 ) {
     private val log = LoggerFactory.getLogger(SseStateService::class.java)
@@ -22,7 +26,8 @@ class SseStateService(
     fun sendCurrentState(emitter: SseEmitter) {
         emitter.send(deviceManagerService.ssePayload())
         emitter.send(notificationPayload())
-
+        emitter.send(storageService.getPayload())
+        emitter.send(dss.getPayload())
     }
 
     @EventListener

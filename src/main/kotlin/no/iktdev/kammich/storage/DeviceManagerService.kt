@@ -1,7 +1,10 @@
 package no.iktdev.kammich.storage
 
+import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.gphoto2.IGPhoto2
 import no.iktdev.kammich.gphoto2.model.GPhoto2Device
+import no.iktdev.kammich.models.DeviceSettings
+import no.iktdev.kammich.models.shared.DeviceSettingsDto
 import no.iktdev.kammich.models.shared.storage.DeviceType
 import no.iktdev.kammich.models.shared.storage.internal.BlockDeviceDetectedEvent
 import no.iktdev.kammich.models.shared.storage.internal.DeviceDetectedEvent
@@ -25,6 +28,7 @@ class DeviceManagerService(
     private val gPhoto2: IGPhoto2,
     private val sseManager: SseManager,
     private val deviceRepo: DeviceRepository,
+    private val configService: ConfigService,
 ) {
     private val activeDevices = ConcurrentHashMap<String, Device>()
     private val log = LoggerFactory.getLogger(DeviceManagerService::class.java)
@@ -100,7 +104,8 @@ class DeviceManagerService(
             model = gd.summary.model,
             capabilities = caps,
             storage = storage,
-            attributes = attrs
+            attributes = attrs,
+            deviceSettings = getSettings(device.id)
         )
     }
 
@@ -142,7 +147,8 @@ class DeviceManagerService(
             model = store.type(),
             capabilities = caps,
             storage = storage,
-            attributes = attrs
+            attributes = attrs,
+            deviceSettings = getSettings(device.id)
         )
     }
 
@@ -181,6 +187,12 @@ class DeviceManagerService(
         if (device != null) {
             val info = getDeviceInfo(event.sysPath)
             deviceRepo.store(device, info)
+            if (!hasSettings(device.id)) {
+                updateConfig(device.id) {
+                    it.autoImport = (device.type != DeviceType.BLOCK) &&
+                            configService.getConfig().autoImportCameraByDefault
+                }
+            }
         }
 
         log.info("Device ${event.devicePath} was detected")
@@ -244,6 +256,40 @@ class DeviceManagerService(
             vendor = this.vendor,
             model = this.defaultInfo.modelName
         )
+    }
+
+    private fun hasSettings(deviceId: String): Boolean {
+        return configService.getConfig().deviceSettings.any { it.key == deviceId }
+    }
+    fun getSettings(deviceId: String): DeviceSettingsDto {
+        val config = configService.getConfig()
+        val settings = config.deviceSettings.getOrPut(deviceId) { DeviceSettings() }
+        return settings.toDto()
+    }
+
+    private fun updateConfig(deviceId: String, block: (DeviceSettings) -> Unit) {
+        val config = configService.getConfig()
+        val settings = config.deviceSettings.getOrPut(deviceId) { DeviceSettings() }
+        block(settings) // Her opererer vi nå direkte på backend-objektet
+        configService.saveConfig(config)
+    }
+
+    fun updateDeviceSettings(deviceId: String, dto: DeviceSettingsDto) {
+        updateConfig(deviceId) { settings ->
+            settings.apply(dto) // Bruker apply-metoden vi lagde over
+        }
+    }
+
+    fun setAutoImport(device: Device, enabled: Boolean) {
+        updateConfig(device.id) { it.autoImport = enabled }
+    }
+
+    fun setIncludeFolders(device: Device, folders: List<String>) {
+        updateConfig(device.id) { it.includeFolders = folders }
+    }
+
+    fun setExcludeFolders(device: Device, folders: List<String>) {
+        updateConfig(device.id) { it.excludeFolders = folders }
     }
 
 }

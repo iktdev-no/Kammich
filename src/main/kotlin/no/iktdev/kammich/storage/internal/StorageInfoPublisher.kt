@@ -18,13 +18,13 @@ class StorageInfoPublisher(
 ) {
     private val log = LoggerFactory.getLogger(StorageInfoPublisher::class.java)
 
+    private lateinit var storageInfo: List<StorageInfo>
 
     @Scheduled(fixedDelay = 100000)
     fun poll() {
-        val devices = deviceService.getAllDevices()
+        storageInfo = deviceService.getAllDevices()
             .mapNotNull { getStorageInfo(it) }
-
-        publish(devices)
+        publish()
     }
 
     fun getStorageInfo(blockDevice: BlockDevice): StorageInfo? {
@@ -32,19 +32,21 @@ class StorageInfoPublisher(
         val health = smartCtlService.getSMART(blockDevice.path)
         if (!health.isSuccess) {
             if (blockDevice.transport in listOf(Transport.USB, Transport.UNKNOWN)) {
-                log.info("${blockDevice.serialNumber} does not support SMART over ${blockDevice.transport}")
+                log.debug("{} does not support SMART over {}", blockDevice.serialNumber, blockDevice.transport)
                 return null
             }
         }
         return StorageInfo(stats, health.getOrThrow())
     }
 
-    fun publish(storage: List<StorageInfo>) {
-        sseManager.send(
-            mapOf(
-                "type" to "storage-info-internal",
-                "payload" to storage
-            )
+    fun getPayload(): Map<String, Any> {
+        return mapOf(
+            "type" to "storage-info-internal",
+            "payload" to storageInfo
         )
+    }
+
+    fun publish() {
+        sseManager.send(getPayload())
     }
 }

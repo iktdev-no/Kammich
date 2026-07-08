@@ -1,4 +1,4 @@
-import type { StorageInfo, Notification } from "../types/types";
+import type { StorageInfo, Notification, MediaStats } from "../types/types";
 
 export type SseEvent =
   | { type: 'ping'; timestamp: number }
@@ -11,5 +11,6 @@ export type SseEvent =
   | { type: "sse-connecting"; }
   | { type: "sse-offline"; }
   | { type: "notifications"; payload: Array<Notification> }
+  | { type: "storage-stats-media"; payload: MediaStats}
 
   ;

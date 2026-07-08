@@ -1,12 +1,30 @@
 package no.iktdev.kammich.storage.internal
 
+import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.models.shared.storage.BlockDevice
+import no.iktdev.kammich.models.shared.storage.MediaStats
 import no.iktdev.kammich.models.shared.storage.StorageStats
+import no.iktdev.kammich.sse.SseManager
+import no.iktdev.kammich.storage.DeviceService
+import no.iktdev.kammich.utils.DiskUtils
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
-class DiskStorageService() {
+class DiskStorageService(
+    private val configService: ConfigService,
+    private val deviceService: DeviceService,
+    private val sse: SseManager
+) {
+    private lateinit var mediaStorageStats: MediaStats
+
+    @Scheduled(fixedDelay = 100000)
+    fun poll() {
+        mediaStorageStats = getMediaStorageStats()
+        publish()
+    }
+
     fun getStorageStats(blockDevice: BlockDevice): StorageStats {
         // Vi bruker mountPoint som vi forhåpentligvis har i Device-objektet
         val file = File(blockDevice.mountPoint)
@@ -20,14 +38,61 @@ class DiskStorageService() {
         )
     }
 
-    fun getStagingDirectory(blockDevice: BlockDevice): File {
-        // Sjekk at vi har et serienummer, ellers vil stien bli ødelagt
-        val serial = blockDevice.serialNumber.ifBlank { "unknown" }
-        val dir = File("/var/lib/kammich/staging/$serial")
+    fun getMediaStorageStats(): MediaStats {
+        val mediaPath = File(configService.getConfig().mediaPath)
 
-        if (!dir.exists() && !dir.mkdirs()) {
-            throw IllegalStateException("Kunne ikke opprette staging-mappe: ${dir.absolutePath}")
+        // 1. Finn disk-info
+        val allDevices = deviceService.getAllDevices()
+        val device = allDevices.find {
+            it.mountPoint != null && mediaPath.absolutePath.startsWith(it.mountPoint)
         }
-        return dir
+
+        // 2. Beregn bytes
+        val total = mediaPath.totalSpace
+        val free = mediaPath.freeSpace
+        val used = total - free
+
+        // 3. Tell filer (Aggregert)
+        var photos = 0L
+        var videos = 0L
+
+        if (mediaPath.exists()) {
+            mediaPath.walk()
+                .maxDepth(3) // Begrens dybde for ytelse
+                .filter { it.isFile }
+                .forEach { file ->
+                    when (file.extension.lowercase()) {
+                        "jpg", "jpeg", "png", "heic", "webp" -> photos++
+                        "mp4", "mov", "avi", "mkv" -> videos++
+                    }
+                }
+        }
+
+        val parsed = DiskUtils.parseDeviceVendorAndModel(device?.modelName)
+
+        return MediaStats(
+            manufacturer = parsed?.first ?: "Generic",
+            totalBytes = total,
+            freeBytes = free,
+            usedBytes = used,
+            percentUsed = if (total > 0) (used.toDouble() / total.toDouble()) * 100 else 0.0,
+            photoCount = photos,
+            videoCount = videos,
+            model = parsed?.second ?: device?.modelName ?: "Unknown",
+            serial = device?.serialNumber ?: "Unknown",
+            transport = device?.transport?.name ?: "Unknown"
+        )
+    }
+
+
+    fun getPayload(): Map<String, Any> {
+        return mapOf(
+            "type" to "storage-stats-media",
+            "payload" to mediaStorageStats
+        )
+    }
+
+    fun publish() {
+        sse.send(getPayload())
     }
 }

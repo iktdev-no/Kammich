@@ -1,52 +1,58 @@
 import { Box, Typography, LinearProgress, useTheme } from "@mui/material";
 import { formatBytes } from "../../utils/format";
+import { useSseSelector } from "../../sse/useSseSelector";
+import type { MediaStats } from "../../types/types";
 
-interface CacheIndicatorProps {
-  used: number;   // bytes
-  total: number;  // bytes
-}
-
-export function CacheIndicator({ used, total }: CacheIndicatorProps) {
+export function CacheIndicator() {
   const theme = useTheme();
+  const mediaStat: MediaStats|undefined = useSseSelector(state => state.internalMediaStats);
 
-  const percent = total > 0 ? (used / total) * 100 : 0;
+  if (!mediaStat) {
+    return null;
+  }
 
   return (
-    <Box sx={{ 
-      display: "flex", 
-      flexDirection: "column", 
-      gap: 1,
-      padding: 2,
-      mr: 2,
-      ml: 2,
-      borderRadius: 2,
-      backgroundColor: theme.palette.background.paper,
-      textAlign: "left"
-    }}>
-      <Typography
-        variant="body2"
-        sx={{ color: theme.palette.text.primary, fontWeight: 600 }}
-      >
-        Cache space
-      </Typography>
+    <Box sx={{ padding: 2, m:1.5, borderRadius: 2, backgroundColor: theme.palette.background.paper }}>
+      <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Cache space</Typography>
+      <Box key={mediaStat.serial} sx={{ mb: 0}}>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            {mediaStat.manufacturer}
+          </Typography>
+          
+          {/* Aggregert linje for hele disken */}
+          <StorageUsageBar 
+            used={mediaStat.usedBytes} 
+            total={mediaStat.totalBytes} 
+            label="Total usage" 
+          />
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            {mediaStat.model} 
+          </Typography>
+        </Box>
+    </Box>
+  );
+}
 
-      <Typography
-        variant="body2"
-        sx={{ color: theme.palette.grey[500] }}
-      >
-        {formatBytes(used)} of {formatBytes(total)} used
-      </Typography>
+function StorageUsageBar({ used, total, label }: { used: number, total: number, label: string }) {
+  const theme = useTheme();
+  const percent = total > 0 ? (used / total) * 100 : 0;
+  
+  const color = percent < 70 ? theme.palette.success.main : percent < 90 ? theme.palette.warning.main : theme.palette.error.main;
 
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="caption">{label}</Typography>
+        <Typography variant="caption">{formatBytes(used)} / {formatBytes(total)}</Typography>
+      </Box>
       <LinearProgress
         variant="determinate"
         value={percent}
         sx={{
-          height: 8,
-          borderRadius: 4,
+          height: 6,
+          borderRadius: 3,
           backgroundColor: theme.palette.grey[800],
-          "& .MuiLinearProgress-bar": {
-            backgroundColor: theme.palette.primary.main,
-          },
+          "& .MuiLinearProgress-bar": { backgroundColor: color }
         }}
       />
     </Box>

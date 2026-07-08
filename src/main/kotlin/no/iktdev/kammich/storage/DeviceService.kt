@@ -19,7 +19,7 @@ class DeviceService {
         val json = process.inputStream.bufferedReader().use { it.readText() }
         val devices = parser.getBlockDevices(json)
 
-        return devices.filter { it.transport in type }
+        return if (type.isEmpty()) devices else devices.filter { it.transport in type }
     }
 
     fun getAllMountPoints(device: String): List<BlockDevice> {

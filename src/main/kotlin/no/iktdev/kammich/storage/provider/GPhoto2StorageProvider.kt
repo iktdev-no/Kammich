@@ -3,8 +3,8 @@ package no.iktdev.kammich.storage.provider
 import no.iktdev.kammich.gphoto2.IGPhoto2
 import no.iktdev.kammich.gphoto2.model.GPhoto2File
 import no.iktdev.kammich.gphoto2.model.GPhoto2NodeType
-import no.iktdev.kammich.models.shared.files.KFile
-import no.iktdev.kammich.models.shared.files.KFileType
+import no.iktdev.kammich.models.files.KFile
+import no.iktdev.kammich.models.files.KFileType
 import no.iktdev.kammich.models.shared.storage.removable.Device
 import no.iktdev.kammich.storage.DeviceMonitorService
 import no.iktdev.kammich.toMD5

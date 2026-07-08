@@ -31,6 +31,16 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
         devices: event.payload
       }
 
+    case 'storage-info-internal':
+      return {
+        ...state,
+        internalStorageInfo: event.payload
+      }
+    case "storage-stats-media":
+      return {
+        ...state,
+        internalMediaStats: event.payload
+      }
 
     case 'sse-online':
       return { ...state, connectionStatus: 'online' };

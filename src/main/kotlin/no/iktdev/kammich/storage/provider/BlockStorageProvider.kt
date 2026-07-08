@@ -1,14 +1,12 @@
 package no.iktdev.kammich.storage.provider
 
-import no.iktdev.kammich.models.shared.files.KFile
-import no.iktdev.kammich.models.shared.files.KFileType
+import no.iktdev.kammich.models.files.KFile
+import no.iktdev.kammich.models.files.KFileType
 import no.iktdev.kammich.models.shared.storage.removable.Device
-import no.iktdev.kammich.storage.DeviceMonitorService
 import no.iktdev.kammich.toMD5
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.io.File
-import kotlin.math.log
 
 @Service
 class BlockStorageProvider: StorageProvider {

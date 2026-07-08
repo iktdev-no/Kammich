@@ -1,5 +1,6 @@
 package no.iktdev.kammich.models.shared.storage.removable
 
+import no.iktdev.kammich.models.shared.DeviceSettingsDto
 import no.iktdev.kammich.models.shared.storage.DeviceType
 
 data class DeviceInfo(
@@ -10,7 +11,8 @@ data class DeviceInfo(
     val model: String?,
     val capabilities: List<Capability>, // Liste fremfor bool-felter
     val storage: List<DeviceStorageStats>,
-    val attributes: Map<String, Any> = emptyMap() // "Alt det andre"
+    val attributes: Map<String, Any> = emptyMap(), // "Alt det andre"
+    val deviceSettings: DeviceSettingsDto? = null,
 )
 
 enum class Capability {

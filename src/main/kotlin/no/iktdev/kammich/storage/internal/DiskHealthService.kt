@@ -3,7 +3,6 @@ package no.iktdev.kammich.storage.internal
 import jakarta.annotation.PostConstruct
 import no.iktdev.kammich.models.shared.Transport
 import no.iktdev.kammich.models.shared.storage.DiskHealth
-import no.iktdev.kammich.storage.DeviceDiscoveryService
 import no.iktdev.kammich.storage.DeviceService
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled

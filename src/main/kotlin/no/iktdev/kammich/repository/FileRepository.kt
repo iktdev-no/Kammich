@@ -5,7 +5,7 @@ import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.getFileType
-import no.iktdev.kammich.models.shared.files.KFile
+import no.iktdev.kammich.models.files.KFile
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList

@@ -4,5 +4,6 @@ data class RemoteFile(
     val id: Int,
     val deviceId: Int,
     val fileName: String,
+    val uploaded: Boolean = false
 ) {
 }

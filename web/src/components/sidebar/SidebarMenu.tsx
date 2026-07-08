@@ -79,7 +79,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
                     gap: theme.spacing(1),
                 }}
             >
-                <CacheIndicator used={5} total={100} />
+                <CacheIndicator />
                 <StatusIndicator label="Kimmich" state={connectionStatus} />
                 <StatusIndicator label="Immich" state="offline" />
             </Box>

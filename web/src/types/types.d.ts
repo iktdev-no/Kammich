@@ -1,6 +1,12 @@
 /* tslint:disable */
 /* eslint-disable */
-// Generated using typescript-generator version 4.1.1 on 2026-07-06 01:44:55.
+// Generated using typescript-generator version 4.1.1 on 2026-07-08 00:58:17.
+
+export interface DeviceSettingsDto {
+    autoImport: boolean | null;
+    includeFolders: string[] | null;
+    excludeFolders: string[] | null;
+}
 
 export interface Notification {
     id: string;
@@ -24,6 +30,20 @@ export interface RemoteFile {
     id: number;
     deviceId: number;
     fileName: string;
+    uploaded: boolean;
+}
+
+export interface Companion {
+}
+
+export interface WFile {
+    id: string;
+    name: string;
+    type: WFileType;
+    size: number;
+    path: string;
+    importStatus: WFileStatus;
+    uploaded: boolean;
 }
 
 export interface DeviceConfig {
@@ -33,26 +53,19 @@ export interface DeviceConfig {
 }
 
 export interface KammichConfig {
-    cachePath: string;
     mediaPath: string;
-    apiKey: string | null;
-    devices: DeviceConfig[];
-}
-
-export interface KFile {
-    id: string;
-    device: Device;
-    name: string;
-    type: KFileType;
-    size: number;
-    path: string;
+    apiAuth: ImmichAuth | null;
+    autoImportCameraByDefault: boolean;
+    deviceSettings: { [index: string]: DeviceSettings };
 }
 
 export interface BlockDevice {
+    name: string;
     path: string;
-    mountPoint: string;
+    mountPoint: string | null;
     serialNumber: string;
     modelName: string;
+    transport: Transport;
 }
 
 export interface DiskHealth {
@@ -63,6 +76,19 @@ export interface DiskHealth {
     percentageUsed: number;
     temperatureCelsius: number;
     healthy: boolean;
+}
+
+export interface MediaStats {
+    manufacturer: string | null;
+    model: string;
+    totalBytes: number;
+    freeBytes: number;
+    usedBytes: number;
+    percentUsed: number;
+    serial: string;
+    transport: string;
+    photoCount: number;
+    videoCount: number;
 }
 
 export interface NvmeLog {
@@ -117,8 +143,18 @@ export interface StorageStats {
     mounted: boolean;
 }
 
+export interface BlockDeviceDefaultInfo {
+    name: string;
+    physical: string;
+    mountPoint: string;
+    modelName: string;
+    serial: string;
+    transport: string | null;
+}
+
 export interface BlockDeviceDetectedEvent extends DeviceDetectedEvent {
     devicePath: string;
+    defaultInfo: BlockDeviceDefaultInfo;
 }
 
 export interface DeviceDetectedEvent extends DeviceEvent {
@@ -171,6 +207,7 @@ export interface DeviceInfo {
     capabilities: Capability[];
     storage: DeviceStorageStats[];
     attributes: { [index: string]: any };
+    deviceSettings: DeviceSettingsDto | null;
 }
 
 export interface DeviceStorageStats {
@@ -180,11 +217,24 @@ export interface DeviceStorageStats {
     freeSpaceBytes: number;
 }
 
+export interface ImmichAuth {
+}
+
+export interface DeviceSettings {
+    autoImport: boolean;
+    includeFolders: string[];
+    excludeFolders: string[];
+}
+
 export type NotificationType = "Alert";
 
 export type Severity = "Info" | "Warning" | "Error";
 
-export type KFileType = "FILE" | "DIRECTORY";
+export type Transport = "USB" | "SATA" | "NVME" | "UNKNOWN";
+
+export type WFileStatus = "Included" | "Excluded" | "None";
+
+export type WFileType = "FILE" | "DIRECTORY";
 
 export type DeviceType = "BLOCK" | "MTP" | "PTP";
 

@@ -1,6 +1,6 @@
 package no.iktdev.kammich.storage.provider
 
-import no.iktdev.kammich.models.shared.files.KFile
+import no.iktdev.kammich.models.files.KFile
 import no.iktdev.kammich.models.shared.storage.removable.Device
 import java.io.File
 

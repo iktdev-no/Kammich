@@ -1,5 +1,7 @@
-package no.iktdev.kammich.models.shared.files
+package no.iktdev.kammich.models.files
 
+import no.iktdev.kammich.models.shared.WFile
+import no.iktdev.kammich.models.shared.WFileType
 import no.iktdev.kammich.models.shared.storage.removable.Device
 
 data class KFile(
@@ -9,6 +11,14 @@ data class KFile(
     val type: KFileType,     // FILE, DIRECTORY
     val size: Long,
     val path: String,        // Den "tekniske" stien/identifikatoren
-)
+) {
+    fun toWFile() = WFile(
+        id = id,
+        name = name,
+        type = WFileType.valueOf(type.name),
+        size = size,
+        path = path,
+    )
+}
 
 enum class KFileType { FILE, DIRECTORY }
