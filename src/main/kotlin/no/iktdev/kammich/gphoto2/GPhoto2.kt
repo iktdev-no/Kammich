@@ -4,7 +4,7 @@ import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceAbility
 import no.iktdev.kammich.gphoto2.model.GPhoto2DiscoveredDevice
 import no.iktdev.kammich.gphoto2.model.GPhoto2File
 import no.iktdev.kammich.gphoto2.model.GPhoto2Summary
-import no.iktdev.kammich.gphoto2.model.GPhoto2Device
+import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceInfo
 import no.iktdev.kammich.gphoto2.parsers.GPhoto2AbilityParser
 import no.iktdev.kammich.gphoto2.parsers.GPhoto2ConnectedDeviceParser
 import no.iktdev.kammich.gphoto2.parsers.GPhoto2FileListParser
@@ -15,6 +15,12 @@ import java.io.File
 
 class GPhoto2: IGPhoto2 {
     private val log = LoggerFactory.getLogger(DeviceManagerService::class.java)
+
+    override fun getPort(sysPath: String): String {
+        val bus = File("$sysPath/busnum").readText().trim().toInt()
+        val dev = File("$sysPath/devnum").readText().trim().toInt()
+        return "usb:%03d,%03d".format(bus, dev)
+    }
 
     override fun execute(vararg args: String): String {
         return ProcessBuilder("gphoto2", *args)
@@ -85,16 +91,16 @@ class GPhoto2: IGPhoto2 {
         return exitCode == 0
     }
 
-    override fun getDevices(): List<GPhoto2Device> {
+    override fun getDevices(): List<GPhoto2DeviceInfo> {
         return discover().map { dd ->
             val ability = getAbilities(dd)
             val summary = getSummary(dd)
-            GPhoto2Device(dd.port, ability, summary)
+            GPhoto2DeviceInfo( ability, summary)
         }
     }
 
-    override fun getDeviceInfo(port: String): GPhoto2Device {
-        return GPhoto2Device(port, getAbilities(port), getSummary(port))
+    override fun getDeviceInfo(port: String): GPhoto2DeviceInfo {
+        return GPhoto2DeviceInfo(getAbilities(port), getSummary(port))
     }
 
     override fun discover(): List<GPhoto2DiscoveredDevice> {
@@ -160,6 +166,7 @@ class GPhoto2: IGPhoto2 {
 
     override fun getFiles(port: String, path: String?): List<GPhoto2File> {
         val targetPath = if (path.isNullOrBlank()) "/" else path
+        log.debug("Fishing for files in $targetPath")
         val out = gphoto {
             port(port)
             explore(targetPath) // Bruk explore() for alle stier

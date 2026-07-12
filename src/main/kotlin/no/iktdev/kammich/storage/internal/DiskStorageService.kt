@@ -1,11 +1,11 @@
 package no.iktdev.kammich.storage.internal
 
 import no.iktdev.kammich.ConfigService
-import no.iktdev.kammich.models.shared.storage.BlockDevice
+import no.iktdev.kammich.models.shared.storage.LsblkBlockDevice
 import no.iktdev.kammich.models.shared.storage.MediaStats
 import no.iktdev.kammich.models.shared.storage.StorageStats
 import no.iktdev.kammich.sse.SseManager
-import no.iktdev.kammich.storage.DeviceService
+import no.iktdev.kammich.system.LsblkService
 import no.iktdev.kammich.utils.DiskUtils
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -14,7 +14,7 @@ import java.io.File
 @Service
 class DiskStorageService(
     private val configService: ConfigService,
-    private val deviceService: DeviceService,
+    private val lsblkService: LsblkService,
     private val sse: SseManager
 ) {
     private lateinit var mediaStorageStats: MediaStats
@@ -25,9 +25,9 @@ class DiskStorageService(
         publish()
     }
 
-    fun getStorageStats(blockDevice: BlockDevice): StorageStats {
+    fun getStorageStats(lsblkBlockDevice: LsblkBlockDevice): StorageStats {
         // Vi bruker mountPoint som vi forhåpentligvis har i Device-objektet
-        val file = File(blockDevice.mountPoint)
+        val file = File(lsblkBlockDevice.mountPoint)
 
         return StorageStats(
             totalBytes = file.totalSpace,
@@ -42,7 +42,7 @@ class DiskStorageService(
         val mediaPath = File(configService.getConfig().mediaPath)
 
         // 1. Finn disk-info
-        val allDevices = deviceService.getAllDevices()
+        val allDevices = lsblkService.getAllDevices()
         val device = allDevices.find {
             it.mountPoint != null && mediaPath.absolutePath.startsWith(it.mountPoint)
         }

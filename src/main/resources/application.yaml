@@ -12,7 +12,7 @@ spring:
 logging:
   level:
     # Sett din egen tjeneste til DEBUG for å se log.info/debug-meldingene dine
-    no.iktdev.kammich: INFO # DEBUG
+    no.iktdev.kammich: DEBUG
 
     # Valgfritt: Hvis du vil se hva Spring/GPhoto2 driver med internt
     org.springframework: INFO

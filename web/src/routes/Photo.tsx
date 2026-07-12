@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ImageList, ImageListItem, Box, Typography, Button, CircularProgress } from '@mui/material';
 import type { RemoteFile } from "../types/types";
-import { getPhotos } from "../api/photo";
+import { getPhotos, getPhotoUrl } from "../api/photo";
 
 export default function Photo() {
     const [photos, setPhotos] = useState<RemoteFile[]>([]);
@@ -51,7 +51,7 @@ export default function Photo() {
                     // Bruk photo.id som er unik fra DB
                     <ImageListItem key={photo.id} sx={{ borderRadius: 2, overflow: 'hidden' }}>
                         <img
-                            src={`/api/photo/${photo.deviceId}/${photo.fileName}?w=248&fit=crop&auto=format`}
+                            src={getPhotoUrl(photo, { width: 248, fit: "crop", auto: "format" })}
                             alt={photo.fileName}
                             loading="lazy"
                             style={{ transition: 'transform 0.2s' }}

@@ -1,12 +1,10 @@
-package no.iktdev.kammich.models.files
+package no.iktdev.kammich.models.internal
 
 import no.iktdev.kammich.models.shared.WFile
 import no.iktdev.kammich.models.shared.WFileType
-import no.iktdev.kammich.models.shared.storage.removable.Device
 
 data class KFile(
     val id: String,
-    val device: Device,          // Unik id (f.eks. sti for disk, eller gphoto-ID)
     val name: String,
     val type: KFileType,     // FILE, DIRECTORY
     val size: Long,

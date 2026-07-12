@@ -2,9 +2,8 @@ package no.iktdev.kammich.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import no.iktdev.kammich.models.shared.DeviceSettingsDto
-import no.iktdev.kammich.models.files.KFile
 import no.iktdev.kammich.models.shared.WFile
-import no.iktdev.kammich.models.shared.storage.removable.DeviceInfo
+import no.iktdev.kammich.models.shared.device.DeviceInfo
 import no.iktdev.kammich.storage.DeviceManagerService
 import no.iktdev.kammich.storage.FilesService
 import org.springframework.web.bind.annotation.GetMapping
@@ -16,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.HandlerMapping
 
 @RestController
-@RequestMapping("/api/camera")
+@RequestMapping("/api/v1/camera")
 class CameraController(
     private val deviceManager: DeviceManagerService,
     private val fileService: FilesService

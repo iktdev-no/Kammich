@@ -62,19 +62,24 @@ class GPhoto2FileListParser : GPhoto2Parser<List<GPhoto2File>> {
         return nodes.distinctBy { "${it.folderPath}/${it.name}" }
     }
 
+    val enforcedExtension = listOf(
+        GFile("image/jpeg", "jpg"),
+        GFile("image/png", "png")
+    )
 
     private fun sanitizeFileName(name: String, mimeType: String): String {
-        // Sjekk om det er en JPEG-fil med "feil" Samsung-endelse
-        if (mimeType.startsWith("image/jpeg") && name.endsWith(".jpgrd", ignoreCase = true)) {
-            val newName = name.substringBeforeLast(".") + ".jpg"
-            log.info("Vasket filnavn: Endrer '{}' til '{}' (Mime: {})", name, newName, mimeType)
-            return newName
+        val eex = enforcedExtension.find { it -> it.mimetype.equals(mimeType, ignoreCase = true) }
+        if (eex != null) {
+            if (name.substringAfter(".") != eex.extension) {
+                val newName = name.substringBeforeLast(".") + ".${eex.extension}"
+                log.info("Vasket filnavn: Endrer '{}' til '{}' (Mime: {})", name, newName, mimeType)
+                return newName
+            }
+        } else {
+            log.info("Vasket ikke filnavn.. $name, $mimeType")
         }
-
-        // Her kan du enkelt legge til andre "fixer" etter hvert,
-        // f.eks. fjerning av spesialtegn eller andre rare endelser
-        log.info("Vasket ikke filnavn.. $name, $mimeType")
         return name
     }
 
+    data class GFile(val mimetype: String, val extension: String)
 }

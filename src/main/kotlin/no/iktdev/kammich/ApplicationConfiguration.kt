@@ -1,5 +1,7 @@
 package no.iktdev.kammich
 
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import jakarta.annotation.PostConstruct
 import no.iktdev.kammich.gphoto2.GPhoto2
 import no.iktdev.kammich.gphoto2.IGPhoto2
@@ -26,5 +28,9 @@ class ApplicationConfiguration {
     @Bean
     fun gphoto2(): IGPhoto2 {
         return GPhoto2()
+    }
+
+    @Bean fun gson(): Gson {
+        return GsonBuilder().setPrettyPrinting().create()
     }
 }

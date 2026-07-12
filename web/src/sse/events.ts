@@ -1,4 +1,4 @@
-import type { StorageInfo, Notification, MediaStats } from "../types/types";
+import type { StorageInfo, Notification, MediaStats, FeWifiNetwork, WifiActivityState } from "../types/types";
 
 export type SseEvent =
   | { type: 'ping'; timestamp: number }
@@ -12,5 +12,10 @@ export type SseEvent =
   | { type: "sse-offline"; }
   | { type: "notifications"; payload: Array<Notification> }
   | { type: "storage-stats-media"; payload: MediaStats}
+  | { type: "wifi-update"; payload: {
+          status: WifiActivityState // WifiActivityState
+          networks: Array<FeWifiNetwork>;
+      };
+    }
 
   ;

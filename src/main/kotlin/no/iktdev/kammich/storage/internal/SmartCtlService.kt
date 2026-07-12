@@ -1,6 +1,7 @@
 package no.iktdev.kammich.storage.internal
 
 import com.google.gson.Gson
+import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import no.iktdev.kammich.models.shared.storage.DiskHealth
 import no.iktdev.kammich.models.shared.storage.NvmeRoot
@@ -22,7 +23,10 @@ class SmartCtlService {
 
     fun getRawJson(device: String): String {
         // Her kjører vi den faktiske kommandoen
-        return ProcessBuilder("sudo", "smartctl", "--json", "-x", device)
+        val command = listOf("sudo", "smartctl", "--json", "-x", device).also {
+            log.info("Executing command: ${it.joinToString(" ")}")
+        }
+        return ProcessBuilder(command)
             .start()
             .inputStream
             .bufferedReader()
@@ -30,7 +34,12 @@ class SmartCtlService {
     }
 
     private fun mapToDiskHealth(jsonString: String, device: String): DiskHealth {
-        val jsonObject = JsonParser.parseString(jsonString).asJsonObject
+        val jsonObject = try {
+            JsonParser.parseString(jsonString).asJsonObject
+        } catch (e: Exception) {
+            log.error("Error parsing json object: $jsonString")
+            throw e
+        }
         val protocol = jsonObject.getAsJsonObject("device").get("protocol").asString.lowercase()
         val gson = Gson()
 

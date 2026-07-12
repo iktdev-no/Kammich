@@ -1,12 +1,11 @@
-import cz.habarta.typescript.generator.JsonLibrary
-import cz.habarta.typescript.generator.TypeScriptOutputKind
 
 plugins {
 	kotlin("jvm") version "2.3.21"
 	kotlin("plugin.spring") version "2.3.21"
 	id("org.springframework.boot") version "4.1.0"
 	id("io.spring.dependency-management") version "1.1.7"
-	id("cz.habarta.typescript-generator") version "4.1.1"
+	id("no.iktdev.ts-gen") version "1.0-rc1"
+
 }
 
 group = "no.iktdev"
@@ -20,6 +19,7 @@ java {
 }
 
 repositories {
+	mavenLocal()
 	mavenCentral()
 	maven { url = uri("https://reposilite.iktdev.no/releases") }
 	maven { url = uri("https://reposilite.iktdev.no/snapshots") }
@@ -30,6 +30,7 @@ val exposedVersion = "1.3.1"
 val flywayVersion = "12.4.0"
 
 dependencies {
+
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
@@ -66,25 +67,13 @@ kotlin {
 	}
 }
 
-tasks {
-	generateTypeScript {
-		// Hvor TypeScript-filen skal havne
-		outputFile = "$projectDir/web/src/types/types.d.ts"
 
-		// Hva slags TS-output du vil ha
-		outputKind = TypeScriptOutputKind.module
-
-		// Hvilket JSON-bibliotek Kotlin bruker
-		jsonLibrary = JsonLibrary.jackson2
-
-		// Valgfritt: litt bedre defaults
-		classPatterns = listOf("no.iktdev.kammich.models.shared.**")
-	}
+tsGenerator {
+	packageName.set("no.iktdev.kammich.models.shared")
+	outputFile.set(file("$projectDir/web/src/types/types.d.ts"))
 }
 
-tasks.named("generateTypeScript") {
-	dependsOn("compileKotlin")
-}
+
 
 tasks.withType<Test> {
 	useJUnitPlatform()

@@ -1,5 +1,8 @@
 package no.iktdev.kammich
 
+import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceAbility
+import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceInfo
+import no.iktdev.kammich.gphoto2.parsers.GPhoto2AbilityParser
 import no.iktdev.kammich.models.FileType
 import no.iktdev.kammich.models.FileType.IMAGE
 import no.iktdev.kammich.models.FileType.OTHER
@@ -8,6 +11,7 @@ import no.iktdev.kammich.models.NotificationDismissed
 import no.iktdev.kammich.models.shared.Notification
 import no.iktdev.kammich.models.shared.NotificationType
 import no.iktdev.kammich.models.shared.Severity
+import no.iktdev.kammich.models.shared.device.Capability
 import org.springframework.context.ApplicationEventPublisher
 import java.io.File
 
@@ -58,24 +62,48 @@ fun File.getFileType(): FileType {
     }
 }
 
-fun ApplicationEventPublisher.infoNotification(id: String, title: String, message: String, type: NotificationType = NotificationType.Alert) {
-    this.publishEvent(Notification(
-        id = id,
-        title = title,
-        message = message,
-        severity = Severity.Info,
-        dismissable = true,
-        type = type
-    ))
+fun ApplicationEventPublisher.infoNotification(
+    id: String,
+    title: String,
+    message: String,
+    type: NotificationType = NotificationType.Alert
+) {
+    this.publishEvent(
+        Notification(
+            id = id,
+            title = title,
+            message = message,
+            severity = Severity.Info,
+            dismissable = true,
+            type = type
+        )
+    )
 }
 
-fun ApplicationEventPublisher.warningNotification(id: String, title: String, message: String, type: NotificationType = NotificationType.Alert) {
-    this.publishEvent(Notification(
-        id = id,
-        title = title,
-        message = message,
-        severity = Severity.Warning,
-        dismissable = true,
-        type = type
-    ))
+fun ApplicationEventPublisher.warningNotification(
+    id: String,
+    title: String,
+    message: String,
+    type: NotificationType = NotificationType.Alert
+) {
+    this.publishEvent(
+        Notification(
+            id = id,
+            title = title,
+            message = message,
+            severity = Severity.Warning,
+            dismissable = true,
+            type = type
+        )
+    )
+}
+
+fun GPhoto2DeviceAbility.toCaps(): List<Capability> {
+    return listOfNotNull(
+        Capability.CAPTURE.takeIf { this.captureChoices.isNotEmpty() },
+        Capability.DELETE.takeIf { this.deleteSelectedFiles || this.deleteAllFiles },
+        Capability.UPLOAD.takeIf { this.fileUploadSupport },
+        Capability.PREVIEW.takeIf { this.filePreviewSupport },
+        Capability.CONFIGURE.takeIf { this.configurationSupport }
+    )
 }

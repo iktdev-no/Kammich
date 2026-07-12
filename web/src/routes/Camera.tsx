@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Box, Typography, Paper, Divider, Chip, Avatar, Stack, Button, CircularProgress, ListItemIcon, ListItemText, Menu, MenuItem, IconButton, Dialog, DialogTitle, FormControlLabel, Switch, List, DialogContent, ListItem } from "@mui/material";
+import { Box, Typography, Paper, Chip, Avatar, Stack, Button, CircularProgress, ListItemIcon, ListItemText, Menu, MenuItem, IconButton, Dialog, DialogTitle, FormControlLabel, Switch, List, DialogContent, ListItem } from "@mui/material";
 import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
 import BatteryChargingFullIcon from "@mui/icons-material/BatteryChargingFull";
 import StorageIcon from "@mui/icons-material/Storage";
@@ -14,7 +14,6 @@ import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 import { BreadcrumbPath } from "../components/BreadcrumbPath";
 import { useSseSelector } from "../sse/useSseSelector";
 import UsbOffIcon from '@mui/icons-material/UsbOff';
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import SettingsIcon from "@mui/icons-material/Settings";
 import { toast } from "react-toastify";
 

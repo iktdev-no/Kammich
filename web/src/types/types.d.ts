@@ -1,241 +1,242 @@
-/* tslint:disable */
-/* eslint-disable */
-// Generated using typescript-generator version 4.1.1 on 2026-07-08 00:58:17.
+// AUTO-GENERATED. DO NOT EDIT.
+// Version: 0.0.1-SNAPSHOT
+// Time: 2026-07-12T02:08:02.583638812Z
+// Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
-    autoImport: boolean | null;
-    includeFolders: string[] | null;
-    excludeFolders: string[] | null;
-}
-
-export interface Notification {
-    id: string;
-    type: NotificationType;
-    title: string;
-    message: string;
-    severity: Severity;
-    dismissed: boolean;
-    dismissable: boolean;
-    createdAt: number;
-}
-
-export interface PagedResponse<T> {
-    data: T[];
-    totalPages: number;
-    currentPage: number;
-    hasMore: boolean;
-}
-
-export interface RemoteFile {
-    id: number;
-    deviceId: number;
-    fileName: string;
-    uploaded: boolean;
-}
-
-export interface Companion {
-}
-
-export interface WFile {
-    id: string;
-    name: string;
-    type: WFileType;
-    size: number;
-    path: string;
-    importStatus: WFileStatus;
-    uploaded: boolean;
-}
-
-export interface DeviceConfig {
-    deviceId: string;
-    sourcePath: string[];
-    autoImport: boolean;
-}
-
-export interface KammichConfig {
-    mediaPath: string;
-    apiAuth: ImmichAuth | null;
-    autoImportCameraByDefault: boolean;
-    deviceSettings: { [index: string]: DeviceSettings };
-}
-
-export interface BlockDevice {
-    name: string;
-    path: string;
-    mountPoint: string | null;
-    serialNumber: string;
-    modelName: string;
-    transport: Transport;
-}
-
-export interface DiskHealth {
-    deviceName: string;
-    modelName: string;
-    serialNumber: string;
-    protocol: string;
-    percentageUsed: number;
-    temperatureCelsius: number;
-    healthy: boolean;
-}
-
-export interface MediaStats {
-    manufacturer: string | null;
-    model: string;
-    totalBytes: number;
-    freeBytes: number;
-    usedBytes: number;
-    percentUsed: number;
-    serial: string;
-    transport: string;
-    photoCount: number;
-    videoCount: number;
-}
-
-export interface NvmeLog {
-    temp: number;
-    pused: number;
-}
-
-export interface NvmeRoot extends SmartCtlRoot {
-    log: NvmeLog;
-}
-
-export interface RawValue {
-    value: string;
-}
-
-export interface SataAttribute {
-    name: string;
-    value: number | null;
-    worst: number | null;
-    thresh: number | null;
-    raw: RawValue;
-}
-
-export interface SataAttributes {
-    table: SataAttribute[];
-}
-
-export interface SataRoot extends SmartCtlRoot {
-    attrs: SataAttributes;
-}
-
-export interface SmartCtlRoot {
-    modelName: string;
-    serialNumber: string;
-    smartStatus: SmartStatus;
-}
-
-export interface SmartStatus {
-    passed: boolean;
-}
-
-export interface StorageInfo {
-    stats: StorageStats;
-    health: DiskHealth;
-}
-
-export interface StorageStats {
-    totalBytes: number;
-    freeBytes: number;
-    usableBytes: number;
-    percentUsed: number;
-    mounted: boolean;
-}
-
-export interface BlockDeviceDefaultInfo {
-    name: string;
-    physical: string;
-    mountPoint: string;
-    modelName: string;
-    serial: string;
-    transport: string | null;
-}
-
-export interface BlockDeviceDetectedEvent extends DeviceDetectedEvent {
-    devicePath: string;
-    defaultInfo: BlockDeviceDefaultInfo;
-}
-
-export interface DeviceDetectedEvent extends DeviceEvent {
-    vendor: string;
-    product: string;
-    serial: string;
-    devicePath: string | null;
-}
-
-export interface DeviceEvent {
-    sysPath: string;
-}
-
-export interface DeviceRemovedEvent extends DeviceEvent {
-}
-
-export interface DiskInfo {
-    path: string;
-    type: string;
-    transport: string;
-}
-
-export interface MTPDeviceDetectedEvent extends DeviceDetectedEvent {
-    devicePath: string;
-}
-
-export interface PTPDeviceDetectedEvent extends DeviceDetectedEvent {
-}
-
-export interface UdevEvent {
-    event: string;
-    path: string;
-}
-
-export interface Device {
-    id: string;
-    name: string;
-    type: DeviceType;
-    path: string;
-    vendor: string | null;
-    model: string | null;
-}
-
-export interface DeviceInfo {
-    id: string;
-    type: DeviceType;
-    friendlyName: string | null;
-    manufacturer: string | null;
-    model: string | null;
-    capabilities: Capability[];
-    storage: DeviceStorageStats[];
-    attributes: { [index: string]: any };
-    deviceSettings: DeviceSettingsDto | null;
-}
-
-export interface DeviceStorageStats {
-    id: string;
-    description: string;
-    capacityBytes: number;
-    freeSpaceBytes: number;
-}
-
-export interface ImmichAuth {
+  autoImport: boolean | null;
+  excludeFolders: string[] | null;
+  includeFolders: string[] | null;
 }
 
 export interface DeviceSettings {
-    autoImport: boolean;
-    includeFolders: string[];
-    excludeFolders: string[];
+  autoImport: boolean;
+  excludeFolders: string[];
+  includeFolders: string[];
 }
 
-export type NotificationType = "Alert";
+export interface KammichConfig {
+  apiAuth: ImmichAuth | null;
+  assignUnknownDeviceAsBlockDevice: boolean;
+  autoImportCameraByDefault: boolean;
+  deviceSettings: Record<string, DeviceSettings>;
+  mediaPath: string;
+}
 
-export type Severity = "Info" | "Warning" | "Error";
+export type Transport = "USB" | "SATA" | "NVME" | "UNKNOWN"
 
-export type Transport = "USB" | "SATA" | "NVME" | "UNKNOWN";
+export type NotificationType = "Alert"
 
-export type WFileStatus = "Included" | "Excluded" | "None";
 
-export type WFileType = "FILE" | "DIRECTORY";
+export interface Notification {
+  createdAt: number;
+  dismissable: boolean;
+  dismissed: boolean;
+  id: string;
+  message: string;
+  severity: Severity;
+  title: string;
+  type: NotificationType;
+}
 
-export type DeviceType = "BLOCK" | "MTP" | "PTP";
+export interface WFile {
+  id: string;
+  importStatus: WFileStatus;
+  name: string;
+  path: string;
+  size: number;
+  type: WFileType;
+  uploaded: boolean;
+}
 
-export type Capability = "CAPTURE" | "DELETE" | "UPLOAD" | "PREVIEW" | "CONFIGURE";
+export type DeviceType = "BLOCK" | "PTP" | "MTP" | "NETWORK" | "AUDIO" | "UNKNOWN"
+
+export type Capability = "CAPTURE" | "DELETE" | "UPLOAD" | "PREVIEW" | "CONFIGURE"
+
+export interface BlockDevice extends RemovableDevice {
+  devicePath: string;
+  mountPoint: string | null;
+}
+
+export interface DeviceInfo {
+  attributes: Record<string, any>;
+  capabilities: Capability[];
+  deviceSettings: DeviceSettingsDto | null;
+  friendlyName: string | null;
+  id: string;
+  manufacturer: string | null;
+  model: string | null;
+  storage: DeviceStorageStats[];
+  type: DeviceType;
+}
+
+export interface GPhoto2Device extends RemovableDevice {
+  port: string;
+  storage: GPhoto2StorageDevice[];
+}
+
+export interface DeviceStorageStats {
+  capacityBytes: number;
+  description: string;
+  freeSpaceBytes: number;
+  id: string;
+}
+
+export interface RemovableDevice {
+  id: string;
+  manufacturer: string;
+  model: string;
+  name: string;
+  sn: string;
+  sysPath: string;
+  type: DeviceType;
+}
+
+export type Severity = "Info" | "Warning" | "Error"
+
+export type WFileType = "FILE" | "DIRECTORY"
+
+export type WifiActivityState = "IDLE" | "SCANNING" | "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "ERROR"
+
+export interface FeWifiInterface {
+  name: string;
+  supportsAp: boolean;
+  supportsSimultaneousApSta: boolean;
+}
+
+export interface WifiInterfaceInfo {
+  hardwareName: string;
+  interfaceName: string;
+  supportsAp: boolean;
+  supportsApAndStationSimultaneously: boolean;
+}
+
+export interface ConnectionResult {
+  message: string;
+  status: ConnectionStatus;
+  success: boolean;
+}
+
+export interface FeWifiNetwork {
+  bssid: string;
+  isSecure: boolean;
+  securityType: string;
+  signalPercent: number;
+  ssid: string;
+}
+
+export type ConnectionStatus = "CONNECTED" | "CAPTIVE_PORTAL" | "FAILED" | "DISCONNECTED"
+
+export interface WifiSseEvent {
+  errorMessage: string | null;
+  networks: FeWifiNetwork[];
+  status: WifiActivityState;
+}
+
+export interface RemoteFile {
+  deviceId: number;
+  fileName: string;
+  id: number;
+  uploaded: boolean;
+}
+
+export interface DiskHealth {
+  deviceName: string;
+  isHealthy: boolean;
+  modelName: string;
+  percentageUsed: number;
+  protocol: string;
+  serialNumber: string;
+  temperatureCelsius: number;
+}
+
+export interface LsblkBlockDevice {
+  modelName: string;
+  mountPoint: string | null;
+  mounted: boolean;
+  name: string;
+  path: string;
+  serialNumber: string;
+  transport: Transport;
+}
+
+export interface NvmeRoot {
+  log: NvmeLog;
+  modelName: string;
+  serialNumber: string;
+  smartStatus: SmartStatus;
+}
+
+export interface StorageInfo {
+  health: DiskHealth;
+  stats: StorageStats;
+}
+
+export interface SataAttributes {
+  table: SataAttribute[];
+}
+
+export interface SataRoot {
+  attrs: SataAttributes;
+  modelName: string;
+  serialNumber: string;
+  smartStatus: SmartStatus;
+}
+
+export interface NvmeLog {
+  pUsed: number;
+  temp: number;
+}
+
+export interface SataAttribute {
+  name: string;
+  raw: RawValue;
+  thresh: number | null;
+  value: number | null;
+  worst: number | null;
+}
+
+export interface MediaStats {
+  freeBytes: number;
+  manufacturer: string | null;
+  model: string;
+  percentUsed: number;
+  photoCount: number;
+  serial: string;
+  totalBytes: number;
+  transport: string;
+  usedBytes: number;
+  videoCount: number;
+}
+
+export interface SmartCtlRoot {
+  modelName: string;
+  serialNumber: string;
+  smartStatus: SmartStatus;
+}
+
+export interface SmartStatus {
+  passed: boolean;
+}
+
+export interface StorageStats {
+  freeBytes: number;
+  isMounted: boolean;
+  percentUsed: number;
+  totalBytes: number;
+  usableBytes: number;
+}
+
+export interface RawValue {
+  value: string;
+}
+
+export interface PagedResponse<T> {
+  currentPage: number;
+  data: T[];
+  hasMore: boolean;
+  totalPages: number;
+}
+
+export type WFileStatus = "Included" | "Excluded" | "None"
+

@@ -20,7 +20,7 @@ class GPhoto2CommandBuilderTest {
         )
         val destination = File("/home/user/downloads")
 
-        builder.port("usb:001,036").copy(destination, file)
+        builder.port("usb:001,036").copy(destination, file.folderPath, file.name)
         val args = builder.build()
 
         // Sjekk at alle nødvendige flagg er med i korrekt rekkefølge

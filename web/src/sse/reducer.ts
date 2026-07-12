@@ -51,6 +51,13 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
     case 'sse-offline':
       return { ...state, connectionStatus: 'offline' };
 
+    case 'wifi-update':
+      return {
+        ...state,
+        wifiNetworks: event.payload.networks,
+        wifiStatus: event.payload.status
+      }
+
     default:
       console.log("Ingen tok seg av ", event)
       return state;

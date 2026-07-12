@@ -8,7 +8,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 object DevicesTable : IntIdTable("DEVICES") {
     val deviceName = text("DEVICE_NAME")
     val serialNumber = text("SERIAL_NUMBER").uniqueIndex()
-    val friendlyName = text("FRIENDLY_NAME").nullable()
+   // val friendlyName = text("FRIENDLY_NAME").nullable()
     val manufacturer = text("MANUFACTURER").nullable()
     val model = text("MODEL").nullable()
     val lastSeen = text("LAST_SEEN")

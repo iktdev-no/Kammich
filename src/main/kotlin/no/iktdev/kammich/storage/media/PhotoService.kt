@@ -8,6 +8,7 @@ import no.iktdev.kammich.models.FileType
 import no.iktdev.kammich.models.shared.RemoteFile
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.slf4j.LoggerFactory
@@ -51,46 +52,45 @@ class PhotoService(
         return FileSystemResource(file)
     }
 
-    override fun getPagedFiles(deviceId: Int, page: Int, size: Int): List<RemoteFile> {
+    override fun getPagedFiles(page: Int, size: Int, serialNumber: String?): Pair<List<RemoteFile>, Long> {
         return withTransaction {
-            ImportedFilesTable
-                .selectAll()
-                .where { ImportedFilesTable.deviceId eq deviceId }
+            // 1. Bygg opp listen med filtere dynamisk
+            val conditions = mutableListOf<org.jetbrains.exposed.v1.core.Op<Boolean>>()
+
+            // Kjernefilter: Kun bilder
+            conditions.add(ImportedFilesTable.fileType eq FileType.IMAGE)
+
+            // Siden vi kjører innerJoin, kan vi filtrere på varchar-kolonnen direkte i DevicesTable!
+            if (serialNumber != null) {
+                conditions.add(DevicesTable.serialNumber eq serialNumber)
+            }
+
+            // Kombiner alle filtere med AND
+            val finalCondition = conditions.reduce { acc, op -> acc and op }
+
+            // 2. Opprett base-spørringen (Join mellom tabellene)
+            val baseQuery = ImportedFilesTable.innerJoin(DevicesTable)
+                .select(ImportedFilesTable.id, ImportedFilesTable.deviceId, ImportedFilesTable.fileName)
+                .where(finalCondition)
+
+            // 3. Hent totalt antall treff basert på denne konfigurasjonen
+            val total = baseQuery.count()
+
+            // 4. Hent ut den paginerte dataen
+            val data = ImportedFilesTable.innerJoin(DevicesTable)
+                .select(ImportedFilesTable.id, ImportedFilesTable.deviceId, ImportedFilesTable.fileName)
+                .where(finalCondition)
                 .limit(size)
-                .offset((page * size).toLong()) // Skill ut offset her
-                .where { ImportedFilesTable.fileType eq FileType.IMAGE }
-                .map { it ->
+                .offset((page * size).toLong())
+                .map { row ->
                     RemoteFile(
-                        id = it[ImportedFilesTable.id].value,
-                        deviceId = it[ImportedFilesTable.deviceId].value,
-                        fileName = it[ImportedFilesTable.fileName],
+                        id = row[ImportedFilesTable.id].value,
+                        deviceId = row[ImportedFilesTable.deviceId].value, // Dette gir ut Int-verdien trygt via .value
+                        fileName = row[ImportedFilesTable.fileName]
                     )
                 }
-        }.getOrNull() ?: emptyList()
-    }
 
-    override fun getPagedFiles(page: Int, size: Int): List<RemoteFile> {
-        return withTransaction {
-            ImportedFilesTable
-                .selectAll()
-                .limit(size)
-                .offset((page * size).toLong()) // Skill ut offset her
-                .where { ImportedFilesTable.fileType eq FileType.IMAGE }
-                .map { it ->
-                    RemoteFile(
-                        id = it[ImportedFilesTable.id].value,
-                        deviceId = it[ImportedFilesTable.deviceId].value,
-                        fileName = it[ImportedFilesTable.fileName],
-                    )
-                }
-        }.getOrNull() ?: emptyList()
+            Pair(data, total)
+        }.getOrNull() ?: Pair(emptyList(), 0L)
     }
-
-    override fun getTotalCount(): Long {
-        return withTransaction {
-            ImportedFilesTable.selectAll()
-                .where { ImportedFilesTable.fileType eq FileType.IMAGE }.count()
-        }.getOrDefault(0)
-    }
-
 }

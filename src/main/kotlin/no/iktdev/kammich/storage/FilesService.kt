@@ -1,8 +1,7 @@
 package no.iktdev.kammich.storage
 
-import no.iktdev.kammich.models.files.KFile
 import no.iktdev.kammich.models.shared.WFile
-import no.iktdev.kammich.models.shared.storage.removable.Device
+import no.iktdev.kammich.models.shared.device.RemovableDevice
 import no.iktdev.kammich.storage.provider.StorageProviderFactory
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -15,8 +14,7 @@ class FilesService(
 
 
 
-    fun getFilesForDevice(device: Device, path: String): List<WFile> {
-        log.info("Getting files for device ${device.id} on path $path")
+    fun getFilesForDevice(device: RemovableDevice, path: String): List<WFile> {
         val provider = providerFactory.getProvider(device)
         return provider.listFiles(device, path).map { it.toWFile() }.also {
            // log.info("Returning:\n${it.joinToString("\n")}")

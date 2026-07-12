@@ -1,14 +1,17 @@
-import type { Device, MediaStats, Notification, StorageInfo } from "../types/types";
+import type { RemovableDevice, MediaStats, Notification, StorageInfo, FeWifiNetwork, WifiActivityState } from "../types/types";
 
 export interface SseState {
   lastPing?: number;
   jobs: Record<string, string>;
   notifications: Notification[];
   syncRunning: boolean;
-  devices: Array<Device>;
+  devices: Array<RemovableDevice>;
   internalStorageInfo: Array<StorageInfo>;
   internalMediaStats: MediaStats | undefined
   connectionStatus: "online" | "connecting" | "offline";
+  wifiNetworks: Array<FeWifiNetwork>;
+  wifiStatus: WifiActivityState;
+  
 }
 
 export const initialSseState: SseState = {
@@ -18,5 +21,7 @@ export const initialSseState: SseState = {
   devices: [],
   connectionStatus: "connecting",
   internalStorageInfo: [],
-  internalMediaStats: undefined
+  internalMediaStats: undefined,
+  wifiNetworks: [],
+  wifiStatus: 'IDLE'
 };

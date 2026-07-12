@@ -1,3 +1,3 @@
-package no.iktdev.kammich.models.shared.storage.internal
+package no.iktdev.kammich.models.internal
 
 data class UdevEvent(val event: String, val path: String)

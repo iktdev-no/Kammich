@@ -1,8 +1,5 @@
 package no.iktdev.kammich.models.shared
 
-import no.iktdev.kammich.models.files.KFileType
-import no.iktdev.kammich.models.shared.storage.removable.Device
-
 data class WFile (
     val id: String,
     val name: String,

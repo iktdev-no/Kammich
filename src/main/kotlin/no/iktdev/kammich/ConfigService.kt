@@ -7,7 +7,7 @@ import java.io.File
 
 @Service
 class ConfigService {
-    private val configFile = File("./config.json") // Eller en mer robust sti
+    private val configFile = File("./kammich.json") // Eller en mer robust sti
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private var _config: KammichConfig = loadConfig()
     fun getConfig(): KammichConfig = _config

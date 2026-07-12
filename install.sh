@@ -33,11 +33,11 @@ EOF
 install_dependencies() {
     echo "--- Installerer systemavhengigheter ---"
     if command -v apt-get &> /dev/null; then
-        apt-get update && apt-get install -y gphoto2 smartmontools hdparm
+        apt-get update && apt-get install -y gphoto2 smartmontools hdparm openjdk-21-jdk hostapd dnsmasq rfkill jc
     elif command -v dnf &> /dev/null; then
-        dnf check-update && dnf install -y gphoto2 smartmontools hdparm
+        dnf check-update && dnf install -y gphoto2 smartmontools hdparm java-21-openjdk-devel hostapd dnsmasq rfkill jc
     elif command -v pacman &> /dev/null; then
-        pacman -Sy --noconfirm gphoto2 smartmontools hdparm
+        pacman -Sy --noconfirm gphoto2 smartmontools hdparm hdparm jdk21-openjdk hostapd dnsmasq rfkill jc
     else
         echo "Kunne ikke identifisere pakkebehandler."
         exit 1
@@ -215,9 +215,30 @@ EOF
 # 5. Sudoers
 ###############################################
 configure_sudo() {
-    cat <<EOF > /etc/sudoers.d/kammich
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/sbin/smartctl, /usr/local/bin/kammich-eject
-EOF
+    echo "--- Konfigurerer /etc/sudoers.d/kammich ---"
+
+    # Vi bruker en 'heredoc' uten innrykk i selve filinnholdet
+    # for å garantere at sudoers-parseren ikke klikker.
+    sudo bash -c 'cat > /etc/sudoers.d/kammich <<EOF
+# Kammich admin og nettverksstyring
+Cmnd_Alias KAMMICH_ADMIN = /usr/sbin/smartctl, /usr/local/bin/kammich-eject
+Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw
+
+%sudo ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
+EOF'
+
+    # Sett korrekte rettigheter (obligatorisk for sudoers)
+    sudo chmod 0440 /etc/sudoers.d/kammich
+
+    # Valider med visudo
+    if sudo visudo -cf /etc/sudoers.d/kammich; then
+        echo "Suksess: sudoers-filen er validert og klar."
+    else
+        echo "FEIL: Noe gikk galt under validering!"
+        # Vi sletter ikke fila automatisk her,
+        # da det er bedre å la den ligge for feilsøking
+        return 1
+    fi
 }
 
 ###############################################

@@ -47,8 +47,9 @@ export function SidebarItemRenderer({
         <ListItemButton
             sx={{
                 ...sx.item,
-                pl: paddingLeft, // ⭐ dynamisk indent
+                pl: paddingLeft,
                 ...(isActive ? sx.itemActive : {}),
+
             }}
             onClick={handleClick}
         >
@@ -96,20 +97,22 @@ export function SidebarItemRenderer({
 
     if (item.to) {
         return (
-            <>
-                <NavLink to={item.to} style={{ textDecoration: "none" }}>
+            <Box sx={item.sx}>
+                <NavLink to={item.to} style={{ 
+                    textDecoration: "none", 
+                 }}>
                     {({ isActive }) => <ParentContent isActive={isActive} />}
                 </NavLink>
                 {children}
-            </>
+            </Box>
         );
     }
 
     return (
-        <>
+        <Box sx={item.sx}>
             <ParentContent isActive={false} />
             {children}
-        </>
+        </Box>
     );
 }
 

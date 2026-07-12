@@ -3,10 +3,10 @@ package no.iktdev.kammich.storage.provider
 import no.iktdev.kammich.gphoto2.IGPhoto2
 import no.iktdev.kammich.gphoto2.model.GPhoto2File
 import no.iktdev.kammich.gphoto2.model.GPhoto2NodeType
-import no.iktdev.kammich.models.files.KFile
-import no.iktdev.kammich.models.files.KFileType
-import no.iktdev.kammich.models.shared.storage.removable.Device
-import no.iktdev.kammich.storage.DeviceMonitorService
+import no.iktdev.kammich.models.internal.KFile
+import no.iktdev.kammich.models.internal.KFileType
+import no.iktdev.kammich.models.shared.device.GPhoto2Device
+import no.iktdev.kammich.models.shared.device.RemovableDevice
 import no.iktdev.kammich.toMD5
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -16,18 +16,15 @@ import java.io.File
 class GPhoto2StorageProvider(
     private val gPhoto2: IGPhoto2
 ): StorageProvider {
-    private val log = LoggerFactory.getLogger(DeviceMonitorService::class.java)
+    private val log = LoggerFactory.getLogger(GPhoto2StorageProvider::class.java)
 
-    override fun listFiles(device: Device, path: String?): List<KFile> {
-        if (device.path.isNullOrBlank()) {
-            log.info("No path on device to g photo2 storage provider found")
-            return emptyList()
-        }
-        val files = gPhoto2.getFiles(device.path, path ?: "")
-        return files.map { it.toKFile(device) }
+    override fun listFiles(device: RemovableDevice, path: String?): List<KFile> {
+        val g = device as GPhoto2Device
+        val files = gPhoto2.getFiles(g.port, path ?: "")
+        return files.map { it.toKFile() }
     }
 
-    override fun listAllFiles(device: Device, path: String?): List<KFile> {
+    override fun listAllFiles(device: RemovableDevice, path: String?): List<KFile> {
         val results = mutableListOf<KFile>()
         val root = path ?: ""
 
@@ -56,7 +53,7 @@ class GPhoto2StorageProvider(
         return results
     }
 
-    override fun getDCIM(device: Device): KFile? {
+    override fun getDCIM(device: RemovableDevice): KFile? {
         fun search(currentPath: String, depth: Int): KFile? {
             if (depth >= 3) return null
 
@@ -85,21 +82,21 @@ class GPhoto2StorageProvider(
         return search("", 0)
     }
 
-    override fun copyFile(device: Device, storeFile: File, importFile: KFile): File? {
-        log.info("Using $storeFile to store import of ${importFile.name} from ${importFile.device.id}")
-        val out = gPhoto2.copyFile(device.path, importFile.path, importFile.name, storeFile) { progress ->
+    override fun copyFile(device: RemovableDevice, storeFile: File, importFile: KFile): File? {
+        val g = device as GPhoto2Device
+        log.info("Using $storeFile to store import of ${importFile.name} from ${g.id}")
+        val out = gPhoto2.copyFile(g.port, importFile.path, importFile.name, storeFile) { progress ->
             log.info("Import progress on ${importFile.name} ($progress)")
         }
         return out
     }
 
-    fun GPhoto2File.toKFile(device: Device): KFile {
+    fun GPhoto2File.toKFile(): KFile {
         return KFile(
             id = "$folderPath/$name".toMD5(),
             name = name,
             path = folderPath,
             size = sizeBytes,
-            device = device,
             type = when (type) { GPhoto2NodeType.FILE -> {
                 KFileType.FILE
             } GPhoto2NodeType.FOLDER -> {

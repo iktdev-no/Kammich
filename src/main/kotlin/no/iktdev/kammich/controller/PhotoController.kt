@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/photo")
+@RequestMapping("/api/v1/photo")
 class PhotoController(
     private val photoService: PhotoService,
 ) {
@@ -21,8 +21,22 @@ class PhotoController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "50") size: Int
     ): PagedResponse<RemoteFile> {
-        val files = photoService.getPagedFiles(page, size)
-        val total = photoService.getTotalCount() // Du trenger en metode for å vite totalen
+        val (files, total) = photoService.getPagedFiles(page, size, null)
+        return PagedResponse(
+            data = files,
+            currentPage = page,
+            totalPages = (total / size).toInt(),
+            hasMore = (page * size) + files.size < total
+        )
+    }
+
+    @GetMapping("/{deviceId}")
+    fun getPhotosForDevice(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int,
+        @PathVariable deviceId: String,
+    ): PagedResponse<RemoteFile> {
+        val (files, total) = photoService.getPagedFiles(page, size, deviceId)
         return PagedResponse(
             data = files,
             currentPage = page,
