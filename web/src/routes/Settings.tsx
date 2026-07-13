@@ -3,7 +3,6 @@ import { Box, List, ListItemButton, ListItemText, Typography, useTheme } from "@
 import WifiIcon from "@mui/icons-material/Wifi";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { useSseSelector } from "../sse/useSseSelector";
-import WifiSettings from "./settings/WifiSettings";
 
 type SettingsTab = "wifi" | "system";
 
@@ -129,7 +128,6 @@ slotProps={{
                     paddingLeft: theme.spacing(2) 
                 }}
             >
-                {activeTab === "wifi" && <WifiSettings />}
                 {activeTab === "system" && (
                     <Box sx={{ padding: theme.spacing(4) }}>
                         <Typography variant="h5" sx={{ fontWeight: 600 }}>Systeminnstillinger</Typography>

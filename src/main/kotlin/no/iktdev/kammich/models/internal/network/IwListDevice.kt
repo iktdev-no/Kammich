@@ -20,7 +20,6 @@ data class IwCombinationDetail(
     @SerializedName("channels") val channels: Int = 0
 )
 
-// --- MODELLER FOR IW SCAN ---
 data class IwScanItem(
     @SerializedName("bssid")
     val bssid: String = "",
@@ -30,6 +29,10 @@ data class IwScanItem(
 
     @SerializedName("capability")
     val capability: String = "",
+
+    // Felt for frekvens mottatt fra jc (typisk i MHz)
+    @SerializedName("freq")
+    val freq: Int? = null,
 
     // SSID fallbacks
     @SerializedName("information_elements_from_probe_response_frame_ssid")
@@ -61,4 +64,16 @@ data class IwScanItem(
 
     val hasRsn: Boolean
         get() = probeRsn != null || beaconRsn != null
+
+    // Kalkulert kanal basert på frekvens (MHz)
+    val channel: Int?
+        get() = freq?.let { f ->
+            when {
+                f in 2412..2484 -> ((f - 2412) / 5) + 1 // 2.4GHz bånd
+                f in 5170..5825 -> ((f - 5170) / 5) + 34 // 5GHz bånd (forenklet)
+                else -> null
+            }
+        }
+    val hwMode: String
+        get() = if (freq != null && freq < 5000) "g" else "a"
 }

@@ -1,4 +1,4 @@
-package no.iktdev.kammich.system.network.parser
+package no.iktdev.kammich.system.network.wifi.parser
 
 class WifiPhyInfoParser {
 

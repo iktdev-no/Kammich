@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-07-12T02:08:02.583638812Z
+// Time: 2026-07-13T01:12:57.276714469Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -96,13 +96,7 @@ export type Severity = "Info" | "Warning" | "Error"
 
 export type WFileType = "FILE" | "DIRECTORY"
 
-export type WifiActivityState = "IDLE" | "SCANNING" | "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "ERROR"
-
-export interface FeWifiInterface {
-  name: string;
-  supportsAp: boolean;
-  supportsSimultaneousApSta: boolean;
-}
+export type WifiConnectivityState = "IDLE" | "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "CAPTIVE_PORTAL" | "FAILED" | "ERROR"
 
 export interface WifiInterfaceInfo {
   hardwareName: string;
@@ -111,26 +105,46 @@ export interface WifiInterfaceInfo {
   supportsApAndStationSimultaneously: boolean;
 }
 
-export interface ConnectionResult {
+export interface WifiInterfaceState {
+  connectivityState: WifiConnectivityState;
+  interfaceName: string;
+  network: WifiNetwork | null;
+}
+
+export interface WifiInterface {
+  name: string;
+  supportsAp: boolean;
+  supportsSimultaneousApSta: boolean;
+}
+
+export interface WifiInterfaceScanState {
+  interfaceName: string;
+  networks: WifiNetwork[];
+  scanning: WifiScanState;
+}
+
+export interface WifiConnectionResult {
   message: string;
-  status: ConnectionStatus;
+  status: WifiConnectivityState;
   success: boolean;
 }
 
-export interface FeWifiNetwork {
+export type WifiScanState = "IDLE" | "SCANNING" | "ERROR"
+
+export interface WifiNetwork {
   bssid: string;
+  interfaceName: string;
+  isHidden: boolean;
   isSecure: boolean;
   securityType: string;
   signalPercent: number;
   ssid: string;
 }
 
-export type ConnectionStatus = "CONNECTED" | "CAPTIVE_PORTAL" | "FAILED" | "DISCONNECTED"
-
 export interface WifiSseEvent {
   errorMessage: string | null;
-  networks: FeWifiNetwork[];
-  status: WifiActivityState;
+  networks: WifiNetwork[];
+  status: WifiConnectivityState;
 }
 
 export interface RemoteFile {

@@ -1,7 +1,7 @@
-package no.iktdev.kammich.system.network
+package no.iktdev.kammich.system.network.wifi
 
 import no.iktdev.kammich.models.shared.network.WifiInterfaceInfo
-import no.iktdev.kammich.system.network.parser.WifiPhyInfoParser
+import no.iktdev.kammich.system.network.wifi.parser.WifiPhyInfoParser
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.io.File
@@ -38,20 +38,8 @@ class WifiInterfaces(
     }
 
     private fun getCapabilities(phy: String): WifiPhyInfoParser.WifiCapability? {
-        val out = wifiRunner.run("iw", "phy", phy, "info")
-
-        // Hvis output er tom, logg feilen og returner null (eller throw en custom exception)
-        if (out.isBlank()) {
-            log.error("Kunne ikke hente info for $phy: Runner returnerte tom streng.")
-            return null
-        }
-
-        return try {
-            WifiPhyInfoParser().parse(out)
-        } catch (e: Exception) {
-            log.error("Parseren feilet for $phy. Output var: ${out.take(50)}...", e)
-            null
-        }
+        return wifiRunner.run("iw", "phy", phy, "info")
+            .map { WifiPhyInfoParser().parse(it) }
     }
 
     private data class IW(val name: String, val phyLink: String)

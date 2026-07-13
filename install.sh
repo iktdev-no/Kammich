@@ -222,7 +222,7 @@ configure_sudo() {
     sudo bash -c 'cat > /etc/sudoers.d/kammich <<EOF
 # Kammich admin og nettverksstyring
 Cmnd_Alias KAMMICH_ADMIN = /usr/sbin/smartctl, /usr/local/bin/kammich-eject
-Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw
+Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw, /usr/bin/nmcli
 
 %sudo ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
 EOF'

@@ -51,11 +51,15 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
     case 'sse-offline':
       return { ...state, connectionStatus: 'offline' };
 
-    case 'wifi-update':
+    case 'wifi-scan':
       return {
         ...state,
-        wifiNetworks: event.payload.networks,
-        wifiStatus: event.payload.status
+        wifiScans: event.payload,
+      }
+    case 'wifi-connectivity':
+      return {
+        ...state,
+        wifiConnections: event.payload
       }
 
     default:

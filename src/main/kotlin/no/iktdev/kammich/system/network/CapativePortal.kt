@@ -1,7 +1,7 @@
 package no.iktdev.kammich.system.network
 
-import no.iktdev.kammich.models.shared.network.ConnectionResult
-import no.iktdev.kammich.models.shared.network.ConnectionStatus
+import no.iktdev.kammich.models.shared.network.WifiConnectionResult
+import no.iktdev.kammich.models.shared.network.WifiConnectivityState
 import org.springframework.stereotype.Component
 import java.net.HttpURLConnection
 import java.net.URL
@@ -9,7 +9,7 @@ import java.net.URL
 @Component
 class CapativePortal {
 
-    fun verify(): ConnectionResult {
+    fun verify(): WifiConnectionResult {
         val captiveUrls = listOf(
             "http://connectivitycheck.gstatic.com/generate_204",
             "http://www.msftconnecttest.com/connecttest.txt"
@@ -29,14 +29,14 @@ class CapativePortal {
 
                 if (responseCode in 300..399) {
                     val portalLocation = connection.getHeaderField("Location") ?: ""
-                    return ConnectionResult(false, portalLocation, ConnectionStatus.CAPTIVE_PORTAL)
+                    return WifiConnectionResult(false, portalLocation, WifiConnectivityState.CAPTIVE_PORTAL)
                 } else if (responseCode == 204) {
-                    return ConnectionResult(true, "Internett-forbindelsen er aktiv.", ConnectionStatus.CONNECTED)
+                    return WifiConnectionResult(true, "Internett-forbindelsen er aktiv.", WifiConnectivityState.CONNECTED)
                 }
             } catch (e: Exception) {
                 // Prøv neste URL
             }
         }
-        return ConnectionResult(false, "Ingen nettverksforbindelse detektert.", ConnectionStatus.DISCONNECTED)
+        return WifiConnectionResult(false, "Ingen nettverksforbindelse detektert.", WifiConnectivityState.DISCONNECTED)
     }
 }

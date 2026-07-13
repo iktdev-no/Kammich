@@ -1,12 +1,12 @@
 package no.iktdev.kammich.controller
 
-import no.iktdev.kammich.models.shared.network.ConnectionResult
-import no.iktdev.kammich.models.shared.network.FeWifiInterface
-import no.iktdev.kammich.models.shared.network.FeWifiNetwork
-import no.iktdev.kammich.models.shared.network.WifiActivityState
-import no.iktdev.kammich.system.network.WifiCommandService
-import no.iktdev.kammich.system.network.WifiInterfaces
-import no.iktdev.kammich.utils.WifiUtils
+import no.iktdev.kammich.models.shared.network.WifiConnectionResult
+import no.iktdev.kammich.models.shared.network.WifiInterface
+import no.iktdev.kammich.models.shared.network.WifiNetwork
+import no.iktdev.kammich.models.shared.network.WifiInterfaceState
+import no.iktdev.kammich.system.network.wifi.WifiConnectivityService
+import no.iktdev.kammich.system.network.wifi.WifiInterfaces
+import no.iktdev.kammich.system.network.wifi.WifiScanner
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -15,21 +15,27 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/v1/wifi")
 class WifiRestController(
     private val wifiInterfaces: WifiInterfaces,
-    private val wifiService: WifiCommandService
+    private val wifiScanner: WifiScanner,
+    private val wifiService: WifiConnectivityService
 ) {
 
     @GetMapping("/state")
-    fun getWifiState(): WifiActivityState {
-        return wifiService.getCurrentState()
+    fun getWifiState(): List<WifiInterfaceState> {
+        return wifiService.getAllNetworkStates()
+    }
+
+    @GetMapping("/connection")
+    fun getWifiConnections(): List<WifiInterfaceState> {
+        return wifiService.getAllNetworkStates()
     }
 
     /**
      * Returnerer et rent FE-objekt isolert fra interne 'jc'-strukturer
      */
     @GetMapping("/interfaces")
-    fun getInterfaces(): List<FeWifiInterface> {
+    fun getInterfaces(): List<WifiInterface> {
         return wifiInterfaces.getInterfaces().map { internal ->
-            FeWifiInterface(
+            WifiInterface(
                 name = internal.interfaceName,
                 supportsAp = internal.supportsAp,
                 supportsSimultaneousApSta = internal.supportsApAndStationSimultaneously
@@ -44,8 +50,8 @@ class WifiRestController(
     fun getAvailableNetworks(
         @PathVariable interfaceName: String,
         @RequestParam(defaultValue = "false") force: Boolean
-    ): List<FeWifiNetwork> {
-        return wifiService.getNetworks(interfaceName, forceRescan = force)
+    ): List<WifiNetwork> {
+        return wifiScanner.getNetworks(interfaceName, forceRescan = force)
             .filter { it.ssid.isNotBlank() }
     }
 
@@ -54,13 +60,20 @@ class WifiRestController(
         @RequestParam interfaceName: String,
         @RequestParam ssid: String,
         @RequestParam(required = false) password: String?
-    ): ConnectionResult {
+    ): WifiConnectionResult {
         return wifiService.connectToNetwork(interfaceName, ssid, password)
+    }
+
+    @PostMapping("/disconnect")
+    fun disconnect(
+        @RequestParam interfaceName: String
+    ): WifiConnectionResult {
+        return wifiService.disconnectFromNetwork(interfaceName)
     }
 
     @PostMapping("/scan")
     fun startScan(@RequestParam interfaceName: String): ResponseEntity<Unit> {
-        wifiService.triggerScanAsync(interfaceName)
+        wifiScanner.triggerScanAsync(interfaceName)
         return ResponseEntity.status(HttpStatus.ACCEPTED).build()
     }
 }

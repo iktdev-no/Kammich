@@ -1,4 +1,4 @@
-import type { RemovableDevice, MediaStats, Notification, StorageInfo, FeWifiNetwork, WifiActivityState } from "../types/types";
+import type { RemovableDevice, MediaStats, Notification, StorageInfo, WifiScanState, WifiConnectivityState, WifiInterfaceScanState, WifiInterfaceState } from "../types/types";
 
 export interface SseState {
   lastPing?: number;
@@ -9,8 +9,10 @@ export interface SseState {
   internalStorageInfo: Array<StorageInfo>;
   internalMediaStats: MediaStats | undefined
   connectionStatus: "online" | "connecting" | "offline";
-  wifiNetworks: Array<FeWifiNetwork>;
-  wifiStatus: WifiActivityState;
+
+  wifiScans: Array<WifiInterfaceScanState>
+  wifiConnections: Array<WifiInterfaceState>
+
   
 }
 
@@ -22,6 +24,6 @@ export const initialSseState: SseState = {
   connectionStatus: "connecting",
   internalStorageInfo: [],
   internalMediaStats: undefined,
-  wifiNetworks: [],
-  wifiStatus: 'IDLE'
+  wifiScans: [],
+  wifiConnections: []
 };
