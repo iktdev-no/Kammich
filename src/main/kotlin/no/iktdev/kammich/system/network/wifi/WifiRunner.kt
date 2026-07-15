@@ -18,6 +18,11 @@ class WifiRunner {
             is Success -> if (output.isBlank()) null else try { transform(output) } catch (e: Exception) { null }
             is Failure -> null
         }
+
+        fun isSuccess(): Boolean = when (this) {
+            is Success -> true
+            else -> false
+        }
     }
 
     /**

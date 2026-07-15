@@ -1,5 +1,24 @@
 import { toast } from "react-toastify";
 
+function prepareBody(body: any): { payload: any; contentType: string } {
+  if (body === undefined || body === null) {
+    return { payload: undefined, contentType: "application/json" };
+  }
+
+  // Hvis det er en rå streng, send den akkurat som den er
+  if (typeof body === "string") {
+    return { payload: body, contentType: "text/plain" };
+  }
+
+  // For booleans og tall, send som ren tekst-representasjon
+  if (typeof body === "number" || typeof body === "boolean") {
+    return { payload: String(body), contentType: "text/plain" };
+  }
+
+  // For alt annet (objekter, arrays), kjør standard JSON
+  return { payload: JSON.stringify(body), contentType: "application/json" };
+}
+
 // ------------------------------------------------------------
 // GET
 // ------------------------------------------------------------
@@ -58,13 +77,16 @@ export async function apiPost<TRequest, TResponse>(
   path: string,
   body: TRequest,
 ): Promise<TResponse> {
+
+  const { payload, contentType } = prepareBody(body);
+
   const res = await fetch(`/api${path}`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": contentType,
       Accept: "*/*",
     },
-    body: JSON.stringify(body),
+    body: payload,
   });
 
   if (!res.ok) {
@@ -89,9 +111,9 @@ export async function apiPost<TRequest, TResponse>(
     throw error;
   }
 
-  const contentType = res.headers.get("content-type") ?? "";
+  const contentTypeRead = res.headers.get("content-type") ?? "";
 
-  if (contentType.includes("application/json")) {
+  if (contentTypeRead.includes("application/json")) {
     return res.json();
   }
 
@@ -109,13 +131,16 @@ export async function apiDelete<TResponse>(
     onError?: (status: number, body: any) => void;
   },
 ): Promise<TResponse> {
+
+  const { payload, contentType } = prepareBody(opts?.body);
+
   const res = await fetch(`/api${path}`, {
     method: "DELETE",
     headers: {
       Accept: "*/*",
-      ...(opts?.body ? { "Content-Type": "application/json" } : {}),
+      ...(opts?.body ? { "Content-Type": contentType } : {}),
     },
-    body: opts?.body ? JSON.stringify(opts.body) : undefined,
+    body: opts?.body ? payload : undefined,
   });
 
   if (!res.ok) {
@@ -161,13 +186,16 @@ export async function apiPatch<TRequest, TResponse>(
     onError?: (status: number, body: any) => void;
   },
 ): Promise<TResponse> {
+  const { payload, contentType } = prepareBody(body);
+
+
   const res = await fetch(`/api${path}`, {
     method: "PATCH",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": contentType,
       Accept: "*/*",
     },
-    body: JSON.stringify(body),
+    body: payload,
   });
 
   if (!res.ok) {
@@ -201,8 +229,8 @@ export async function apiPatch<TRequest, TResponse>(
   }
 
   // Handle empty body (204 No Content)
-  const contentType = res.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
+  const contentTypeRead = res.headers.get("content-type") ?? "";
+  if (contentTypeRead.includes("application/json")) {
     return res.json();
   }
 
@@ -217,13 +245,16 @@ export async function apiPut<TRequest, TResponse>(
   path: string,
   body: TRequest,
 ): Promise<TResponse> {
+  const { payload, contentType } = prepareBody(body);
+
+
   const res = await fetch(`/api${path}`, {
     method: "PUT",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": contentType,
       Accept: "*/*",
     },
-    body: JSON.stringify(body),
+    body: payload,
   });
 
   if (!res.ok) {
@@ -248,9 +279,9 @@ export async function apiPut<TRequest, TResponse>(
     throw error;
   }
 
-  const contentType = res.headers.get("content-type") ?? "";
+  const contentTypeRead = res.headers.get("content-type") ?? "";
 
-  if (contentType.includes("application/json")) {
+  if (contentTypeRead.includes("application/json")) {
     return res.json();
   }
 

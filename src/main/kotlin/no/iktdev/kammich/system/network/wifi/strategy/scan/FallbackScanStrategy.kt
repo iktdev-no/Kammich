@@ -1,8 +1,6 @@
-package no.iktdev.kammich.system.network.wifi.scan
+package no.iktdev.kammich.system.network.wifi.strategy.scan
 
-import no.iktdev.kammich.models.internal.network.IwScanItem
 import no.iktdev.kammich.models.internal.network.WifiScanResult
-import no.iktdev.kammich.models.shared.network.WifiNetwork
 import no.iktdev.kammich.models.shared.network.WifiScanState
 import no.iktdev.kammich.system.network.wifi.WifiRunner
 import no.iktdev.kammich.system.network.wifi.parser.WifiScanResultParser
@@ -10,8 +8,6 @@ import no.iktdev.kammich.system.network.wifi.pipeJc
 import org.slf4j.LoggerFactory
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
-import java.time.ZonedDateTime
-import kotlin.collections.set
 
 @Component
 @Order(999)

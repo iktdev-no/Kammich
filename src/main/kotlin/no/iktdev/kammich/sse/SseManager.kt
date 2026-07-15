@@ -1,5 +1,7 @@
 package no.iktdev.kammich.sse
 
+import no.iktdev.exfl.time.TimeUtil
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.util.concurrent.CopyOnWriteArrayList
@@ -33,5 +35,15 @@ class SseManager() {
         }
 
         emitters.removeAll(deadEmitters)
+    }
+
+    fun getHeartBeat() = mapOf(
+        "type" to "ping",
+        "timestamp" to System.currentTimeMillis()
+    )
+
+    @Scheduled(fixedDelay = 5_000)
+    fun ping() {
+        send(getHeartBeat())
     }
 }

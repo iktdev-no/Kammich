@@ -1,4 +1,4 @@
-package no.iktdev.kammich.models.shared.config
+package no.iktdev.kammich.models.internal.config
 
 import no.iktdev.kammich.models.shared.DeviceSettingsDto
 

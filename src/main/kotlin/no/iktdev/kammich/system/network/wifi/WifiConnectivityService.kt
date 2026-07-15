@@ -2,10 +2,10 @@ package no.iktdev.kammich.system.network.wifi
 
 import no.iktdev.kammich.models.shared.network.WifiConnectionResult
 import no.iktdev.kammich.models.shared.network.WifiNetwork
-import no.iktdev.kammich.models.shared.network.WifiConnectivityState
+import no.iktdev.kammich.models.shared.network.ConnectivityState
 import no.iktdev.kammich.models.shared.network.WifiInterfaceState
 import no.iktdev.kammich.sse.SseManager
-import no.iktdev.kammich.system.network.wifi.connectivity.WifiConnectionStrategy
+import no.iktdev.kammich.system.network.wifi.strategy.connection.WifiConnectionStrategy
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
@@ -16,17 +16,15 @@ class WifiConnectivityService(
     private val scanner: WifiScanner,
     private val runner: WifiRunner,
     private val interfaces: WifiInterfaces,
-    private val strategies: List<WifiConnectionStrategy>
+    private val strategies: List<WifiConnectionStrategy>,
+    private val registry: WifiStateRegistry,
+    private val wifiTetherService: WifiTetherService
 ) {
     private val log = LoggerFactory.getLogger(WifiConnectivityService::class.java)
 
-    // Lagrer tilstand per interface
-    private val states = ConcurrentHashMap<String, WifiConnectivityState>()
-    private val activeSsids = ConcurrentHashMap<String, String>()
-
     init {
         interfaces.getInterfaces().forEach { interfaceName ->
-            states[interfaceName.interfaceName] = WifiConnectivityState.IDLE
+            registry.connectivityCurrentStates[interfaceName.interfaceName] = ConnectivityState.IDLE
         }
         refreshState()
     }
@@ -34,15 +32,15 @@ class WifiConnectivityService(
     fun refreshState() {
         val activeStrategy = getActiveStrategy() ?: return
 
-        states.keys.forEach { interfaceName ->
+        registry.connectivityCurrentStates.keys.forEach { interfaceName ->
             val actualState = activeStrategy.getState(interfaceName)
 
             // Oppdater vår interne cache med virkeligheten
-            states[interfaceName] = actualState.connectivityState
+            registry.connectivityCurrentStates[interfaceName] = actualState.connectivityState
             if (actualState.network != null) {
-                activeSsids[interfaceName] = actualState.network.ssid
+                registry.connectivityCurrentNetworks[interfaceName] = actualState.network
             } else {
-                activeSsids.remove(interfaceName)
+                registry.connectivityCurrentNetworks.remove(interfaceName)
             }
         }
         // Push den oppdaterte sannheten til alle via SSE
@@ -50,20 +48,19 @@ class WifiConnectivityService(
     }
 
 
-    fun getCurrentState(interfaceName: String): WifiConnectivityState =
-        states.getOrDefault(interfaceName, WifiConnectivityState.IDLE)
+    fun getCurrentState(interfaceName: String): ConnectivityState =
+        registry.connectivityCurrentStates.getOrDefault(interfaceName, ConnectivityState.IDLE)
 
     fun getCurrentNetwork(interfaceName: String): WifiNetwork? {
-        val ssid = activeSsids[interfaceName] ?: return null
-        // Bruk scannerens nye interface-spesifikke resultat
-        return getActiveStrategy()?.getState(interfaceName)?.network ?: scanner.getCurrentScanResult(interfaceName).find { it.ssid == ssid }
+        return registry.connectivityCurrentNetworks[interfaceName] ?:
+            getActiveStrategy()?.getState(interfaceName)?.network
     }
 
 
 
     fun getAllNetworkStates(): List<WifiInterfaceState> {
         val activeStrategy = getActiveStrategy()
-        return states.keys.mapNotNull { iface ->
+        return registry.connectivityCurrentStates.keys.mapNotNull { iface ->
             activeStrategy?.getState(iface)
         }
     }
@@ -77,42 +74,48 @@ class WifiConnectivityService(
 
         if (strategy == null) {
             log.error("Ingen støttet wifi-tilkoblingsmetode funnet! Vi har prøvd følgende:\n${strategies.joinToString("\n") { it.javaClass.simpleName }}")
-            return WifiConnectionResult(false, "Ingen tilkoblingsmetode støttet", WifiConnectivityState.FAILED)
+            return WifiConnectionResult(false, "Ingen tilkoblingsmetode støttet", ConnectivityState.FAILED)
         }
         log.info("Connecting to $interfaceName with ssid $ssid using strategy: ${strategy::class.simpleName}")
 
-        states[interfaceName] = WifiConnectivityState.CONNECTING
+        registry.connectivityCurrentStates[interfaceName] = ConnectivityState.CONNECTING
         updateSSE() // Push med en gang vi starter
 
         log.info("Starter oppkobling til $ssid på $interfaceName")
 
         val result = strategy.connect(interfaceName, ssid, password)
-        states[interfaceName] = result.status
-        activeSsids[interfaceName] = ssid
+        registry.connectivityCurrentStates[interfaceName] = result.status
+        getCurrentNetwork(interfaceName)?.let {
+            registry.connectivityCurrentNetworks[interfaceName] = it
+        }
+
         updateSSE() // Push med en gang vi starter
         return result
     }
 
     fun disconnectFromNetwork(interfaceName: String): WifiConnectionResult {
         val strategy = getActiveStrategy()
-            ?: return WifiConnectionResult(false, "Ingen støttet metode", WifiConnectivityState.FAILED)
+            ?: return WifiConnectionResult(false, "Ingen støttet metode", ConnectivityState.FAILED)
 
         log.info("Kobler fra $interfaceName")
 
         val result = strategy.disconnect(interfaceName)
 
+        registry.connectivityCurrentStates[interfaceName] = result.status
+
         if (result.success) {
-            states[interfaceName] = WifiConnectivityState.DISCONNECTED
-            activeSsids.remove(interfaceName)
-            updateSSE()
+            registry.connectivityCurrentNetworks.remove(interfaceName)
+        } else {
+            log.error("Struggling to disconnect $interfaceName from its wifi", result.message)
         }
+        updateSSE()
 
         return result
     }
 
     fun getSSEPayload(): Map<String, Any> {
         // Lag en liste av alle interface-tilstander
-        val allInterfaceStates = states.keys.map { iface ->
+        val allInterfaceStates = registry.connectivityCurrentStates.keys.map { iface ->
             WifiInterfaceState(
                 interfaceName = iface,
                 connectivityState = getCurrentState(iface),

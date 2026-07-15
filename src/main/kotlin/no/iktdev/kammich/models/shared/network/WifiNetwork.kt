@@ -2,7 +2,7 @@ package no.iktdev.kammich.models.shared.network
 
 data class WifiInterfaceState(
     val interfaceName: String,
-    val connectivityState: WifiConnectivityState,
+    val connectivityState: ConnectivityState,
     val network: WifiNetwork? = null,
 )
 
@@ -30,7 +30,8 @@ data class WifiNetwork(
 data class WifiInterface(
     val name: String,
     val supportsAp: Boolean,
-    val supportsSimultaneousApSta: Boolean
+    val supportsSimultaneousApSta: Boolean,
+    val deviceId: String
 )
 
 enum class WifiScanState {
@@ -39,27 +40,25 @@ enum class WifiScanState {
     ERROR
 }
 
-enum class WifiConnectivityState {
-    IDLE,
-    CONNECTING,
-    CONNECTED,
-    DISCONNECTED,
-    CAPTIVE_PORTAL,
-    FAILED,
-    ERROR
-}
-
 
 data class WifiInterfaceInfo(
     val interfaceName: String,
     val hardwareName: String,
     val supportsAp: Boolean,
-    val supportsApAndStationSimultaneously: Boolean
+    val supportsApAndStationSimultaneously: Boolean,
+    val limitation: InterfaceLimitation = InterfaceLimitation.NONE,
+    val deviceId: String,
 )
+
+enum class InterfaceLimitation {
+    NONE,
+    CHANNEL_1_TO_1, // Krever 1:1 mellom AP-kanal og Stasjon-kanal
+    NO_CONCURRENT  // Støtter ikke AP og Stasjon samtidig
+}
 
 
 data class WifiConnectionResult(
     val success: Boolean,
     val message: String,
-    val status: WifiConnectivityState
+    val status: ConnectivityState
 )

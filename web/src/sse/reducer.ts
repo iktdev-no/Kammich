@@ -2,8 +2,6 @@ import type { SseEvent } from './events';
 import type { SseState } from './state';
 
 export function sseReducer(state: SseState, event: SseEvent): SseState {
-  console.log("Reducer mottok event-type:", event.type);
-  console.log("Reducer mottok full payload:", event);
   switch (event.type) {
     case 'ping':
       return { ...state, lastPing: event.timestamp };
@@ -27,7 +25,7 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
       return state;
     case 'removable-devices':
       return {
-            ...state,
+        ...state,
         devices: event.payload
       }
 
@@ -60,6 +58,18 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
       return {
         ...state,
         wifiConnections: event.payload
+      }
+
+    case "wifi-tethering":
+      return {
+        ...state,
+        wifiTether: event.payload
+      }
+
+    case "wifi-tethering-selected-interface":
+      return {
+        ...state,
+        wifiTetherDevice: event.payload
       }
 
     default:

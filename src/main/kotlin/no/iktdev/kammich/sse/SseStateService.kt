@@ -7,6 +7,7 @@ import no.iktdev.kammich.storage.internal.DiskStorageService
 import no.iktdev.kammich.storage.internal.StorageInfoPublisher
 import no.iktdev.kammich.system.network.wifi.WifiConnectivityService
 import no.iktdev.kammich.system.network.wifi.WifiScanner
+import no.iktdev.kammich.system.network.wifi.WifiTetherService
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
@@ -20,7 +21,8 @@ class SseStateService(
     private val dss: DiskStorageService,
     private val sseManager: SseManager,
     private val wifiScanner: WifiScanner,
-    private val wifiConnectivityService: WifiConnectivityService
+    private val wifiConnectivityService: WifiConnectivityService,
+    private val wifiTetherService: WifiTetherService
 ) {
     private val log = LoggerFactory.getLogger(SseStateService::class.java)
 
@@ -34,6 +36,7 @@ class SseStateService(
         emitter.send(dss.getPayload())
         emitter.send(wifiScanner.getSSEPayload())
         emitter.send(wifiConnectivityService.getSSEPayload())
+        emitter.send(wifiTetherService.getSSEPayload())
     }
 
     @EventListener

@@ -14,12 +14,13 @@ import KeyIcon from '@mui/icons-material/Key';
 import CameraIcon from '@mui/icons-material/Camera';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiTetheringIcon from '@mui/icons-material/WifiTethering';
-
+import CellTowerRoundedIcon from '@mui/icons-material/CellTowerRounded';
 import SdStorageOutlinedIcon from '@mui/icons-material/SdStorageOutlined';
 import CableIcon from '@mui/icons-material/Cable';
 import type { SidebarItem } from "./SidebarItemTypes";
 import { useSseSelector } from "../../sse/useSseSelector";
 import { useEffect, useMemo } from "react";
+import TapAndPlayIcon from '@mui/icons-material/TapAndPlay';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 
 export interface SidebarMenuProps {
@@ -82,8 +83,8 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             to: "/settings",
         },
         {
-            label: "Wifi",
-            icon: WifiIcon,
+            label: "Network",
+            icon: WifiTetheringIcon,
             children: [
                 {
                     label: "Wifi",
@@ -92,8 +93,8 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
                 },
                 {
                     label: "Direct",
-                    icon: WifiTetheringIcon,
-                    to: "/settings/wificonnect"
+                    icon: TapAndPlayIcon,
+                    to: "/settings/ap"
                 }
             ]
         },

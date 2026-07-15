@@ -1,33 +1,46 @@
 package no.iktdev.kammich
 
 import com.google.gson.GsonBuilder
-import no.iktdev.kammich.models.shared.config.KammichConfig
+import no.iktdev.kammich.models.internal.config.RuntimeKammichConfig
+import no.iktdev.kammich.models.internal.config.StoredKammichConfig
+import no.iktdev.kammich.system.network.wifi.WifiTetherService
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
 class ConfigService {
+    private val log = LoggerFactory.getLogger(ConfigService::class.java)
+
+
     private val configFile = File("./kammich.json") // Eller en mer robust sti
     private val gson = GsonBuilder().setPrettyPrinting().create()
-    private var _config: KammichConfig = loadConfig()
-    fun getConfig(): KammichConfig = _config
+    private var _config: RuntimeKammichConfig = loadConfig()
+    fun getConfig(): RuntimeKammichConfig = _config
 
-    private fun loadConfig(): KammichConfig {
+    private fun loadConfig(): RuntimeKammichConfig {
         return if (configFile.exists()) {
-            gson.fromJson(configFile.readText(), KammichConfig::class.java)
+            val stored = gson.fromJson(configFile.readText(), StoredKammichConfig::class.java)
+            RuntimeKammichConfig.fromStored(stored)
         } else {
-            val defaultConfig = KammichConfig(
-                "/var/lib/kammich/storage/media",
-            )
+            val defaultConfig = RuntimeKammichConfig()
             saveConfig(defaultConfig) // Lagre standard om fila ikke finnes
             defaultConfig
         }
     }
 
     @Synchronized
-    fun saveConfig(newConfig: KammichConfig) {
+    fun updateConfig(transform: (RuntimeKammichConfig) -> RuntimeKammichConfig) {
+        val updatedConfig = transform(_config)
+        saveConfig(updatedConfig)
+    }
+
+    @Synchronized
+    fun saveConfig(newConfig: RuntimeKammichConfig) {
         configFile.parentFile.mkdirs()
-        configFile.writeText(gson.toJson(newConfig))
+        val nc = gson.toJson(newConfig)
+        log.info("Saving config: $nc")
+        configFile.writeText(nc)
         _config = newConfig
     }
 }

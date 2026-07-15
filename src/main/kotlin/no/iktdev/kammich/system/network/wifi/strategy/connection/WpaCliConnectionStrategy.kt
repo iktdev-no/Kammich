@@ -1,7 +1,7 @@
-package no.iktdev.kammich.system.network.wifi.connectivity
+package no.iktdev.kammich.system.network.wifi.strategy.connection
 
 import no.iktdev.kammich.models.shared.network.WifiConnectionResult
-import no.iktdev.kammich.models.shared.network.WifiConnectivityState
+import no.iktdev.kammich.models.shared.network.ConnectivityState
 import no.iktdev.kammich.models.shared.network.WifiInterfaceState
 import no.iktdev.kammich.system.network.wifi.WifiRunner
 import org.slf4j.LoggerFactory
@@ -40,11 +40,11 @@ class WpaCliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionS
             val result = runner.run(*cmd.split(" ").toTypedArray())
             if (result is WifiRunner.CommandResult.Failure) {
                 log.error("Failed to connect to $interfaceName using wpa_cli")
-                return WifiConnectionResult(false, "Feilet ved: $cmd - ${result.error}", WifiConnectivityState.FAILED)
+                return WifiConnectionResult(false, "Feilet ved: $cmd - ${result.error}", ConnectivityState.FAILED)
             }
         }
         log.info("Successfully connected to $interfaceName using wpa_cli")
-        return WifiConnectionResult(true, "Tilkoblet via wpa_cli", WifiConnectivityState.CONNECTED)
+        return WifiConnectionResult(true, "Tilkoblet via wpa_cli", ConnectivityState.CONNECTED)
     }
 
     override fun disconnect(interfaceName: String): WifiConnectionResult {
@@ -58,8 +58,8 @@ class WpaCliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionS
         runner.run(*removeCmd.split(" ").toTypedArray())
 
         return when (result) {
-            is WifiRunner.CommandResult.Success -> WifiConnectionResult(true, "Koblet fra", WifiConnectivityState.DISCONNECTED)
-            is WifiRunner.CommandResult.Failure -> WifiConnectionResult(false, result.error, WifiConnectivityState.FAILED)
+            is WifiRunner.CommandResult.Success -> WifiConnectionResult(true, "Koblet fra", ConnectivityState.DISCONNECTED)
+            is WifiRunner.CommandResult.Failure -> WifiConnectionResult(false, result.error, ConnectivityState.FAILED)
         }
     }
 

@@ -4,9 +4,13 @@ import no.iktdev.kammich.models.shared.network.WifiConnectionResult
 import no.iktdev.kammich.models.shared.network.WifiInterface
 import no.iktdev.kammich.models.shared.network.WifiNetwork
 import no.iktdev.kammich.models.shared.network.WifiInterfaceState
+import no.iktdev.kammich.models.shared.network.WifiTetherInterface
+import no.iktdev.kammich.models.shared.network.WifiTetherSetting
 import no.iktdev.kammich.system.network.wifi.WifiConnectivityService
 import no.iktdev.kammich.system.network.wifi.WifiInterfaces
 import no.iktdev.kammich.system.network.wifi.WifiScanner
+import no.iktdev.kammich.system.network.wifi.WifiTetherService
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -16,8 +20,12 @@ import org.springframework.web.bind.annotation.*
 class WifiRestController(
     private val wifiInterfaces: WifiInterfaces,
     private val wifiScanner: WifiScanner,
-    private val wifiService: WifiConnectivityService
+    private val wifiService: WifiConnectivityService,
+    private val wifiTethering: WifiTetherService
 ) {
+
+    private val log = LoggerFactory.getLogger(WifiRestController::class.java)
+
 
     @GetMapping("/state")
     fun getWifiState(): List<WifiInterfaceState> {
@@ -38,7 +46,8 @@ class WifiRestController(
             WifiInterface(
                 name = internal.interfaceName,
                 supportsAp = internal.supportsAp,
-                supportsSimultaneousApSta = internal.supportsApAndStationSimultaneously
+                supportsSimultaneousApSta = internal.supportsApAndStationSimultaneously,
+                deviceId = internal.deviceId,
             )
         }
     }
@@ -76,4 +85,59 @@ class WifiRestController(
         wifiScanner.triggerScanAsync(interfaceName)
         return ResponseEntity.status(HttpStatus.ACCEPTED).build()
     }
+
+    @GetMapping("/tether/config/ap")
+    fun getTetherConfig(): ResponseEntity<WifiTetherSetting> {
+        val tether = wifiTethering.getTetherSettings()
+        return ResponseEntity.ok(tether)
+    }
+
+    @GetMapping("/tether/config/devices")
+    fun getTetherDevices(): ResponseEntity<List<WifiTetherInterface>> {
+        val tether = wifiTethering.getAvailableTetherDevices()
+        return ResponseEntity.ok(tether)
+    }
+
+    @PostMapping("/tether/config/ap")
+    fun setTetherConfig(@RequestBody setting: WifiTetherSetting): ResponseEntity<Boolean> {
+        wifiTethering.saveTetherConfig(setting.ssid, setting.password, setting.security)
+        return ResponseEntity.ok(true)
+    }
+
+    @PostMapping("/tether/config/devices/use")
+    fun setTetherDevice(@RequestBody deviceId: String): ResponseEntity<Boolean> {
+        log.info("Setting new Tether device ID: $deviceId")
+        wifiTethering.saveTetherDevice(true, deviceId)
+        return ResponseEntity.ok(true)
+    }
+
+    @DeleteMapping("/tether/config/devices/use")
+    fun deleteTetherDevice(@RequestBody deviceId: String): ResponseEntity<Boolean> {
+        log.info("Deleting Tether device ID: $deviceId")
+        wifiTethering.removeTetherDevice(deviceId)
+        return ResponseEntity.ok(true)
+    }
+
+    @PostMapping("/tether/start")
+    fun startTether(): ResponseEntity<Unit> {
+        return try {
+            wifiTethering.startTethering()
+            ResponseEntity.ok().build()
+        } catch (ex: Exception) {
+            log.error("Error starting Tether", ex)
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
+        }
+    }
+
+    @PostMapping("/tether/stop")
+    fun stopTether(): ResponseEntity<Unit> {
+        return try {
+            wifiTethering.stopTethering()
+            ResponseEntity.ok().build()
+        } catch (ex: Exception) {
+            log.info("Could not stop Tether", ex)
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
+        }
+    }
+
 }

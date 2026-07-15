@@ -1,7 +1,7 @@
 package no.iktdev.kammich.system.network
 
 import no.iktdev.kammich.models.shared.network.WifiConnectionResult
-import no.iktdev.kammich.models.shared.network.WifiConnectivityState
+import no.iktdev.kammich.models.shared.network.ConnectivityState
 import org.springframework.stereotype.Component
 import java.net.HttpURLConnection
 import java.net.URL
@@ -29,14 +29,14 @@ class CapativePortal {
 
                 if (responseCode in 300..399) {
                     val portalLocation = connection.getHeaderField("Location") ?: ""
-                    return WifiConnectionResult(false, portalLocation, WifiConnectivityState.CAPTIVE_PORTAL)
+                    return WifiConnectionResult(false, portalLocation, ConnectivityState.CAPTIVE_PORTAL)
                 } else if (responseCode == 204) {
-                    return WifiConnectionResult(true, "Internett-forbindelsen er aktiv.", WifiConnectivityState.CONNECTED)
+                    return WifiConnectionResult(true, "Internett-forbindelsen er aktiv.", ConnectivityState.CONNECTED)
                 }
             } catch (e: Exception) {
                 // Prøv neste URL
             }
         }
-        return WifiConnectionResult(false, "Ingen nettverksforbindelse detektert.", WifiConnectivityState.DISCONNECTED)
+        return WifiConnectionResult(false, "Ingen nettverksforbindelse detektert.", ConnectivityState.DISCONNECTED)
     }
 }

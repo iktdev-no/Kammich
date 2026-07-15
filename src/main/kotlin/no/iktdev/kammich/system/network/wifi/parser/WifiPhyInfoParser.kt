@@ -9,55 +9,66 @@ class WifiPhyInfoParser {
     )
 
     fun parse(output: String): WifiCapability {
-        // Renser input for konsistent parsing
-        val cleanOutput = output.replace("\t", "    ")
-        val tree = parseToTree(cleanOutput)
+        var supportsAP = false
+        var isConcurrent = false
+        var sameChannelConstraint = false
 
-        val modesNode = tree.findCategory("Supported interface modes:")
-        val supportsAP = modesNode?.children?.any { it.text.contains("AP") } ?: false
+        var currentSection = Section.UNKNOWN
 
-        val combNode = tree.findCategory("valid interface combinations:")
-        val isConcurrent = combNode?.children?.any {
-            it.text.contains("managed") && it.text.contains("AP")
-        } ?: false
+        output.lineSequence().forEach { line ->
+            val trimmed = line.trim()
 
-        val sameChannel = combNode?.children?.any {
-            it.text.contains("managed") && it.text.contains("AP") && it.text.contains("channels <= 1")
-        } ?: false
-
-        return WifiCapability(supportsAP, isConcurrent, sameChannel)
-    }
-
-    private fun parseToTree(output: String): IwNode {
-        val root = IwNode("ROOT")
-        val stack = mutableListOf(Pair(-1, root))
-
-        output.lineSequence().filter { it.isNotBlank() }.forEach { rawLine ->
-            val indent = rawLine.takeWhile { it == ' ' }.length
-            val text = rawLine.trim()
-            val newNode = IwNode(text)
-
-            while (stack.isNotEmpty() && stack.last().first >= indent) {
-                stack.removeLast()
+            // 1. Identifiser seksjon (uavhengig av whitespace)
+            when {
+                trimmed.startsWith("Supported interface modes:") -> currentSection = Section.MODES
+                trimmed.startsWith("valid interface combinations:") -> currentSection = Section.COMBINATIONS
+                trimmed.isNotEmpty() && !line.startsWith(" ") && !line.startsWith("\t") -> currentSection = Section.UNKNOWN
             }
 
-            stack.last().second.children.add(newNode)
-            stack.add(Pair(indent, newNode))
+            // 2. Analyser innhold basert på seksjon
+            when (currentSection) {
+                Section.MODES -> {
+                    if (trimmed.contains("* AP") || trimmed.endsWith("AP")) {
+                        supportsAP = true
+                    }
+                }
+                Section.COMBINATIONS -> {
+                    // Vi ser etter en linje som inneholder BÅDE managed og AP
+                    if (trimmed.contains("managed") && trimmed.contains("AP")) {
+                        isConcurrent = true
+
+                        // Sjekk for kanal-begrensning i samme kombinasjon
+                        if (trimmed.contains("channels <= 1") ||
+                            output.substringAfter(line).contains("channels <= 1")) {
+                            sameChannelConstraint = true
+                        }
+                    }
+                }
+                else -> {}
+            }
         }
-        return root
+
+        return WifiCapability(supportsAP, isConcurrent, sameChannelConstraint)
     }
 
-    // Intern node-struktur
-    private class IwNode(val text: String) {
-        val children = mutableListOf<IwNode>()
+    fun getWifiInfoFromInterface(output: String): Pair<Int, Int>? {
+        // Vi leter etter linjen: "channel 11 (2462 MHz)"
+        val channelLine = output.lines().find { it.contains("channel") && it.contains("MHz") } ?: return null
 
-        fun findCategory(prefix: String): IwNode? {
-            if (text.startsWith(prefix)) return this
-            for (child in children) {
-                val found = child.findCategory(prefix)
-                if (found != null) return found
-            }
-            return null
+        // Regex for å hente ut: kanal og frekvens (MHz)
+        // Eksempel: channel (\d+) \((\d+) MHz\)
+        val regex = Regex("""channel\s+(\d+)\s+\((\d+)\s+MHz\)""")
+        val match = regex.find(channelLine)
+
+        return match?.let {
+            val channel = it.groupValues[1].toInt()
+            val freq = it.groupValues[2].toInt()
+            Pair(channel, freq)
         }
+    }
+
+
+    private enum class Section {
+        UNKNOWN, MODES, COMBINATIONS
     }
 }

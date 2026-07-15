@@ -1,4 +1,4 @@
-package no.iktdev.kammich.system.network.wifi.connectivity
+package no.iktdev.kammich.system.network.wifi.strategy.connection
 
 import no.iktdev.kammich.models.shared.network.WifiConnectionResult
 import no.iktdev.kammich.models.shared.network.WifiInterfaceState

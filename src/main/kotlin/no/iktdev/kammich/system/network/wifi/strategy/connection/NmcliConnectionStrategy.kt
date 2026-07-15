@@ -1,7 +1,7 @@
-package no.iktdev.kammich.system.network.wifi.connectivity
+package no.iktdev.kammich.system.network.wifi.strategy.connection
 
 import no.iktdev.kammich.models.shared.network.WifiConnectionResult
-import no.iktdev.kammich.models.shared.network.WifiConnectivityState
+import no.iktdev.kammich.models.shared.network.ConnectivityState
 import no.iktdev.kammich.models.shared.network.WifiInterfaceState
 import no.iktdev.kammich.models.shared.network.WifiNetwork
 import no.iktdev.kammich.system.network.wifi.WifiRunner
@@ -13,12 +13,6 @@ import org.springframework.stereotype.Component
 class NmcliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionStrategy, NmcliHelper() {
     private val log = LoggerFactory.getLogger(NmcliConnectionStrategy::class.java)
 
-    override fun isSupported(): Boolean {
-        // Sjekk om nmcli finnes i system path
-        return try {
-            Runtime.getRuntime().exec("which nmcli").waitFor() == 0
-        } catch (e: Exception) { false }
-    }
 
     override fun connect(interfaceName: String, ssid: String, password: String?): WifiConnectionResult {
         val command = mutableListOf("sudo", "nmcli", "device", "wifi", "connect", ssid, "ifname", interfaceName)
@@ -28,7 +22,7 @@ class NmcliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionSt
         val result = runner.run(*command.toTypedArray())
 
         if (result is WifiRunner.CommandResult.Success) {
-            return WifiConnectionResult(true, "Tilkoblet", WifiConnectivityState.CONNECTED)
+            return WifiConnectionResult(true, "Tilkoblet", ConnectivityState.CONNECTED)
         }
 
         // 2. Hvis det feiler med "property is missing", er profilen korrupt
@@ -42,35 +36,42 @@ class NmcliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionSt
             // 3. Prøv én gang til med en ren profil
             val retryResult = runner.run(*command.toTypedArray())
             if (retryResult is WifiRunner.CommandResult.Success) {
-                return WifiConnectionResult(true, "Tilkoblet (etter rens)", WifiConnectivityState.CONNECTED)
+                return WifiConnectionResult(true, "Tilkoblet (etter rens)", ConnectivityState.CONNECTED)
             }
         }
 
         log.error("Failed to connect to $interfaceName using nmcli, with error: $errorOutput")
-        return WifiConnectionResult(false, errorOutput, WifiConnectivityState.FAILED)
+        return WifiConnectionResult(false, errorOutput, ConnectivityState.FAILED)
     }
 
     override fun disconnect(interfaceName: String): WifiConnectionResult {
         val command = listOf("sudo", "nmcli", "device", "disconnect", interfaceName)
 
         return when (val result = runner.run(*command.toTypedArray())) {
-            is WifiRunner.CommandResult.Success -> WifiConnectionResult(true, "Koblet fra", WifiConnectivityState.DISCONNECTED)
-            is WifiRunner.CommandResult.Failure -> WifiConnectionResult(false, result.error, WifiConnectivityState.FAILED)
+            is WifiRunner.CommandResult.Success -> WifiConnectionResult(true, "Koblet fra", ConnectivityState.DISCONNECTED)
+            is WifiRunner.CommandResult.Failure -> WifiConnectionResult(false, result.error, ConnectivityState.FAILED)
         }
     }
 
     override fun getState(interfaceName: String): WifiInterfaceState {
+        // 0 Sjekk om vi er i AP føst
+        val iwInfo = runner.run("iw", "dev", interfaceName, "info")
+        if (iwInfo is WifiRunner.CommandResult.Success && iwInfo.output.contains("type AP")) {
+            // Vi er en basestasjon, ikke en klient. Returner DISCONNECTED.
+            return WifiInterfaceState(interfaceName, ConnectivityState.DISCONNECTED, null)
+        }
+
         // 1. Sjekk status
         val statusResult = runner.run("nmcli", "-t", "-f", "GENERAL.STATE,GENERAL.CONNECTION", "device", "show", interfaceName)
         val isConnected = statusResult is WifiRunner.CommandResult.Success && statusResult.output.contains("GENERAL.STATE:100")
 
         if (!isConnected) {
-            return WifiInterfaceState(interfaceName, WifiConnectivityState.DISCONNECTED, null)
+            return WifiInterfaceState(interfaceName, ConnectivityState.DISCONNECTED, null)
         }
 
         val connName = (statusResult as WifiRunner.CommandResult.Success).output.lines()
             .find { it.startsWith("GENERAL.CONNECTION:") }
-            ?.substringAfter(":") ?: return WifiInterfaceState(interfaceName, WifiConnectivityState.DISCONNECTED, null)
+            ?.substringAfter(":") ?: return WifiInterfaceState(interfaceName, ConnectivityState.DISCONNECTED, null)
 
         // 2. Hent detaljer
         val details = runner.run("nmcli", "-t", "-f", "802-11-wireless.ssid,802-11-wireless-security.key-mgmt", "connection", "show", connName)
@@ -112,7 +113,7 @@ class NmcliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionSt
 
         return WifiInterfaceState(
             interfaceName = interfaceName,
-            connectivityState = WifiConnectivityState.CONNECTED,
+            connectivityState = ConnectivityState.CONNECTED,
             network = WifiNetwork(
                 ssid = rawSsid,
                 signalPercent = signal,

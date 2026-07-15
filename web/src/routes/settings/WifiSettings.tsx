@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RouterIcon from '@mui/icons-material/Router';
+import WifiOffIcon from '@mui/icons-material/WifiOff';
 
 
 import { useSseSelector } from "../../sse/useSseSelector";
@@ -45,26 +46,26 @@ export default function WifiSettings() {
     const activeConn = wifiConnections.find(c => c.interfaceName === activeInterface);
 
 
-useEffect(() => {
-    async function loadInterfaces() {
-        try {
-            const data = await getWifiInterfaces();
-            setInterfaces(data);
-            if (data.length > 0) {
-                // 1. Sett aktivt grensesnitt
-                setActiveInterface(data[0].name);
-                
-                // 2. Åpne accordeonen automatisk for det første grensesnittet
-                setExpandedInterface(data[0].name); 
+    useEffect(() => {
+        async function loadInterfaces() {
+            try {
+                const data = await getWifiInterfaces();
+                setInterfaces(data);
+                if (data.length > 0) {
+                    // 1. Sett aktivt grensesnitt
+                    setActiveInterface(data[0].name);
+
+                    // 2. Åpne accordeonen automatisk for det første grensesnittet
+                    setExpandedInterface(data[0].name);
+                }
+            } catch (error) {
+                console.error("Klarte ikke å hente WiFi-grensesnitt:", error);
+            } finally {
+                setIsLoadingInterfaces(false);
             }
-        } catch (error) {
-            console.error("Klarte ikke å hente WiFi-grensesnitt:", error);
-        } finally {
-            setIsLoadingInterfaces(false);
         }
-    }
-    loadInterfaces();
-}, []);
+        loadInterfaces();
+    }, []);
 
     return (
         <Box sx={{ maxWidth: "800px", mx: "auto", p: 4, display: "flex", flexDirection: "column", gap: 3 }}>
@@ -96,6 +97,20 @@ useEffect(() => {
                     </Accordion>
                 );
             })}
+            {interfaces.length === 0 && (
+                <Box sx={{
+                    display: "flex",
+                    flexDirection: 'column',
+                    alignItems: 'center'
+                }}>
+                    <WifiOffIcon sx={{
+                        mt: 10,
+                        fontSize: 72
+                    }} />
+                    <Typography sx={{ mt: 5 }}>No interfaces found</Typography>
+
+                </Box>
+            )}
         </Box>
     );
 }

@@ -1,4 +1,4 @@
-import type { RemovableDevice, MediaStats, Notification, StorageInfo, WifiScanState, WifiConnectivityState, WifiInterfaceScanState, WifiInterfaceState } from "../types/types";
+import type { RemovableDevice, MediaStats, Notification, StorageInfo, WifiInterfaceScanState, WifiInterfaceState, WifiTetheringState, WifiTethering, WifiTetherInterface } from "../types/types";
 
 export interface SseState {
   lastPing?: number;
@@ -12,8 +12,8 @@ export interface SseState {
 
   wifiScans: Array<WifiInterfaceScanState>
   wifiConnections: Array<WifiInterfaceState>
-
-  
+  wifiTether: WifiTethering | undefined
+  wifiTetherDevice: WifiTetherInterface | undefined
 }
 
 export const initialSseState: SseState = {
@@ -25,5 +25,7 @@ export const initialSseState: SseState = {
   internalStorageInfo: [],
   internalMediaStats: undefined,
   wifiScans: [],
-  wifiConnections: []
+  wifiConnections: [],
+  wifiTether: undefined,
+  wifiTetherDevice: undefined,
 };

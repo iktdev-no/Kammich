@@ -5,7 +5,7 @@ import no.iktdev.kammich.gphoto2.IGPhoto2
 import no.iktdev.kammich.models.internal.DeviceReadyEvent
 import no.iktdev.kammich.models.internal.SysPathRemoved
 import no.iktdev.kammich.models.shared.DeviceSettingsDto
-import no.iktdev.kammich.models.shared.config.DeviceSettings
+import no.iktdev.kammich.models.internal.config.DeviceSettings
 import no.iktdev.kammich.models.shared.device.DeviceInfo
 import no.iktdev.kammich.models.shared.device.GPhoto2Device
 import no.iktdev.kammich.models.shared.device.RemovableDevice

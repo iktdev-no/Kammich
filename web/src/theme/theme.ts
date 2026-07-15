@@ -30,7 +30,7 @@ export const getTheme = (mode: 'light' | 'dark') => createTheme({
       paper: mode === 'light' ? "#f5f5f5" : "#1e1e1e",
     },
   },
-  shape: { borderRadius: 8 },
+  shape: { borderRadius: 3 },
   layout: {
     headerMobile: 62,
     headerDesktop: 76,

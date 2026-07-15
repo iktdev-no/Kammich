@@ -33,11 +33,11 @@ EOF
 install_dependencies() {
     echo "--- Installerer systemavhengigheter ---"
     if command -v apt-get &> /dev/null; then
-        apt-get update && apt-get install -y gphoto2 smartmontools hdparm openjdk-21-jdk hostapd dnsmasq rfkill jc
+        apt-get update && apt-get install -y gphoto2 smartmontools hdparm openjdk-21-jdk hostapd dnsmasq rfkill jc nmcli
     elif command -v dnf &> /dev/null; then
-        dnf check-update && dnf install -y gphoto2 smartmontools hdparm java-21-openjdk-devel hostapd dnsmasq rfkill jc
+        dnf check-update && dnf install -y gphoto2 smartmontools hdparm java-21-openjdk-devel hostapd dnsmasq rfkill jc nmcli
     elif command -v pacman &> /dev/null; then
-        pacman -Sy --noconfirm gphoto2 smartmontools hdparm hdparm jdk21-openjdk hostapd dnsmasq rfkill jc
+        pacman -Sy --noconfirm gphoto2 smartmontools hdparm hdparm jdk21-openjdk hostapd dnsmasq rfkill jc nmcli
     else
         echo "Kunne ikke identifisere pakkebehandler."
         exit 1

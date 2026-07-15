@@ -8,22 +8,22 @@ import java.io.File
 
 @Component
 class WifiInterfaces(
-    private val wifiRunner: WifiRunner
+    private val wifiRunner: WifiRunner,
 ) {
     private val log = LoggerFactory.getLogger(WifiInterfaces::class.java)
-
-    /**
+        /**
      * Henter alle aktive trådløse enheter direkte fra Linux-kjernen (/sys/class/net).
      */
     fun getInterfaces(): List<WifiInterfaceInfo> {
         return getInternalIwList().map { iw ->
             // Her kan du legge til den faktiske kapasitet-sjekken
-            val caps = getCapabilities(iw.name)
+            val caps = getCapabilities(iw.phyLink)
             WifiInterfaceInfo(
                 interfaceName = iw.name,
                 hardwareName = iw.phyLink,
                 supportsAp = caps?.supportsAP ?: false,
                 supportsApAndStationSimultaneously = caps?.isConcurrent ?: false,
+                deviceId = iw.deviceId
             )
         }
     }
@@ -32,7 +32,8 @@ class WifiInterfaces(
         return File("/sys/class/net").takeIf { it.exists() && it.isDirectory }?.listFiles()?.mapNotNull { file ->
             if (File(file, "wireless").exists() || File(file, "phy80211").exists()) {
                 val phyLink = File(file, "device/phy80211").takeIf { it.exists() }?.canonicalFile?.name ?: "phy0"
-                IW(file.name, phyLink)
+                val macAddress = File(file, "address").readText().trim()
+                IW(file.name, phyLink, macAddress)
             } else null
         } ?: emptyList()
     }
@@ -42,5 +43,5 @@ class WifiInterfaces(
             .map { WifiPhyInfoParser().parse(it) }
     }
 
-    private data class IW(val name: String, val phyLink: String)
+    private data class IW(val name: String, val phyLink: String, val deviceId: String)
 }
