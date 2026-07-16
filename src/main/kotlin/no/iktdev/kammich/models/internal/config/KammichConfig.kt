@@ -1,7 +1,6 @@
 package no.iktdev.kammich.models.internal.config
 
 import no.iktdev.kammich.models.immich.auth.ImmichAuth
-import no.iktdev.kammich.models.shared.network.WifiSecurityType
 import no.iktdev.kammich.models.shared.network.WifiTetherSetting
 
 interface IKammichConfig {
@@ -11,7 +10,7 @@ interface IKammichConfig {
     val autoImportCameraByDefault: Boolean?
     val deviceSettings: MutableMap<String, DeviceSettings>?
     val tetherSetting: WifiTetherSetting?
-    val tetherDevice: TetherDevice?
+    val tetherDevice: StoredTetherDevice?
     val kammichHostpadPath: String?
 }
 
@@ -22,8 +21,8 @@ data class RuntimeKammichConfig(
     override val autoImportCameraByDefault: Boolean = true,
     override val deviceSettings: MutableMap<String, DeviceSettings> = mutableMapOf(),
     override val tetherSetting: WifiTetherSetting = WifiTetherSetting("Kammich", "kammich"),
-    override val tetherDevice: TetherDevice? = null,
-    override val kammichHostpadPath: String = "/run/kammich_aligned_ap.conf",
+    override val tetherDevice: StoredTetherDevice? = null,
+    override val kammichHostpadPath: String = "/var/lib/kammich/ap.conf",
 ): IKammichConfig {
     companion object {
         private val defaults = RuntimeKammichConfig()
@@ -51,12 +50,23 @@ data class StoredKammichConfig(
     override val autoImportCameraByDefault: Boolean?,
     override val deviceSettings: MutableMap<String, DeviceSettings>?,
     override val tetherSetting: WifiTetherSetting?,
-    override val tetherDevice: TetherDevice?,
+    override val tetherDevice: StoredTetherDevice?,
     override val kammichHostpadPath: String?
 ):  IKammichConfig
 
+open class StoredTetherDevice(
+    open val enabled: Boolean,
+    open val deviceId: String) {
+}
 
-data class TetherDevice(
-    val enabled: Boolean,
-    val deviceId: String
-)
+class TetherDevice(
+    enabled: Boolean,
+    deviceId: String,
+): StoredTetherDevice(enabled, deviceId)
+
+class VirtualTetherDevice(
+    enabled: Boolean,
+    deviceId: String,
+    val parentDeviceId: String,
+    val vIfaceName: String,
+): StoredTetherDevice(enabled, deviceId)

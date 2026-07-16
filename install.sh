@@ -219,10 +219,10 @@ configure_sudo() {
 
     # Vi bruker en 'heredoc' uten innrykk i selve filinnholdet
     # for å garantere at sudoers-parseren ikke klikker.
-    sudo bash -c 'cat > /etc/sudoers.d/kammich <<EOF
+  sudo bash -c 'cat > /etc/sudoers.d/kammich <<EOF
 # Kammich admin og nettverksstyring
 Cmnd_Alias KAMMICH_ADMIN = /usr/sbin/smartctl, /usr/local/bin/kammich-eject
-Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw, /usr/bin/nmcli
+Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw, /usr/bin/nmcli, /usr/sbin/hostapd, /usr/bin/pkill, /usr/bin/kill, /usr/bin/ip
 
 %sudo ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
 EOF'
@@ -239,6 +239,7 @@ EOF'
         # da det er bedre å la den ligge for feilsøking
         return 1
     fi
+    sudo setcap cap_net_admin,cap_net_raw=ep /usr/sbin/iw
 }
 
 ###############################################

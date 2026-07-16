@@ -30,9 +30,9 @@ export function getAvailableNetworks(interfaceName: string, force = false) {
 /**
  * Trigger en oppkobling mot et aksesspunkt
  */
-export function connectToWifi(interfaceName: string, ssid: string, password?: string) {
+export function connectToWifi(interfaceName: string, bssid: string, password?: string) {
   // Siden baksiden forventer @RequestParam, bygger vi dem inn i query-stringen
-  const params = new URLSearchParams({ interfaceName, ssid });
+  const params = new URLSearchParams({ interfaceName, bssid });
   if (password) params.append("password", password);
 
   return apiPost<Record<string, never>, WifiConnectionResult>(`/v1/wifi/connect?${params.toString()}`, {});
@@ -65,11 +65,16 @@ export function getWifiTetherInterfaces() {
 }
 
 export function setWifiTetherInterfaceSelected(deviceId: string) {
-  return apiPost<string, boolean>(`/v1/wifi/tether/config/devices/use`, deviceId)
+  return apiPost<string, boolean>(`/v1/wifi/tether/config/device/use`, deviceId)
 }
 
+export function splittWifiTetherInterfaceSelected(deviceId: string) {
+  return apiPost<string, boolean>(`/v1/wifi/tether/config/device/split`, deviceId)
+}
+
+
 export function removeWifiTetherInterfaceSelected(deviceId: string) {
-  return apiDelete<boolean>(`/v1/wifi/tether/config/devices/use`, { body: deviceId })
+  return apiDelete<boolean>(`/v1/wifi/tether/config/device/use`, { body: deviceId })
 }
 
 export function startTethering() {

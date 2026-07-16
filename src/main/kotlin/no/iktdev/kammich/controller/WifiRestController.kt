@@ -67,10 +67,10 @@ class WifiRestController(
     @PostMapping("/connect")
     fun connect(
         @RequestParam interfaceName: String,
-        @RequestParam ssid: String,
+        @RequestParam bssid: String,
         @RequestParam(required = false) password: String?
     ): WifiConnectionResult {
-        return wifiService.connectToNetwork(interfaceName, ssid, password)
+        return wifiService.connectToNetwork(interfaceName, bssid, password)
     }
 
     @PostMapping("/disconnect")
@@ -104,14 +104,21 @@ class WifiRestController(
         return ResponseEntity.ok(true)
     }
 
-    @PostMapping("/tether/config/devices/use")
+    @PostMapping("/tether/config/device/split")
+    fun setTetherDeviceSplit(@RequestBody deviceId: String): ResponseEntity<Boolean> {
+        log.info("Splitting and setting new Tether device ID: $deviceId")
+        wifiTethering.splitDevice(deviceId)
+        return ResponseEntity.ok(true)
+    }
+
+    @PostMapping("/tether/config/device/use")
     fun setTetherDevice(@RequestBody deviceId: String): ResponseEntity<Boolean> {
         log.info("Setting new Tether device ID: $deviceId")
         wifiTethering.saveTetherDevice(true, deviceId)
         return ResponseEntity.ok(true)
     }
 
-    @DeleteMapping("/tether/config/devices/use")
+    @DeleteMapping("/tether/config/device/use")
     fun deleteTetherDevice(@RequestBody deviceId: String): ResponseEntity<Boolean> {
         log.info("Deleting Tether device ID: $deviceId")
         wifiTethering.removeTetherDevice(deviceId)

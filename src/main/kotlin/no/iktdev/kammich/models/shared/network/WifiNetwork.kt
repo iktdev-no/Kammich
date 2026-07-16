@@ -48,12 +48,19 @@ data class WifiInterfaceInfo(
     val supportsApAndStationSimultaneously: Boolean,
     val limitation: InterfaceLimitation = InterfaceLimitation.NONE,
     val deviceId: String,
+    val role: InterfaceRole
 )
 
 enum class InterfaceLimitation {
     NONE,
     CHANNEL_1_TO_1, // Krever 1:1 mellom AP-kanal og Stasjon-kanal
     NO_CONCURRENT  // Støtter ikke AP og Stasjon samtidig
+}
+
+enum class InterfaceRole {
+    CLIENT, // Kan brukes til å scanne og koble til wifi
+    AP,     // Kan brukes til tethering (hotspot)
+    DUAL    // Fysisk kort som kan være begge deler
 }
 
 

@@ -241,7 +241,7 @@ export const NetworkListItem = ({ network, isConnected = false }: { network: Wif
                                 <TextField size="small" label="Password" type="password" fullWidth value={password} onChange={(e) => setPassword(e.target.value)} />
                             )}
                             <Button variant="contained" size="small" onClick={() => {
-                                connectToWifi(network.interfaceName, network.ssid, password)
+                                connectToWifi(network.interfaceName, network.bssid, password)
                             }} sx={{ textTransform: 'none', px: 3 }}>Connect</Button>
                         </>
                     )}

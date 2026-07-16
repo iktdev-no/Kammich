@@ -9,9 +9,11 @@ import no.iktdev.kammich.system.network.wifi.WifiRunner
 
 interface AccessPointStrategy {
     fun start(interfaceName: String, tether: WifiTetherSetting): WifiRunner.CommandResult
-    fun startAligned(interfaceName: String, tether: WifiTetherSetting, network: WifiNetwork): WifiTetheringNetwork?
     fun stop(interfaceName: String): Boolean
     fun isSupported(): Boolean
     fun getActiveTethering(interfaceName: String): WifiTetheringNetwork?
     fun getTetheringStatus(interfaceName: String): WifiTetheringState
+    fun unmanage(interfaceName: String): Boolean
+    fun manage(interfaceName: String): Boolean
+    fun isManaged(interfaceName: String): Boolean
 }

@@ -28,8 +28,9 @@ class WifiRunner {
     /**
      * Kjører kommandoer og returnerer et [CommandResult] fremfor en tom streng.
      */
-    fun run(vararg params: String): CommandResult {
-        val command = params.toList()
+    fun run(vararg params: String): CommandResult = run(params.toList())
+
+    fun run(command: List<String>): CommandResult {
         return try {
             val process = ProcessBuilder(command).start()
             val output = process.inputStream.bufferedReader().use { it.readText() }
@@ -42,6 +43,7 @@ class WifiRunner {
             }
 
             if (process.exitValue() != 0) {
+                log.error("Could not run command successfully (${process.exitValue()}): ${command.joinToString(" ")}\nOutput:\n${output}\nError:\n${errorOutput}")
                 CommandResult.Failure(errorOutput.trim(), process.exitValue())
             } else {
                 CommandResult.Success(output)

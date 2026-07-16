@@ -3,6 +3,7 @@ package no.iktdev.kammich.system.network.wifi.strategy.connection
 import no.iktdev.kammich.models.shared.network.WifiConnectionResult
 import no.iktdev.kammich.models.shared.network.ConnectivityState
 import no.iktdev.kammich.models.shared.network.WifiInterfaceState
+import no.iktdev.kammich.models.shared.network.WifiNetwork
 import no.iktdev.kammich.system.network.wifi.WifiRunner
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -24,7 +25,8 @@ class WpaCliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionS
         TODO("Not implemented yet")
     }
 
-    override fun connect(interfaceName: String, ssid: String, password: String?): WifiConnectionResult {
+    override fun connect(interfaceName: String, network: WifiNetwork, password: String?): WifiConnectionResult {
+        val ssid = network.ssid
         // wpa_cli bruker ofte -i <interface>
         // Vi må legge til et nettverk, sette SSID, sette passord, og velge det.
         val cmds = listOf(

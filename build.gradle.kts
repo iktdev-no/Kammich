@@ -38,7 +38,7 @@ dependencies {
 	implementation("no.iktdev:exfl:1.0-rc1")
 
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
-	implementation("com.google.code.gson:gson:2.8.9")
+	implementation("com.google.code.gson:gson:2.10.1")
 	implementation("org.json:json:20231013")
 
 	implementation("org.flywaydb:flyway-core:${flywayVersion}")

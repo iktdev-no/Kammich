@@ -1,8 +1,6 @@
 package no.iktdev.kammich.system.network.wifi.strategy.ap
 
-import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.models.shared.network.WifiNetwork
-import no.iktdev.kammich.models.shared.network.WifiSecurityType
 import no.iktdev.kammich.models.shared.network.WifiTetherSetting
 import no.iktdev.kammich.models.shared.network.WifiTetheringNetwork
 import no.iktdev.kammich.models.shared.network.WifiTetheringState
@@ -10,7 +8,6 @@ import no.iktdev.kammich.system.network.wifi.WifiRunner
 import no.iktdev.kammich.system.network.wifi.parser.NmcliHelper
 import no.iktdev.kammich.system.network.wifi.parser.WifiPhyInfoParser
 import org.springframework.stereotype.Component
-import java.io.File
 import org.slf4j.LoggerFactory
 
 @Component
@@ -30,7 +27,7 @@ class NmcliAccessPointStrategy(
         )
     }
 
-    override fun startAligned(interfaceName: String, tether: WifiTetherSetting, network: WifiNetwork): WifiTetheringNetwork? {
+    fun startAligned(interfaceName: String, tether: WifiTetherSetting, network: WifiNetwork): WifiTetheringNetwork? {
         logger.info("Aligning AP to SSID: ${network.ssid} on channel ${network.channel}")
         // 1. Force stop alt annet (Fail-safe: rydder vei før vi tar over)
         stop(interfaceName)
@@ -41,22 +38,23 @@ class NmcliAccessPointStrategy(
             return null
         }
 
-        return hostpadAligned.startAligned(interfaceName, tether, network)
+        return null
     }
 
     override fun stop(interfaceName: String): Boolean {
         if (hostpadAligned.isRunning()) {
-            return hostpadAligned.stopAligned()
+            return hostpadAligned.stop(interfaceName)
         }
+        val command = listOf("sudo", "nmcli", "connection", "down", interfaceName)
 
-        val stopped = runner.run("sudo", "nmcli", "connection", "down", "Hotspot")
+        val stopped = runner.run(*command.toTypedArray())
         return when (stopped) {
             is WifiRunner.CommandResult.Success -> {
                 logger.info("Stopped AP")
                 true
             }
             is WifiRunner.CommandResult.Failure -> {
-                logger.error("Failed to stop AP", stopped.error)
+                logger.error("Failed to stop AP using command: ${command.joinToString(" ")}", stopped.error)
                 false
             }
         }
@@ -89,6 +87,54 @@ class NmcliAccessPointStrategy(
             is WifiRunner.CommandResult.Failure -> {
                 // Hvis kommandoen feiler (f.eks. interface finnes ikke), er vi IDLE eller feil
                 WifiTetheringState.IDLE
+            }
+        }
+    }
+
+    override fun isManaged(interfaceName: String): Boolean {
+        // Endret fra GENERAL.MANAGED til GENERAL.NM-MANAGED
+        val result = runner.run("nmcli", "-t", "-f", "GENERAL.NM-MANAGED", "device", "show", interfaceName)
+
+        return when (result) {
+            is WifiRunner.CommandResult.Success -> {
+                // NM returnerer "yes" eller "no"
+                val output = result.output.trim()
+                val managed = output.split(":")[1].equals("yes", ignoreCase = true)
+                logger.debug("Interface $interfaceName er managed: $managed,\n$output")
+                managed
+            }
+            else -> false
+        }
+    }
+
+    override fun unmanage(interfaceName: String): Boolean {
+        logger.info("Deaktiverer NetworkManager for interface: $interfaceName")
+        val result = runner.run("sudo", "nmcli", "device", "set", interfaceName, "managed", "no")
+
+        return when (result) {
+            is WifiRunner.CommandResult.Success -> {
+                logger.info("Interface $interfaceName er nå unmanaged")
+                true
+            }
+            is WifiRunner.CommandResult.Failure -> {
+                logger.error("Klarte ikke å sette $interfaceName til unmanaged: ${result.error}")
+                false
+            }
+        }
+    }
+
+    override fun manage(interfaceName: String): Boolean {
+        logger.info("Aktiverer NetworkManager for interface: $interfaceName")
+        val result = runner.run("sudo", "nmcli", "device", "set", interfaceName, "managed", "yes")
+
+        return when (result) {
+            is WifiRunner.CommandResult.Success -> {
+                logger.info("Interface $interfaceName er nå managed igjen")
+                true
+            }
+            is WifiRunner.CommandResult.Failure -> {
+                logger.error("Klarte ikke å sette $interfaceName til managed: ${result.error}")
+                false
             }
         }
     }

@@ -1,9 +1,10 @@
 package no.iktdev.kammich.system.network.wifi
 
 import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.models.internal.config.StoredTetherDevice
 import no.iktdev.kammich.models.internal.config.TetherDevice
-import no.iktdev.kammich.models.shared.network.WifiInterfaceInfo
-import no.iktdev.kammich.models.shared.network.WifiNetwork
+import no.iktdev.kammich.models.internal.config.VirtualTetherDevice
+import no.iktdev.kammich.models.shared.network.InterfaceRole
 import no.iktdev.kammich.models.shared.network.WifiSecurityType
 import no.iktdev.kammich.models.shared.network.WifiTetherInterface
 import no.iktdev.kammich.models.shared.network.WifiTetherSetting
@@ -14,6 +15,7 @@ import no.iktdev.kammich.sse.SseManager
 import no.iktdev.kammich.system.exceptions.TetherDeviceNotEnabledException
 import no.iktdev.kammich.system.exceptions.TetherDeviceNotFoundException
 import no.iktdev.kammich.system.network.wifi.strategy.ap.AccessPointStrategy
+import no.iktdev.kammich.system.network.wifi.strategy.ap.WifiHostpadAligned
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.concurrent.CompletableFuture
@@ -22,31 +24,48 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 @OptIn(ExperimentalAtomicApi::class)
 @Service
 class WifiTetherService(
-    private val strategies: List<AccessPointStrategy>,
     private val interfaces: WifiInterfaces,
     private val registry: WifiStateRegistry,
     private val sseManager: SseManager,
     private val configService: ConfigService,
+    private val strategy: List<AccessPointStrategy>,
+    private val hostpad: WifiHostpadAligned
 ) {
     private val log = LoggerFactory.getLogger(WifiTetherService::class.java)
 
+    fun getStrategy(): AccessPointStrategy? {
+        return strategy.find { it.isSupported() }
+    }
+
     init {
+        val tetherDevice = configService.getConfig().tetherDevice
+        if (tetherDevice is VirtualTetherDevice) {
+            val vIface = interfaces.getInterfaceOfDevice(tetherDevice.deviceId)
+            val parent = interfaces.getInterfaceOfDevice(tetherDevice.parentDeviceId)
+            if (parent != null && vIface == null) {
+                interfaces.ensureVirtualInterfaceExists(parent.interfaceName, tetherDevice.vIfaceName)
+            }
+        }
+
         val tether = getWifiTether()
+        val strategy = getStrategy()
+        if (tether != null && strategy != null) {
+            if (strategy.isManaged(tether.iface.name)) {
+                strategy.unmanage(tether.iface.name)
+            }
+        }
         registry.tetheringCurrentTether.store(tether)
     }
 
-    private fun getStrategy(): AccessPointStrategy {
-        return strategies.firstOrNull { it.isSupported() }
-            ?: throw IllegalStateException("Ingen støttet AP-strategi funnet")
-    }
-
-    private fun getTetherDevice(): TetherDevice {
+    private fun getTetherDevice(): StoredTetherDevice {
         val tetherIface = configService.getConfig().tetherDevice
             ?: throw TetherDeviceNotFoundException("No Tethering interface configured")
         if (!tetherIface.enabled)
             throw TetherDeviceNotEnabledException("No Tethering interface configured")
         return tetherIface
     }
+
+
 
     fun startTethering() {
         val tetherDevice = getTetherDevice()
@@ -55,24 +74,41 @@ class WifiTetherService(
         }
         val useAPSettings = configService.getConfig().tetherSetting
 
-        log.info("Starter AP på ${useInterface.name}")
-        setState(useInterface, WifiTetheringState.STARTING)
+        if (hostpad.isRunning()) {
+            stopTethering(useInterface.name, false)
+        }
+
+        val strategy = getStrategy()
+        if (strategy != null) {
+            if (strategy.isManaged(useInterface.name)) {
+                strategy.unmanage(useInterface.name)
+            }
+        }
+
+        log.info("TetherDevice is ${if (tetherDevice is VirtualTetherDevice) "a virtual device" else "a normal device"}")
+        val connectedWifi = if (tetherDevice is VirtualTetherDevice) {
+            log.info("TetherDevice is a Virtual Tethering interface")
+            val parentInterface = interfaces.getInterfaceOfDevice(tetherDevice.parentDeviceId)
+            if (parentInterface != null) {
+                registry.connectivityCurrentNetworks[parentInterface.interfaceName]
+            } else {
+                log.error("Could not find parent network for tether device ${tetherDevice.deviceId}")
+                null
+            }
+        } else null
+
+        if (connectedWifi != null) {
+            log.info("Starter AP I Aligment modus på ${useInterface.name}")
+            setState(useInterface, WifiTetheringState.ALIGNING)
+        } else {
+            log.info("Starter AP i Standard modus på ${useInterface.name}")
+            setState(useInterface, WifiTetheringState.STARTING)
+        }
 
         CompletableFuture.runAsync {
             try {
-                val startResult = getStrategy().start(useInterface.name, useAPSettings)
-                if (startResult is WifiRunner.CommandResult.Success) {
-                    val active = getStrategy().getActiveTethering(useInterface.name)
-                    if (active == null) {
-                        log.info("No active Tethering received for $useInterface.name after connecting")
-                    }
-                    setState(useInterface, WifiTetheringState.RUNNING, active)
-
-                } else {
-                    val error = startResult as WifiRunner.CommandResult.Failure
-                    log.error("Failed to start AP\n${error.error}")
-                    setState(useInterface, WifiTetheringState.ERROR)
-                }
+                val active = hostpad.start(useInterface.name, useAPSettings, connectedWifi)
+                setState(useInterface, if (active.isAligned) WifiTetheringState.RUNNING_ALIGNED else WifiTetheringState.RUNNING, active)
             } catch (e: Exception) {
                 log.error("Feil ved start av AP", e)
                 setState(useInterface, WifiTetheringState.ERROR)
@@ -80,51 +116,27 @@ class WifiTetherService(
         }
     }
 
-    fun startAlignedTethering(network: WifiNetwork) {
-        val tetherDevice = getTetherDevice()
-        val useInterface = getInterfaceByDeviceId(tetherDevice.deviceId, tetherDevice.enabled) ?: run {
-            throw TetherDeviceNotFoundException("Could not find Tethering interface configured")
+    fun stopTethering(interfaceName: String? = null, reManage: Boolean = true) {
+        val useTether = (if (interfaceName.isNullOrBlank()) {
+            val device = getTetherDevice()
+            getInterfaceByDeviceId(device.deviceId)
+        } else getTetherInterface(interfaceName)) ?: run {
+            throw TetherDeviceNotFoundException("Could not find Tethering interface configured $interfaceName")
         }
-        val useAPSettings = configService.getConfig().tetherSetting
-        log.info("Starter aligned tethering mot ${network.ssid}")
-        setState(useInterface, WifiTetheringState.ALIGNING)
 
-        CompletableFuture.runAsync {
-            try {
-                val active = getStrategy().startAligned(useInterface.deviceId, useAPSettings, network)
-                setState(useInterface, WifiTetheringState.RUNNING_ALIGNED, active)
-            } catch (e: Exception) {
-                log.error("Feil ved alignment", e)
-                setState(useInterface, WifiTetheringState.ERROR)
-                // Forsøk opprydding ved feil
-                getStrategy().stop(useInterface.deviceId)
-            }
-        }
-    }
+        log.info("Stopper tethering på ${useTether.name}")
+        val result = hostpad.stop(useTether.name)
 
-    fun stopTethering(interfaceName: String? = null) {
-        fun performStop(interfaceName: WifiTetherInterface): Boolean {
-            log.info("Stopper tethering på $interfaceName")
-            return try {
-                val stopped = getStrategy().stop(interfaceName.name)
-                setState(interfaceName, if (stopped) WifiTetheringState.IDLE else WifiTetheringState.ERROR)
-                stopped
-            } catch (e: Exception) {
-                log.error("Feil ved stopp av AP", e)
-                false
-            }
+        if (!result) {
+            // Failed to stop
+            setState(useTether, WifiTetheringState.ERROR)
+            return
         }
-        if (interfaceName != null) {
-            val useInterface = getTetherInterface(interfaceName) ?: run {
-                throw TetherDeviceNotFoundException("Could not find Tethering interface configured")
-            }
-            val success = performStop(useInterface)
-            if (success) {
-                return
-            }
-        }
-        findTetherDevice()?.let {
-            performStop(it)
+        setState(useTether, WifiTetheringState.IDLE)
+
+
+        if (reManage) {
+            getStrategy()?.manage(useTether.name)
         }
     }
 
@@ -153,6 +165,16 @@ class WifiTetherService(
         sseManager.send(getSSEPayload())
     }
 
+    fun splitDevice(deviceId: String) {
+        val parent = interfaces.getInterfaces().find { it.deviceId == deviceId } ?: throw TetherDeviceNotFoundException(deviceId)
+        val vIface = interfaces.ensureVirtualInterfaceExists(parent.interfaceName, "kammich_ap")
+        configService.updateConfig { config ->
+            config.copy(tetherDevice = vIface)
+        }
+        registry.tetheringCurrentTether.store(getWifiTether())
+        sseManager.send(getSSEPayload())
+    }
+
 
     fun saveTetherConfig(ssid: String, password: String, security: WifiSecurityType) {
         configService.updateConfig { config ->
@@ -170,7 +192,9 @@ class WifiTetherService(
 
     fun removeTetherDevice(deviceId: String) {
         if (registry.tetheringCurrentTether.load() != null) {
-            stopTethering()
+            getInterfaceByDeviceId(deviceId, true)?.let { iface ->
+                stopTethering(iface.name)
+            }
         }
         configService.updateConfig { config ->
             config.copy(tetherDevice = null)
@@ -185,8 +209,8 @@ class WifiTetherService(
             log.error("No TetherDevice found in config")
             return null
         }
-        val iface = interfaces.getInterfaces().find { it -> it.deviceId == devices.deviceId } ?: run {
-            log.error("No Tethering Interface found for $devices.")
+        val iface = interfaces.getInterfaces(InterfaceRole.AP, InterfaceRole.DUAL).find { it -> it.deviceId == devices.deviceId } ?: run {
+            log.error("No Tethering Interface found for ${devices.deviceId}.")
             return null
         }
         return WifiTetherInterface(
@@ -213,7 +237,7 @@ class WifiTetherService(
     fun getTetherSettings(): WifiTetherSetting = configService.getConfig().tetherSetting
 
     private fun getInterfaceByDeviceId(deviceId: String, enabled: Boolean = true): WifiTetherInterface? {
-        return interfaces.getInterfaces().find { it.deviceId == deviceId }?.let {
+        return interfaces.getInterfaces(InterfaceRole.AP, InterfaceRole.DUAL).find { it.deviceId == deviceId }?.let {
             WifiTetherInterface(
                 name = it.interfaceName,
                 deviceId = it.deviceId,
@@ -225,7 +249,7 @@ class WifiTetherService(
     }
 
     fun getTetherInterface(interfaceName: String, enabled: Boolean = true): WifiTetherInterface? {
-        return interfaces.getInterfaces().find { it.interfaceName == interfaceName }?.let {
+        return interfaces.getInterfaces(InterfaceRole.AP, InterfaceRole.DUAL).find { it.interfaceName == interfaceName }?.let {
             WifiTetherInterface(
                 name = it.interfaceName,
                 deviceId = it.deviceId,
@@ -246,7 +270,7 @@ class WifiTetherService(
             return null
         }
 
-        val activeTether = getStrategy().getActiveTethering(configuredInterface.name)
+        val activeTether = getStrategy()?.getActiveTethering(configuredInterface.name)
 
         val state = when {
             activeTether == null -> WifiTetheringState.IDLE

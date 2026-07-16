@@ -21,12 +21,16 @@ class WifiHostpadAligned(
         return runner.run("pgrep", "-f", "hostapd") is WifiRunner.CommandResult.Success
     }
 
-    fun startAligned(interfaceName: String, tether: WifiTetherSetting, network: WifiNetwork): WifiTetheringNetwork {
-        logger.info("Aligning AP to SSID: ${network.ssid} on channel ${network.channel}")
+    fun start(interfaceName: String, tether: WifiTetherSetting, network: WifiNetwork? = null): WifiTetheringNetwork {
+        val isAligned = network != null
+        logger.info("Starter AP. Modus: ${if (isAligned) "Aligned til ${network?.ssid}" else "Standard"}")
+
         val confPath = configService.getConfig().kammichHostpadPath
 
-        val targetFreq = network.frequencyMhz ?: 5280
-        val targetChannel = network.channel ?: 56
+        // Definer kanaler. Hvis vi ikke er aligned, fall tilbake til trygg default (f.eks. kanal 36 eller 6)
+        val targetFreq = network?.frequencyMhz ?: 5180
+        val targetChannel = network?.channel ?: 6
+        val hwMode = network?.hwMode ?: "g" // 'a' for 5GHz, 'g' for 2.4GHz
 
         val wpaConfig = when (tether.security) {
             WifiSecurityType.NONE -> "wpa=0"
@@ -34,65 +38,81 @@ class WifiHostpadAligned(
             WifiSecurityType.WPA3 -> "wpa=2\nieee80211w=2\nwpa_key_mgmt=WPA-PSK-SHA256\nrsn_pairwise=GCMP"
         }
 
-        // 2. Generer konfigurasjon 1:1
         val config = """
-            # aligned_to=${network.ssid}
-            interface=$interfaceName
-            driver=nl80211
-            ssid=${tether.ssid}
-            hw_mode=${network.hwMode ?: "a"}
-            channel=$targetChannel
-            frequency=$targetFreq
-            
-            # WPA2/3 sikkerhet
-            $wpaConfig
-            wpa_passphrase=${tether.password}
-            
-            # Stabilitets-flagg
-            ieee80211n=1
-            ieee80211ac=1
-            wmm_enabled=1
-            auth_algs=1
-        """.trimIndent()
+# aligned_to=${if (isAligned) network.ssid else "none"}
+interface=$interfaceName
+driver=nl80211
+ssid=${tether.ssid}
+hw_mode=$hwMode
+channel=$targetChannel
+# frequency=$targetFreq
 
-        // 3. Skriv til tmpfs
-        val configFile = File(confPath)
-        configFile.writeText(config)
+$wpaConfig
+wpa_passphrase=${tether.password}
 
-        // 4. Start hostapd som demon (-B)
-        val result = runner.run("hostapd", "-B", confPath)
-        if (result !is WifiRunner.CommandResult.Success) {
-            throw IllegalStateException("Failed to start hostapd")
+ieee80211n=1
+ieee80211ac=1
+wmm_enabled=1
+auth_algs=1
+    """.trimIndent()
+
+        File(confPath).writeText(config)
+
+        val pidPath = "$confPath.pid"
+        val command = listOf("sudo", "hostapd", "-P", pidPath, "-B", confPath)
+        val result = runner.run(command)
+        if (result is WifiRunner.CommandResult.Failure) {
+            throw IllegalStateException("Failed to start hostapd with command: ${command.joinToString(" ")}: ${result.error}")
         }
 
         return WifiTetheringNetwork(
             ssid = tether.ssid,
             channel = targetChannel,
             frequencyMhz = targetFreq,
-            alignedToSSID = network.ssid,
-            isAligned = true
+            alignedToSSID = network?.ssid,
+            isAligned = isAligned
         )
     }
 
-    fun stopAligned(): Boolean {
+
+    fun stop(interfaceName: String): Boolean {
         if (!isRunning()) {
             logger.info("AP Is already stopped")
             return true
         }
-        logger.info("Stopping AP")
-        val result = runner.run("sudo", "pkill", "hostapd")
-        when (result) {
-            is WifiRunner.CommandResult.Success -> {
-                logger.info("AP stopped")
-            }
-            else -> {
-                logger.error("Failed to stop hostapd")
-                return false
-            }
+
+        val config = configService.getConfig()
+        val confPath = config.kammichHostpadPath
+        val pidPath = "$confPath.pid"
+        val pidFile = File(pidPath)
+
+        logger.info("Stopping AP on $interfaceName")
+
+        // 1. Prøv kontrollert stopp via PID hvis filen eksisterer
+        val stopped = if (pidFile.exists()) {
+            val pid = pidFile.readText().trim()
+            val result = runner.run("sudo", "kill", pid)
+            result is WifiRunner.CommandResult.Success
+        } else {
+            // Fallback til pkill hvis PID-filen mangler (men logg advarsel)
+            logger.warn("PID-fil manglet for $interfaceName, bruker pkill som fallback")
+            runner.run("sudo", "pkill", "-f", "hostapd -P $pidPath") is WifiRunner.CommandResult.Success
         }
-        val confPath = configService.getConfig().kammichHostpadPath
-        File(confPath).delete()
-        return true
+
+        if (stopped) {
+            logger.info("AP stoppet kontrollert")
+
+            // 2. Rydd opp i filer
+            pidFile.delete()
+            File(confPath).delete()
+
+            // 3. Gi kontrollen tilbake til NetworkManager med en gang
+            // Vi antar at 'this' har tilgang til manage() eller at vi kaller det via strategy
+            return true
+        } else {
+            logger.error("Feilet ved stopp av hostapd")
+            return false
+        }
     }
 
     fun getActiveTethering(): WifiTetheringNetwork? {

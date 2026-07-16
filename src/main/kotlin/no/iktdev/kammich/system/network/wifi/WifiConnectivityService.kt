@@ -69,21 +69,24 @@ class WifiConnectivityService(
         return strategies.find { it.isSupported() }
     }
 
-    fun connectToNetwork(interfaceName: String, ssid: String, password: String?): WifiConnectionResult {
+    fun connectToNetwork(interfaceName: String, bssid: String, password: String?): WifiConnectionResult {
+        val network = registry.scanResults[interfaceName]?.find { it -> it.bssid == bssid } ?: run {
+            throw IllegalArgumentException("No network found for $interfaceName")
+        }
         val strategy = getActiveStrategy()
 
         if (strategy == null) {
             log.error("Ingen støttet wifi-tilkoblingsmetode funnet! Vi har prøvd følgende:\n${strategies.joinToString("\n") { it.javaClass.simpleName }}")
             return WifiConnectionResult(false, "Ingen tilkoblingsmetode støttet", ConnectivityState.FAILED)
         }
-        log.info("Connecting to $interfaceName with ssid $ssid using strategy: ${strategy::class.simpleName}")
+        log.info("Connecting to $interfaceName with ssid ${network.ssid} using strategy: ${strategy::class.simpleName}")
 
         registry.connectivityCurrentStates[interfaceName] = ConnectivityState.CONNECTING
         updateSSE() // Push med en gang vi starter
 
-        log.info("Starter oppkobling til $ssid på $interfaceName")
+        log.info("Starter oppkobling til ${network.ssid} på $interfaceName")
 
-        val result = strategy.connect(interfaceName, ssid, password)
+        val result = strategy.connect(interfaceName, network, password)
         registry.connectivityCurrentStates[interfaceName] = result.status
         getCurrentNetwork(interfaceName)?.let {
             registry.connectivityCurrentNetworks[interfaceName] = it

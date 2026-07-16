@@ -31,7 +31,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useSseSelector } from "../../sse/useSseSelector";
 
-import { getTetherConfig, getWifiTetherInterfaces, updateTetherConfig, setWifiTetherInterfaceSelected, removeWifiTetherInterfaceSelected, startTethering, stopTethering } from "../../api/wifiApi";
+import { getTetherConfig, getWifiTetherInterfaces, updateTetherConfig, setWifiTetherInterfaceSelected, removeWifiTetherInterfaceSelected, startTethering, stopTethering, splittWifiTetherInterfaceSelected } from "../../api/wifiApi";
 import type { WifiSecurityType, WifiTethering, WifiTetherInterface, WifiTetherSetting } from "../../types/types";
 import { WifiTetheringOff } from "@mui/icons-material";
 
@@ -380,7 +380,7 @@ function InterfaceItem({ iface, isInUse,
                             color="error"
                             size="small"
                             onClick={() => {
-                                removeWifiTetherInterfaceSelected(deviceId)
+                                removeWifiTetherInterfaceSelected(iface)
                             }}
                         >
                             Remove
@@ -393,10 +393,14 @@ function InterfaceItem({ iface, isInUse,
                                 <br />
                                 Concurrent mode: Declares if we found support to host a wifi network fron this device as well as being able to connect to a seperate wifi network siumltaniously
                             </Typography>
-
-                            <Button variant="contained" size="small" onClick={() => {
-                                setWifiTetherInterfaceSelected(deviceId)
-                            }} sx={{ textTransform: 'none', px: 3 }}>Use</Button>
+                            <Box sx={{ display: "flex", gap: 1 }}>
+                                <Button variant="contained" size="small" onClick={() => {
+                                    setWifiTetherInterfaceSelected(deviceId)
+                                }} sx={{ textTransform: 'none', px: 3 }}>Use</Button>
+                                <Button variant="outlined" size="small" onClick={() => {
+                                    splittWifiTetherInterfaceSelected(deviceId)
+                                }} sx={{ textTransform: 'none', px: 3 }}>Split</Button>
+                            </Box>
                         </Box>
                     )}
                 </Box>

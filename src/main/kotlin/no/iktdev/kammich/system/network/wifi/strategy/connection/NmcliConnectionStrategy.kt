@@ -14,34 +14,49 @@ class NmcliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionSt
     private val log = LoggerFactory.getLogger(NmcliConnectionStrategy::class.java)
 
 
-    override fun connect(interfaceName: String, ssid: String, password: String?): WifiConnectionResult {
-        val command = mutableListOf("sudo", "nmcli", "device", "wifi", "connect", ssid, "ifname", interfaceName)
-        if (!password.isNullOrBlank()) command.addAll(listOf("password", password))
+    override fun connect(interfaceName: String, network: WifiNetwork, password: String?): WifiConnectionResult {
+        val profileName = "Kammich-${network.bssid}"
+        runner.run("sudo", "nmcli", "connection", "delete", profileName)
 
-        // 1. Prøv å koble til
-        val result = runner.run(*command.toTypedArray())
+        // Vi må spesifisere 802-11-wireless.bssid for at nmcli skal forstå det
+        val command = mutableListOf(
+            "sudo", "nmcli", "con", "add",
+            "type", "wifi",
+            "ifname", interfaceName,
+            "con-name", profileName,
+            "ssid", network.ssid,
+            "802-11-wireless.bssid", network.bssid
+        )
 
-        if (result is WifiRunner.CommandResult.Success) {
-            return WifiConnectionResult(true, "Tilkoblet", ConnectivityState.CONNECTED)
-        }
-
-        // 2. Hvis det feiler med "property is missing", er profilen korrupt
-        val errorOutput = (result as? WifiRunner.CommandResult.Failure)?.error ?: ""
-        if (errorOutput.contains("property is missing")) {
-            log.warn("Profil for $ssid er korrupt (property missing). Sletter profil og prøver på nytt.")
-
-            // Slett den korrupte profilen med samme navn som SSID
-            runner.run("sudo", "nmcli", "connection", "delete", ssid)
-
-            // 3. Prøv én gang til med en ren profil
-            val retryResult = runner.run(*command.toTypedArray())
-            if (retryResult is WifiRunner.CommandResult.Success) {
-                return WifiConnectionResult(true, "Tilkoblet (etter rens)", ConnectivityState.CONNECTED)
+        if (!password.isNullOrBlank()) {
+            val keyMgmt = when {
+                network.securityType.contains("WPA3", ignoreCase = true) -> "sae"
+                network.securityType.contains("WPA2", ignoreCase = true) ||
+                        network.securityType.contains("WPA", ignoreCase = true) -> "wpa-psk"
+                else -> "wpa-psk"
             }
+            // Sikkerhetsinnstillinger må også ha setting-prefikset
+            command.addAll(listOf(
+                "wifi-sec.key-mgmt", keyMgmt,
+                "wifi-sec.psk", password
+            ))
+        } else {
+            command.addAll(listOf("wifi-sec.key-mgmt", "none"))
         }
 
-        log.error("Failed to connect to $interfaceName using nmcli, with error: $errorOutput")
-        return WifiConnectionResult(false, errorOutput, ConnectivityState.FAILED)
+        val addResult = runner.run(*command.toTypedArray())
+        if (addResult is WifiRunner.CommandResult.Failure) {
+            log.error("Kunne ikke opprette profil: ${addResult.error}")
+            return WifiConnectionResult(false, addResult.error, ConnectivityState.FAILED)
+        }
+
+        val upResult = runner.run("sudo", "nmcli", "con", "up", profileName)
+        return if (upResult is WifiRunner.CommandResult.Success) {
+            WifiConnectionResult(true, "Tilkoblet", ConnectivityState.CONNECTED)
+        } else {
+            val error = (upResult as? WifiRunner.CommandResult.Failure)?.error ?: "Ukjent feil"
+            WifiConnectionResult(false, error, ConnectivityState.FAILED)
+        }
     }
 
     override fun disconnect(interfaceName: String): WifiConnectionResult {
