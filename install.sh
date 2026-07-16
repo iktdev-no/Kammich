@@ -239,7 +239,15 @@ EOF'
         # da det er bedre å la den ligge for feilsøking
         return 1
     fi
-    sudo setcap cap_net_admin,cap_net_raw=ep /usr/sbin/iw
+}
+
+configure_network() {
+  echo "net.ipv4.ip_forward=1" | sudo tee /etc/sysctl.d/99-kammich-forwarding.conf
+  sudo setcap cap_net_admin,cap_net_raw=ep /usr/sbin/iw
+  sudo setcap cap_net_admin,cap_net_raw=ep /usr/sbin/iptables
+  sudo setcap cap_net_admin=ep /usr/sbin/ip
+
+  sudo sysctl -p /etc/sysctl.d/99-kammich-forwarding.conf
 }
 
 ###############################################
@@ -261,4 +269,5 @@ configure_udev
 configure_systemd
 configure_eject
 configure_sudo
+configure_network
 apply_changes

@@ -7,6 +7,7 @@ import Photo from './routes/Photo';
 import Devices from './routes/Devices';
 import WifiSettings from './routes/settings/WifiSettings';
 import WifiApSettings from './routes/settings/WifiApSettings';
+import Networking from './routes/settings/Networking';
 
 const router = createBrowserRouter([
   {
@@ -15,10 +16,11 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Photo /> },
       { path: "photo/:sn", element: <Photo /> },
-      { path: 'camera/:sn/*', element: <Camera />},
-      { path: 'devices', element: <Devices />},
-      { path: 'upload', element: <Upload />},
+      { path: 'camera/:sn/*', element: <Camera /> },
+      { path: 'devices', element: <Devices /> },
+      { path: 'upload', element: <Upload /> },
       { path: 'settings', element: <Settings /> },
+      { path: 'settings/networking', element: <Networking /> },
       { path: 'settings/wifi', element: <WifiSettings /> },
       { path: 'settings/ap', element: <WifiApSettings /> },
     ],

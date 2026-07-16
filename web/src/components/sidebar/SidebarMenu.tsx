@@ -22,6 +22,7 @@ import { useSseSelector } from "../../sse/useSseSelector";
 import { useEffect, useMemo } from "react";
 import TapAndPlayIcon from '@mui/icons-material/TapAndPlay';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import PublicIcon from '@mui/icons-material/Public';
 
 export interface SidebarMenuProps {
     width: number;
@@ -78,13 +79,9 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             to: "/",
         },
         {
-            label: "Settings",
-            icon: SettingsIcon,
-            to: "/settings",
-        },
-        {
             label: "Network",
-            icon: WifiTetheringIcon,
+            icon: PublicIcon,
+            to: "/settings/networking",
             children: [
                 {
                     label: "Wifi",
@@ -129,7 +126,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
                 }}
             >
                 <CacheIndicator />
-                <StatusIndicator label="Kimmich" state={connectionStatus} />
+                <StatusIndicator label="Kammich" state={connectionStatus} />
                 <StatusIndicator label="Immich" state="offline" />
             </Box>
         </Box>
