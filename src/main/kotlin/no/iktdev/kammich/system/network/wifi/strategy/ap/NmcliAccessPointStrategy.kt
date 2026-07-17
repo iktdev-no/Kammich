@@ -1,10 +1,12 @@
 package no.iktdev.kammich.system.network.wifi.strategy.ap
 
 import no.iktdev.kammich.models.shared.network.WifiNetwork
+import no.iktdev.kammich.models.shared.network.WifiSecurityType
 import no.iktdev.kammich.models.shared.network.WifiTetherSetting
 import no.iktdev.kammich.models.shared.network.WifiTetheringNetwork
 import no.iktdev.kammich.models.shared.network.WifiTetheringState
 import no.iktdev.kammich.system.network.wifi.WifiRunner
+import no.iktdev.kammich.system.network.wifi.WifiTetherService
 import no.iktdev.kammich.system.network.wifi.parser.NmcliHelper
 import no.iktdev.kammich.system.network.wifi.parser.WifiPhyInfoParser
 import org.springframework.stereotype.Component
@@ -13,39 +15,40 @@ import org.slf4j.LoggerFactory
 @Component
 class NmcliAccessPointStrategy(
     private val runner: WifiRunner,
-    private val hostpadAligned: WifiHostpadAligned,
 ) : AccessPointStrategy, NmcliHelper() {
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
+
     override fun start(interfaceName: String, tether: WifiTetherSetting): WifiRunner.CommandResult {
-        return runner.run(
-            "sudo","nmcli", "device", "wifi", "hotspot",
+        val sec = when (tether.security) {
+            WifiSecurityType.WPA2 -> "wpa-psk"
+            WifiSecurityType.WPA3 -> "sae"
+            else -> null
+        }
+        val basisCommand = listOf(
+            "sudo", "nmcli", "con", "add",
+            "type", "wifi",
             "ifname", interfaceName,
+            "con-name", WifiTetherService.ap_profileName,
             "ssid", tether.ssid,
-            "password", tether.password,
+            "802-11-wireless.mode", "ap", // Dette er den moderne måten
+            "802-11-wireless.band", "bg", // 2.4GHz (legg til "a" for 5GHz hvis støttet)
+            "ipv4.method", "shared",
+        )
+        val password = if (sec != null) {
+            listOf(
+                "wifi-sec.key-mgmt", sec,
+                "wifi-sec.psk", tether.password
+            )
+        } else emptyList()
+        return runner.run(
+            basisCommand + password,
         )
     }
 
-    fun startAligned(interfaceName: String, tether: WifiTetherSetting, network: WifiNetwork): WifiTetheringNetwork? {
-        logger.info("Aligning AP to SSID: ${network.ssid} on channel ${network.channel}")
-        // 1. Force stop alt annet (Fail-safe: rydder vei før vi tar over)
-        stop(interfaceName)
-
-        val result = runner.run("sudo", "nmcli", "device", "set", interfaceName, "managed", "no")
-        if (result is WifiRunner.CommandResult.Failure) {
-            logger.error("Failed to releasing the interface $interfaceName, thus making aligned tether impossible", result.error)
-            return null
-        }
-
-        return null
-    }
-
     override fun stop(interfaceName: String): Boolean {
-        if (hostpadAligned.isRunning()) {
-            return hostpadAligned.stop(interfaceName)
-        }
-        val command = listOf("sudo", "nmcli", "connection", "down", interfaceName)
+        val command = listOf("sudo", "nmcli", "connection", "down", WifiTetherService.ap_profileName)
 
         val stopped = runner.run(*command.toTypedArray())
         return when (stopped) {
@@ -61,11 +64,6 @@ class NmcliAccessPointStrategy(
     }
 
     override fun getTetheringStatus(interfaceName: String): WifiTetheringState {
-        // 1. Sjekk hostapd først (koster ingenting)
-        if (hostpadAligned.isRunning()) {
-            return WifiTetheringState.RUNNING_ALIGNED
-        }
-
         // 2. Sjekk NM status
         val nmResult = runner.run("sudo", "nmcli", "-t", "-f", "GENERAL.STATE,GENERAL.CONNECTION", "device", "show", interfaceName)
 
@@ -141,11 +139,6 @@ class NmcliAccessPointStrategy(
 
     override fun getActiveTethering(interfaceName: String): WifiTetheringNetwork? {
         // 1. Sjekk først om vi kjører i "Aligned" modus (Hostapd)
-        val hostapdActive = hostpadAligned.getActiveTethering()
-        if (hostapdActive != null) {
-            return hostapdActive
-        }
-
         // 2. Hvis hostapd ikke kjører, sjekk om NetworkManager har en aktiv hotspot på dette interfacet
         val nmResult = runner.run("nmcli", "-t", "-f", "GENERAL.CONNECTION,GENERAL.DEVICE", "device", "show", interfaceName)
 
@@ -172,8 +165,6 @@ class NmcliAccessPointStrategy(
                     ssid = ssid,
                     channel = channel, // NM styrer kanal automatisk, vi vet ikke alltid hvilken
                     frequencyMhz = freq,
-                    isAligned = false,
-                    alignedToSSID = null
                 )
             }
         }

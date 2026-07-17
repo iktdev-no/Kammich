@@ -33,11 +33,11 @@ EOF
 install_dependencies() {
     echo "--- Installerer systemavhengigheter ---"
     if command -v apt-get &> /dev/null; then
-        apt-get update && apt-get install -y gphoto2 smartmontools hdparm openjdk-21-jdk hostapd dnsmasq rfkill jc nmcli
+        apt-get update && apt-get install -y gphoto2 smartmontools hdparm openjdk-21-jdk rfkill jc nmcli
     elif command -v dnf &> /dev/null; then
-        dnf check-update && dnf install -y gphoto2 smartmontools hdparm java-21-openjdk-devel hostapd dnsmasq rfkill jc nmcli
+        dnf check-update && dnf install -y gphoto2 smartmontools hdparm java-21-openjdk-devel rfkill jc nmcli
     elif command -v pacman &> /dev/null; then
-        pacman -Sy --noconfirm gphoto2 smartmontools hdparm hdparm jdk21-openjdk hostapd dnsmasq rfkill jc nmcli
+        pacman -Sy --noconfirm gphoto2 smartmontools hdparm hdparm jdk21-openjdk rfkill jc nmcli
     else
         echo "Kunne ikke identifisere pakkebehandler."
         exit 1
@@ -222,8 +222,7 @@ configure_sudo() {
   sudo bash -c 'cat > /etc/sudoers.d/kammich <<EOF
 # Kammich admin og nettverksstyring
 Cmnd_Alias KAMMICH_ADMIN = /usr/sbin/smartctl, /usr/local/bin/kammich-eject
-Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw, /usr/bin/nmcli, /usr/sbin/hostapd, /usr/bin/pkill, /usr/bin/kill, /usr/bin/ip
-
+Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw, /usr/bin/nmcli, /usr/bin/pkill, /usr/bin/kill, /usr/sbin/ip
 %sudo ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
 EOF'
 
@@ -239,15 +238,6 @@ EOF'
         # da det er bedre å la den ligge for feilsøking
         return 1
     fi
-}
-
-configure_network() {
-  echo "net.ipv4.ip_forward=1" | sudo tee /etc/sysctl.d/99-kammich-forwarding.conf
-  sudo setcap cap_net_admin,cap_net_raw=ep /usr/sbin/iw
-  sudo setcap cap_net_admin,cap_net_raw=ep /usr/sbin/iptables
-  sudo setcap cap_net_admin=ep /usr/sbin/ip
-
-  sudo sysctl -p /etc/sysctl.d/99-kammich-forwarding.conf
 }
 
 ###############################################

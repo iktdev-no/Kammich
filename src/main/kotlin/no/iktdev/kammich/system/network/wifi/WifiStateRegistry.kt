@@ -4,8 +4,6 @@ import no.iktdev.kammich.models.shared.network.ConnectivityState
 import no.iktdev.kammich.models.shared.network.WifiNetwork
 import no.iktdev.kammich.models.shared.network.WifiScanState
 import no.iktdev.kammich.models.shared.network.WifiTethering
-import no.iktdev.kammich.models.shared.network.WifiTetheringNetwork
-import no.iktdev.kammich.models.shared.network.WifiTetheringState
 import org.springframework.stereotype.Component
 import java.time.ZonedDateTime
 import java.util.concurrent.ConcurrentHashMap
@@ -14,6 +12,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 @Component
 class WifiStateRegistry {
+    val currentInterfaceOperation = ConcurrentHashMap<String, InterfaceOperation>()
 
     val scanLastScans = ConcurrentHashMap<String, ZonedDateTime>()
     val scanResults = ConcurrentHashMap<String, List<WifiNetwork>>()
@@ -26,4 +25,8 @@ class WifiStateRegistry {
     val tetheringCurrentTether = AtomicReference<WifiTethering?>(null)
 
 
+    enum class InterfaceOperation {
+        STR,
+        AP
+    }
 }

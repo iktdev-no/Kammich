@@ -104,13 +104,6 @@ class WifiRestController(
         return ResponseEntity.ok(true)
     }
 
-    @PostMapping("/tether/config/device/split")
-    fun setTetherDeviceSplit(@RequestBody deviceId: String): ResponseEntity<Boolean> {
-        log.info("Splitting and setting new Tether device ID: $deviceId")
-        wifiTethering.splitDevice(deviceId)
-        return ResponseEntity.ok(true)
-    }
-
     @PostMapping("/tether/config/device/use")
     fun setTetherDevice(@RequestBody deviceId: String): ResponseEntity<Boolean> {
         log.info("Setting new Tether device ID: $deviceId")

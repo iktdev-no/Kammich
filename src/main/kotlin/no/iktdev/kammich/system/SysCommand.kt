@@ -24,6 +24,20 @@ class SysCommand {
                 is Failure -> onFailure?.invoke(output, errOutput, exitCode)
             }
         }
+
+        fun <T> getOrDefault(default: T, transform: (String) -> T): T {
+            return when (this) {
+                is Success -> transform(output)
+                is Failure -> default
+            }
+        }
+
+        fun getOrNull(): String? {
+            return when (this) {
+                is Success -> output
+                is Failure -> null
+            }
+        }
     }
 
     fun nonSudo(vararg params: String): Result = nonSudo(params.toList())

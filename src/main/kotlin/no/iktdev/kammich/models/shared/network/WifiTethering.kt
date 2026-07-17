@@ -4,8 +4,6 @@ enum class WifiTetheringState {
     IDLE,
     STARTING,
     RUNNING,
-    ALIGNING,
-    RUNNING_ALIGNED,
     ERROR
 }
 
@@ -19,8 +17,6 @@ data class WifiTetheringNetwork(
     val ssid: String,
     val channel: Int,
     val frequencyMhz: Int,
-    val alignedToSSID: String? = null,
-    val isAligned: Boolean
 )
 
 enum class WifiSecurityType(val label: String) {
