@@ -32,7 +32,7 @@ class WifiScanResultParser(
                 isHidden = isHidden,
                 channel = raw.channel,
                 hwMode = raw.hwMode,
-                frequencyMhz = raw.freq
+                frequencyMhz = raw.freq ?: 0
             )
         }
     }

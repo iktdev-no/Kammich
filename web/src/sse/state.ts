@@ -13,7 +13,7 @@ export interface SseState {
   wifiScans: Array<WifiNetworkScan>
   wifiConnections: Array<WifiNetworkConnection>
   wifiTether: WifiNetworkTether | undefined
-  wifiTetherDevice: undefined
+  wifiTetherDevice: undefined | WifiNetworkTether
 }
 
 export const initialSseState: SseState = {

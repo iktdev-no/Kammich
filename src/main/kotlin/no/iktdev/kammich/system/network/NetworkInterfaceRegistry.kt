@@ -102,6 +102,7 @@ class NetworkInterfaceRegistry(
 
             // Vi sjekker nå at vi enten er Idle ELLER at vi ber om samme modus igjen (re-obtain)
             if (iface == null || (iface.mode != NetworkInterfaceMode.Idle && iface.mode != requestedMode)) {
+                log.info("$iface is in ${iface?.mode?.name} which is not compatible with ${requestedMode.name}")
                 onReject()
                 return null
             }

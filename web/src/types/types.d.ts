@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-07-19T18:43:02.236239899Z
+// Time: 2026-07-19T22:37:32.433081151Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -109,14 +109,16 @@ export interface WirelessTethering {
   state: WirelessTetheringState;
 }
 
-export interface WifiNetworkConnection {
+export interface WifiNetworkInterface {
   name: string;
+}
+
+export interface WifiNetworkConnection extends WifiNetworkInterface {
   network: WifiNetwork | null;
   state: InterfaceActiveState;
 }
 
-export interface WifiNetworkTether {
-  name: string;
+export interface WifiNetworkTether extends WifiNetworkInterface {
   network: WifiNetwork | null;
   state: WirelessTetheringState;
 }
@@ -158,8 +160,7 @@ export interface WirelessInterface {
   tethering: WirelessTethering | null;
 }
 
-export interface WifiNetworkScan {
-  name: string;
+export interface WifiNetworkScan extends WifiNetworkInterface {
   networks: WifiNetwork[];
   state: InterfaceActiveState;
 }
@@ -168,7 +169,7 @@ export interface WifiNetworkScan {
 export interface WifiNetwork {
   bssid: string;
   channel: number | null;
-  frequencyMhz: number | null;
+  frequencyMhz: number;
   hwMode: WifiNetworkHardwareMode;
   interfaceName: string;
   isHidden: boolean;

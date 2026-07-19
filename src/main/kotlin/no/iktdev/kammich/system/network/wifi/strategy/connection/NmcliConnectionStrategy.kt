@@ -8,6 +8,7 @@ import no.iktdev.kammich.system.SysCommand
 import no.iktdev.kammich.system.network.components.IW
 import no.iktdev.kammich.system.network.components.Nmcli
 import no.iktdev.kammich.system.network.wifi.WifiRunner
+import no.iktdev.kammich.system.network.wifi.WifiTetherService
 import no.iktdev.kammich.system.network.wifi.parser.NmcliHelper
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -22,8 +23,21 @@ class NmcliConnectionStrategy(
     private val log = LoggerFactory.getLogger(NmcliConnectionStrategy::class.java)
 
 
+    fun cleanup(conn: String) {
+        val cleaned = exec.sudo("nmcli", "con", "delete", conn)
+    }
+
     override fun connect(interfaceName: String, network: WifiNetwork, password: String?): WifiNetworkConnection {
         val profileName = "Kammich-${network.bssid}"
+        cleanup(profileName)
+
+        if (password != null) {
+            log.info("Tilkobling til ${network.ssid} har passord satt til ${password}")
+        } else {
+            log.info("Tilkobling til ${network.ssid} er uten passord")
+        }
+
+
         runner.run("sudo", "nmcli", "connection", "delete", profileName)
 
         // Vi må spesifisere 802-11-wireless.bssid for at nmcli skal forstå det
@@ -32,11 +46,11 @@ class NmcliConnectionStrategy(
             "type", "wifi",
             "ifname", interfaceName,
             "con-name", profileName,
-            "ssid", network.ssid,
+            "ssid", "\"${network.ssid}\"",
             "802-11-wireless.bssid", network.bssid
         )
 
-        if (!password.isNullOrBlank()) {
+        if (password != null) {
             val keyMgmt = when {
                 network.securityType.contains("WPA3", ignoreCase = true) -> "sae"
                 network.securityType.contains("WPA2", ignoreCase = true) ||
@@ -49,7 +63,8 @@ class NmcliConnectionStrategy(
                 "wifi-sec.psk", password
             ))
         } else {
-            command.addAll(listOf("wifi-sec.key-mgmt", "none"))
+            // This breaks it
+            // command.addAll(listOf("wifi-sec.key-mgmt", "none"))
         }
 
         val addResult = runner.run(*command.toTypedArray())
@@ -61,6 +76,8 @@ class NmcliConnectionStrategy(
         return if (upResult is WifiRunner.CommandResult.Success) {
             WifiNetworkConnection(interfaceName, InterfaceActiveState.Connected, network)
         } else {
+            log.error("Prøvde å koble til nettveket med følgende kommando ${command.joinToString(" ")}")
+            cleanup(profileName)
             throw RuntimeException("Unable to connect to network $network")
         }
     }

@@ -25,9 +25,9 @@ export function connectToWifi(ifName: string, bssid: string, password?: string) 
     const params = new URLSearchParams({ bssid });
     if (password) params.append("password", password);
 
-    return apiPost<Record<string, never>, WifiNetworkConnection>(`${endpoint}/${ifName}/connect?${params.toString()}`, {});
+    return apiPost<Record<string, never>, boolean>(`${endpoint}/${ifName}/connect?${params.toString()}`, {});
 }
 
 export function disconnectFromWifi(ifName: string) {
-    return apiPost<null, void>(`${endpoint}/${ifName}/disconnect`, null)
+    return apiPost<null, boolean>(`${endpoint}/${ifName}/disconnect`, null)
 }

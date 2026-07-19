@@ -19,7 +19,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RouterIcon from '@mui/icons-material/Router';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
-
+import FiveGIcon from '@mui/icons-material/FiveG';
 
 import { useSseSelector } from "../../sse/useSseSelector";
 import type { WifiNetwork, WifiNetworkConnection, WifiNetworkScan, WirelessInterface } from "../../types/types";
@@ -217,8 +217,17 @@ export const NetworkListItem = ({ network, isConnected = false }: { network: Wif
                 />
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {!isConnected && <Typography variant="caption" sx={{ color: 'text.secondary' }}>{network.signalPercent}%</Typography>}
+                    <Box sx={{
+                        display: "flex",
+                    }}>
+                        {network.frequencyMhz > 5000 && (<FiveGIcon />)}
+                    </Box>
+                    <Box>
+                        {!isConnected && <Typography variant="caption" sx={{ color: 'text.secondary' }}>{network.signalPercent}%</Typography>}
+
+                    </Box>
                     <WifiSignalIcon isSecure={network.isSecure} strength={network.signalPercent} />
+
                 </Box>
             </ListItem>
 

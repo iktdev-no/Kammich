@@ -3,6 +3,11 @@
 package no.iktdev.kammich.system.network
 
 import no.iktdev.kammich.models.internal.network.*
+import no.iktdev.kammich.models.shared.network.InterfaceActiveState
+import no.iktdev.kammich.models.shared.network.WifiNetworkConnection
+import no.iktdev.kammich.models.shared.network.WifiNetworkTether
+import no.iktdev.kammich.models.shared.network.WirelessNetworkInterface
+import no.iktdev.kammich.models.shared.network.WirelessTetheringState
 import org.springframework.stereotype.Component
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -44,5 +49,46 @@ class NetworkStateRepository {
         state.updateAndFetch { current ->
             current.copy(interfaces = current.interfaces - name)
         }
+    }
+
+    fun updateInterface(res: InterfaceResolution, nif: WirelessNetworkInterface) {
+
+        state.updateAndFetch { current ->
+            val updatedState = when (val obj = res.stateObject) {
+                is WifiNetworkTether -> {
+                    val ias =
+                        if (obj.state == WirelessTetheringState.Broadcasting) InterfaceActiveState.Tethering else InterfaceActiveState.Idle
+                    current.interfaces[nif.interfaceName]?.asWifi()?.setTethering(
+                        ias, obj
+                    ) ?: WifiInterfaceState(
+                        mac = nif.macAdress,
+                        mode = nif.mode,
+                        tethering = obj,
+                        state = ias,
+                    )
+                }
+
+                is WifiNetworkConnection -> {
+                    current.interfaces[nif.interfaceName]?.asWifi()?.setNetwork(
+                        obj.state, obj.network
+                    ) ?: WifiInterfaceState(
+                        mac = nif.macAdress,
+                        mode = nif.mode,
+                        network = obj.network,
+                        state = obj.state,
+                    )
+                }
+
+                else -> null
+            }
+
+            if (updatedState != null) {
+                current.copy(interfaces = current.interfaces + (nif.interfaceName to updatedState))
+            } else current
+        }
+    }
+
+    fun updateInterface(state: InterfaceResolution, nif: EthernetInterfaceState) {
+
     }
 }

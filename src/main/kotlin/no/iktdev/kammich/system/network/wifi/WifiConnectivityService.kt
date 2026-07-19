@@ -10,6 +10,7 @@ import no.iktdev.kammich.system.network.NetworkStateRepository
 import no.iktdev.kammich.system.network.wifi.strategy.connection.WifiConnectionStrategy
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.util.concurrent.CompletableFuture
 
 @Service
 class WifiConnectivityService(
@@ -23,6 +24,8 @@ class WifiConnectivityService(
     init {
         updateSSE()
     }
+
+
 
     fun getCurrentState(): List<WifiNetworkConnection> {
         return getWifiClientInterfaces().map { it ->
@@ -56,11 +59,11 @@ class WifiConnectivityService(
     }
 
 
-    private fun getActiveStrategy(): WifiConnectionStrategy? {
+    fun getActiveStrategy(): WifiConnectionStrategy? {
         return strategies.find { it.isSupported() }
     }
 
-    fun connectToNetwork(interfaceName: String, bssid: String, password: String?): WifiNetworkConnection? {
+    fun connectToNetwork(interfaceName: String, bssid: String, password: String?): Boolean {
         val networks = repository.getCurrentState().interfaces[interfaceName]?.asWifi()?.scan?.networks ?: emptyList()
         val network =
             networks.find { it.bssid == bssid } ?: throw IllegalArgumentException("No network found for $interfaceName")
@@ -69,7 +72,7 @@ class WifiConnectivityService(
 
         if (strategy == null) {
             log.error("Ingen støttet wifi-tilkoblingsmetode funnet! Vi har prøvd følgende:\n${strategies.joinToString("\n") { it.javaClass.simpleName }}")
-            return null
+            return false
         }
 
         val onReject = {
@@ -82,45 +85,41 @@ class WifiConnectivityService(
                 updateSSE()
             }
             log.info("Starter oppkobling til ${network.ssid} på $interfaceName")
-            val result = strategy.connect(interfaceName, network, password)
-            lease.update({ it.setNetwork(result.state, network) }) {
+            CompletableFuture.runAsync {
+                val result = strategy.connect(interfaceName, network, password)
+                lease.update({ it.setNetwork(result.state, network) }) {
+                }
+                updateSSE() // Push med en gang vi starter
             }
-            result
         }
-
-        updateSSE() // Push med en gang vi starter
-        return result
+        return true
     }
 
-    fun disconnectFromNetwork(interfaceName: String): WifiNetworkConnection {
+    fun disconnectFromNetwork(interfaceName: String): Boolean {
         val strategy = getActiveStrategy()
-            ?: return WifiNetworkConnection(
-                name = interfaceName,
-                state = InterfaceActiveState.Idle
-            )
+            ?: return false
 
         val onReject = {
             log.error("Could not obtain lease to disconnect $interfaceName")
+            updateSSE()
         }
 
-        val result = interfaceRegistry.obtain(interfaceName, NetworkInterfaceMode.Client, onReject) { lease ->
+        interfaceRegistry.obtain(interfaceName, NetworkInterfaceMode.Client, onReject) { lease ->
             log.info("Kobler fra $interfaceName")
-            val result = try {
-                strategy.disconnect(interfaceName)
-            } catch (e: Exception) {
-                log.error("Could not disconnect $interfaceName", e)
-                null
+            CompletableFuture.runAsync {
+                val result = try {
+                    strategy.disconnect(interfaceName)
+                } catch (e: Exception) {
+                    log.error("Could not disconnect $interfaceName", e)
+                    null
+                }
+                lease.update({it.setNetwork(InterfaceActiveState.Idle, null)}) {
+                    updateSSE()
+                }
+                lease.release()
             }
-            lease.update({it.setNetwork(InterfaceActiveState.Idle, null)}) {
-                updateSSE()
-            }
-            lease.release()
-            result
-        } ?: WifiNetworkConnection(
-            name = interfaceName,
-            state = InterfaceActiveState.Idle
-        )
-        return result
+        }
+        return true
     }
 
     fun getSSEPayload(): Map<String, Any> {

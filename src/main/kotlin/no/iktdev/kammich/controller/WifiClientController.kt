@@ -41,18 +41,20 @@ class WifiClientController(
         @PathVariable interfaceName: String,
         @RequestParam bssid: String,
         @RequestParam(required = false) password: String?
-    ): ResponseEntity<out WifiNetworkConnection> {
+    ): ResponseEntity<Boolean> {
         val result = wifiConnector.connectToNetwork(interfaceName, bssid, password)
-        return if (result != null) {
-            ResponseEntity(result, HttpStatus.OK)
-        } else ResponseEntity(null, HttpStatus.NOT_ACCEPTABLE)
+        return if (result) {
+            ResponseEntity(true, HttpStatus.OK)
+        } else ResponseEntity(false, HttpStatus.NOT_ACCEPTABLE)
     }
 
     @PostMapping("/{interfaceName}/disconnect")
     fun disconnect(
         @PathVariable interfaceName: String
-    ): WifiNetworkConnection {
-        return wifiConnector.disconnectFromNetwork(interfaceName)
+    ): ResponseEntity<Boolean> {
+        val success = wifiConnector.disconnectFromNetwork(interfaceName)
+        val code = if (success) HttpStatus.OK else HttpStatus.BAD_REQUEST
+        return ResponseEntity(success, code)
     }
 
 }

@@ -46,7 +46,7 @@ class NmcliScanStrategy(private val runner: WifiRunner) : WifiScanStrategy, Nmcl
                     interfaceName = interfaceName,
                     isHidden = ssid.isBlank(),
                     channel = channel,
-                    frequencyMhz = freq,
+                    frequencyMhz = freq ?: 0,
                     hwMode = if (freq != null && freq < 5000) WifiNetworkHardwareMode.g else WifiNetworkHardwareMode.a
                 )
             } catch (e: Exception) {
