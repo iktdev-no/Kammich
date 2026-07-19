@@ -1,24 +1,30 @@
 package no.iktdev.kammich.system.network.wifi
 
-import no.iktdev.kammich.models.shared.network.WifiInterfaceScanState
+import no.iktdev.kammich.models.internal.network.InterfaceState
+import no.iktdev.kammich.models.internal.network.WifiInterfaceState
+import no.iktdev.kammich.models.internal.network.asWifi
+import no.iktdev.kammich.models.internal.network.setScan
+import no.iktdev.kammich.models.shared.network.InterfaceActiveState
+import no.iktdev.kammich.models.shared.network.NetworkInterfaceMode
 import no.iktdev.kammich.models.shared.network.WifiNetwork
-import no.iktdev.kammich.models.shared.network.WifiScanState
+import no.iktdev.kammich.models.shared.network.WifiNetworkScan
 import no.iktdev.kammich.sse.SseManager
-import no.iktdev.kammich.system.network.wifi.parser.WifiScanResultParser
+import no.iktdev.kammich.system.network.NetworkInterfaceRegistry
+import no.iktdev.kammich.system.network.NetworkStateRepository
 import no.iktdev.kammich.system.network.wifi.strategy.scan.FallbackScanStrategy
 import no.iktdev.kammich.system.network.wifi.strategy.scan.WifiScanStrategy
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.time.ZonedDateTime
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
 @Component
 class WifiScanner(
-    private val scanResultParser: WifiScanResultParser,
-    private val wifiRunner: WifiRunner,
     private val sseManager: SseManager,
+    private val repository: NetworkStateRepository,
+    private val interfaceRegistry: NetworkInterfaceRegistry,
     private val strategies: List<WifiScanStrategy>,
-    private val registry: WifiStateRegistry
 ) {
 
     private val log = LoggerFactory.getLogger(WifiScanner::class.java)
@@ -28,36 +34,34 @@ class WifiScanner(
         return strategies.find { it.isSupported() }
     }
 
-    fun getCurrentState(interfaceName: String): WifiScanState =
-        registry.scanCurrentStates.getOrDefault(interfaceName, WifiScanState.IDLE)
-
-    fun getCurrentScanResult(interfaceName: String): List<WifiNetwork> {
-        return registry.scanResults.getOrDefault(interfaceName, emptyList())
-    }
-
     /**
      * Trigger skanning fullstendig asynkront.
      */
+
+    private val internalConcurrentState = ConcurrentHashMap<String, InterfaceActiveState>()
+
     fun triggerScanAsync(interfaceName: String) {
-        if (getCurrentState(interfaceName) == WifiScanState.SCANNING) {
+        if (internalConcurrentState[interfaceName] != InterfaceActiveState.Scanning) {
             log.info("WiFi-skanning kjører allerede på $interfaceName. Avbryter.")
             return
         }
 
         thread(start = true, name = "wifi-scan-$interfaceName") {
             log.info("Starter asynkron WiFi-skanning på $interfaceName...")
+            internalConcurrentState[interfaceName] = InterfaceActiveState.Scanning
             getNetworks(interfaceName, forceRescan = true)
         }
     }
+
 
     /**
      * Kjører skanning, dytter gjennom jc, og caster til frontend-modeller.
      */
     fun getNetworks(interfaceName: String, forceRescan: Boolean): List<WifiNetwork> {
-        if (forceRescan || registry.scanLastScans[interfaceName] == null || isCacheStale(interfaceName)) {
-            registry.scanCurrentStates[interfaceName] = WifiScanState.SCANNING
-            updateSSE()
-        } else return getCurrentScanResult(interfaceName)
+        val currentState = repository.getCurrentState().interfaces[interfaceName]
+        if (!forceRescan && currentState != null && !isCacheStale(currentState)) {
+            return currentState.asWifi()?.scan?.networks ?: emptyList()
+        }
 
         val strategy = getActiveStrategy()
         if (strategy is FallbackScanStrategy) {
@@ -68,17 +72,43 @@ class WifiScanner(
         }
         log.info("Using strategy ${strategy::class.simpleName}")
 
-        val result = strategy.scan(interfaceName)
-        registry.scanLastScans[interfaceName] = ZonedDateTime.now()
+        val result = interfaceRegistry.obtain(interfaceName, NetworkInterfaceMode.Client, { log.info("Unable to start scan! Unable to obtain lease")}) { lease ->
+            lease.setState(InterfaceActiveState.Scanning) {
+                updateSSE()
+            }
+            val result = strategy.scan(lease.getInterfaceName())
+            val useResult = if (result.networks.size == 1) {
+                val currentConnectedSSID = lease.getState()?.asWifi()?.network?.ssid
+                if (currentConnectedSSID == result.networks.first().ssid) {
+                    log.info("Using fallback strategy to acquire proper network scan")
+                    strategies.filterIsInstance<FallbackScanStrategy>().firstOrNull()?.scan(lease.getInterfaceName()) ?: result
+                } else result
+            } else result
+
+            lease.update({ it.setScan(InterfaceActiveState.Idle, useResult) }) {
+                updateSSE()
+            }
+            useResult
+        }
+        internalConcurrentState[interfaceName] = InterfaceActiveState.Idle
+
+
+        /*if (result.success && result.networks.isEmpty()) {
+            val fallbackResult = strategies.find { it -> it is FallbackScanStrategy }?.scan(interfaceName)
+            if (fallbackResult != null && fallbackResult.networks.isNotEmpty()) {
+                result = fallbackResult
+            }
+        }
+        registryOld.scanLastScans[interfaceName] = ZonedDateTime.now()
 
         val out = when (result.success) {
             true -> {
-                registry.scanCurrentStates[interfaceName] = WifiScanState.IDLE
+                registryOld.scanCurrentStates[interfaceName] = WifiScanState.IDLE
                 result.networks
             }
             false -> {
                 log.error("Scan error: ${result.message}")
-                registry.scanCurrentStates[interfaceName] = WifiScanState.ERROR
+                registryOld.scanCurrentStates[interfaceName] = WifiScanState.ERROR
                 emptyList()
             }
         }.sortedByDescending { it.signalPercent }
@@ -91,32 +121,31 @@ class WifiScanner(
             }
         } else out
 
-        registry.scanResults[interfaceName] = cleaned
-        updateSSE()
-        return cleaned
+        registryOld.scanResults[interfaceName] = cleaned
+        updateSSE()*/
+        return result?.networks ?: emptyList()
     }
 
-    private fun isCacheStale(interfaceName: String): Boolean {
-        val last = registry.scanLastScans[interfaceName] ?: return true
+    private fun isCacheStale(interfaceState: InterfaceState): Boolean {
+        val last = interfaceState.asWifi()?.scan?.performedAt ?: return true
         return last.isBefore(ZonedDateTime.now().minusMinutes(5))
     }
 
     fun getSSEPayload(): Map<String, Any> {
-        val allInterfaceStates = registry.scanCurrentStates.keys.map { iface ->
-            val networks = registry.scanResults[iface].takeIf { it?.isNotEmpty() == true }
-                ?: emptyList()
-            WifiInterfaceScanState(
-                interfaceName = iface,
-                scanning = registry.scanCurrentStates[iface] ?: WifiScanState.IDLE,
-                networks = networks
-            )
-        }
-        if (allInterfaceStates.any { it.scanning == WifiScanState.ERROR }) {
-            log.error("Scanning state returned an error..")
-        }
+        val wifiInterfaces = repository.getCurrentState().interfaces
+            .filterValues { it is WifiInterfaceState } // Filtrer først
+            .mapValues { it.value as WifiInterfaceState } // Cast til rett type
+            .map { (name, state) ->
+                WifiNetworkScan(
+                    name = name,
+                    state = state.state,
+                    networks = state.scan?.networks ?: emptyList(),
+                )
+            }
+
         return mapOf(
             "type" to "wifi-scan",
-            "payload" to allInterfaceStates
+            "payload" to wifiInterfaces
         )
     }
 

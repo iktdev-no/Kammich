@@ -1,9 +1,8 @@
 package no.iktdev.kammich.system.network.wifi.strategy.connection
 
-import no.iktdev.kammich.models.shared.network.WifiConnectionResult
-import no.iktdev.kammich.models.shared.network.ConnectivityState
-import no.iktdev.kammich.models.shared.network.WifiInterfaceState
+import no.iktdev.kammich.models.shared.network.InterfaceActiveState
 import no.iktdev.kammich.models.shared.network.WifiNetwork
+import no.iktdev.kammich.models.shared.network.WifiNetworkConnection
 import no.iktdev.kammich.system.network.wifi.WifiRunner
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -21,11 +20,11 @@ class WpaCliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionS
         } catch (e: Exception) { false }
     }
 
-    override fun getState(interfaceName: String): WifiInterfaceState {
+    override fun getState(interfaceName: String): WifiNetworkConnection {
         TODO("Not implemented yet")
     }
 
-    override fun connect(interfaceName: String, network: WifiNetwork, password: String?): WifiConnectionResult {
+    override fun connect(interfaceName: String, network: WifiNetwork, password: String?): WifiNetworkConnection {
         val ssid = network.ssid
         // wpa_cli bruker ofte -i <interface>
         // Vi må legge til et nettverk, sette SSID, sette passord, og velge det.
@@ -42,14 +41,14 @@ class WpaCliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionS
             val result = runner.run(*cmd.split(" ").toTypedArray())
             if (result is WifiRunner.CommandResult.Failure) {
                 log.error("Failed to connect to $interfaceName using wpa_cli")
-                return WifiConnectionResult(false, "Feilet ved: $cmd - ${result.error}", ConnectivityState.FAILED)
+                return WifiNetworkConnection(interfaceName, InterfaceActiveState.Idle, null)
             }
         }
         log.info("Successfully connected to $interfaceName using wpa_cli")
-        return WifiConnectionResult(true, "Tilkoblet via wpa_cli", ConnectivityState.CONNECTED)
+        return WifiNetworkConnection(interfaceName, InterfaceActiveState.Connected, network)
     }
 
-    override fun disconnect(interfaceName: String): WifiConnectionResult {
+    override fun disconnect(interfaceName: String): WifiNetworkConnection {
         // 1. Koble fra
         val disconnectCmd = "wpa_cli -i $interfaceName disconnect"
         // 2. Fjern nettverket fra listen (vi antar ID 0 da vi satt den til 0 i connect)
@@ -58,11 +57,10 @@ class WpaCliConnectionStrategy(private val runner: WifiRunner) : WifiConnectionS
         val result = runner.run(*disconnectCmd.split(" ").toTypedArray())
         // Vi kjører remove_network uavhengig av om disconnect feilet (for å rydde opp)
         runner.run(*removeCmd.split(" ").toTypedArray())
-
-        return when (result) {
-            is WifiRunner.CommandResult.Success -> WifiConnectionResult(true, "Koblet fra", ConnectivityState.DISCONNECTED)
-            is WifiRunner.CommandResult.Failure -> WifiConnectionResult(false, result.error, ConnectivityState.FAILED)
+        if (result is WifiRunner.CommandResult.Failure) {
+            throw RuntimeException("Failed to disconnect to $interfaceName using wpa_cli")
         }
+        return WifiNetworkConnection(interfaceName, InterfaceActiveState.Idle, null)
     }
 
 

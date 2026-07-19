@@ -1,19 +1,13 @@
 package no.iktdev.kammich.system.network.wifi.strategy.ap
 
 
-import no.iktdev.kammich.models.shared.network.WifiNetwork
-import no.iktdev.kammich.models.shared.network.WifiTetherSetting
-import no.iktdev.kammich.models.shared.network.WifiTetheringNetwork
-import no.iktdev.kammich.models.shared.network.WifiTetheringState
-import no.iktdev.kammich.system.network.wifi.WifiRunner
+import no.iktdev.kammich.models.shared.network.WifiNetworkTether
+import no.iktdev.kammich.models.shared.network.WifiTetherAP
+import no.iktdev.kammich.system.SysCommand
 
 interface AccessPointStrategy {
-    fun start(interfaceName: String, tether: WifiTetherSetting): WifiRunner.CommandResult
+    fun start(interfaceName: String, tether: WifiTetherAP): SysCommand.Result
     fun stop(interfaceName: String): Boolean
     fun isSupported(): Boolean
-    fun getActiveTethering(interfaceName: String): WifiTetheringNetwork?
-    fun getTetheringStatus(interfaceName: String): WifiTetheringState
-    fun unmanage(interfaceName: String): Boolean
-    fun manage(interfaceName: String): Boolean
-    fun isManaged(interfaceName: String): Boolean
+    fun getState(interfaceName: String): WifiNetworkTether
 }

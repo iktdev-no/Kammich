@@ -1,33 +1,45 @@
 package no.iktdev.kammich.system.network.wifi.strategy.ap
 
+import no.iktdev.kammich.models.shared.network.InterfaceActiveState
 import no.iktdev.kammich.models.shared.network.WifiNetwork
-import no.iktdev.kammich.models.shared.network.WifiSecurityType
-import no.iktdev.kammich.models.shared.network.WifiTetherSetting
-import no.iktdev.kammich.models.shared.network.WifiTetheringNetwork
-import no.iktdev.kammich.models.shared.network.WifiTetheringState
-import no.iktdev.kammich.system.network.wifi.WifiRunner
+import no.iktdev.kammich.models.shared.network.WifiNetworkHardwareMode
+import no.iktdev.kammich.models.shared.network.WifiNetworkTether
+import no.iktdev.kammich.models.shared.network.old.WifiSecurityType
+import no.iktdev.kammich.models.shared.network.WifiTetherAP
+import no.iktdev.kammich.models.shared.network.WirelessTetheringState
+import no.iktdev.kammich.system.SysCommand
+import no.iktdev.kammich.system.network.components.IW
+import no.iktdev.kammich.system.network.components.Nmcli
 import no.iktdev.kammich.system.network.wifi.WifiTetherService
 import no.iktdev.kammich.system.network.wifi.parser.NmcliHelper
-import no.iktdev.kammich.system.network.wifi.parser.WifiPhyInfoParser
 import org.springframework.stereotype.Component
 import org.slf4j.LoggerFactory
+import kotlin.math.log
 
 @Component
 class NmcliAccessPointStrategy(
-    private val runner: WifiRunner,
+    private val exec: SysCommand,
+    private val iw: IW,
+    private val nmcli: Nmcli,
 ) : AccessPointStrategy, NmcliHelper() {
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    fun cleanup() {
+        val cleaned = exec.sudo("nmcli", "con", "delete", WifiTetherService.ap_profileName)
+    }
 
-    override fun start(interfaceName: String, tether: WifiTetherSetting): WifiRunner.CommandResult {
+    override fun start(interfaceName: String, tether: WifiTetherAP): SysCommand.Result {
+
+        cleanup()
+
         val sec = when (tether.security) {
             WifiSecurityType.WPA2 -> "wpa-psk"
             WifiSecurityType.WPA3 -> "sae"
             else -> null
         }
         val basisCommand = listOf(
-            "sudo", "nmcli", "con", "add",
+            "nmcli", "con", "add",
             "type", "wifi",
             "ifname", interfaceName,
             "con-name", WifiTetherService.ap_profileName,
@@ -42,133 +54,62 @@ class NmcliAccessPointStrategy(
                 "wifi-sec.psk", tether.password
             )
         } else emptyList()
-        return runner.run(
+        logger.info("Creating NMCLI access point profile")
+        val success = exec.sudo(
             basisCommand + password,
+        ).isSuccess()
+        if (!success) {
+            logger.error("Unable to create NMCLI access point profile")
+            return SysCommand.Result.Failure("Something went wrong")
+        }
+        logger.info("Starting NMCLI access point strategy for $interfaceName with command ${(basisCommand + password).joinToString(" ")}")
+        return exec.sudo(
+            "nmcli", "con", "up", WifiTetherService.ap_profileName
         )
     }
 
     override fun stop(interfaceName: String): Boolean {
-        val command = listOf("sudo", "nmcli", "connection", "down", WifiTetherService.ap_profileName)
-
-        val stopped = runner.run(*command.toTypedArray())
-        return when (stopped) {
-            is WifiRunner.CommandResult.Success -> {
-                logger.info("Stopped AP")
-                true
-            }
-            is WifiRunner.CommandResult.Failure -> {
-                logger.error("Failed to stop AP using command: ${command.joinToString(" ")}", stopped.error)
-                false
-            }
+        val command = listOf("nmcli", "connection", "down", WifiTetherService.ap_profileName)
+        val stopped = exec.sudo(*command.toTypedArray())
+        if (!stopped.isSuccess()) {
+            return false
         }
+        logger.info("Stopped AP")
+        cleanup()
+        return stopped.isSuccess()
     }
 
-    override fun getTetheringStatus(interfaceName: String): WifiTetheringState {
-        // 2. Sjekk NM status
-        val nmResult = runner.run("sudo", "nmcli", "-t", "-f", "GENERAL.STATE,GENERAL.CONNECTION", "device", "show", interfaceName)
-
-        // Vi bruker 'when' på resultatet for å unngå usikre 'map'-kall
-        return when (nmResult) {
-            is WifiRunner.CommandResult.Success -> {
-                val output = nmResult.output
-                val isConnected = output.contains("connected")
-                val hasHotspot = output.contains("Hotspot")
-                val isDisconnected = output.contains("disconnected")
-
-                when {
-                    isConnected && hasHotspot -> WifiTetheringState.RUNNING
-                    isConnected -> WifiTetheringState.ERROR // Tilkoblet noe annet (f.eks. vanlig WiFi)
-                    isDisconnected -> WifiTetheringState.IDLE
-                    else -> WifiTetheringState.IDLE
-                }
-            }
-            is WifiRunner.CommandResult.Failure -> {
-                // Hvis kommandoen feiler (f.eks. interface finnes ikke), er vi IDLE eller feil
-                WifiTetheringState.IDLE
-            }
-        }
-    }
-
-    override fun isManaged(interfaceName: String): Boolean {
-        // Endret fra GENERAL.MANAGED til GENERAL.NM-MANAGED
-        val result = runner.run("nmcli", "-t", "-f", "GENERAL.NM-MANAGED", "device", "show", interfaceName)
-
-        return when (result) {
-            is WifiRunner.CommandResult.Success -> {
-                // NM returnerer "yes" eller "no"
-                val output = result.output.trim()
-                val managed = output.split(":")[1].equals("yes", ignoreCase = true)
-                logger.debug("Interface $interfaceName er managed: $managed,\n$output")
-                managed
-            }
-            else -> false
-        }
-    }
-
-    override fun unmanage(interfaceName: String): Boolean {
-        logger.info("Deaktiverer NetworkManager for interface: $interfaceName")
-        val result = runner.run("sudo", "nmcli", "device", "set", interfaceName, "managed", "no")
-
-        return when (result) {
-            is WifiRunner.CommandResult.Success -> {
-                logger.info("Interface $interfaceName er nå unmanaged")
-                true
-            }
-            is WifiRunner.CommandResult.Failure -> {
-                logger.error("Klarte ikke å sette $interfaceName til unmanaged: ${result.error}")
-                false
-            }
-        }
-    }
-
-    override fun manage(interfaceName: String): Boolean {
-        logger.info("Aktiverer NetworkManager for interface: $interfaceName")
-        val result = runner.run("sudo", "nmcli", "device", "set", interfaceName, "managed", "yes")
-
-        return when (result) {
-            is WifiRunner.CommandResult.Success -> {
-                logger.info("Interface $interfaceName er nå managed igjen")
-                true
-            }
-            is WifiRunner.CommandResult.Failure -> {
-                logger.error("Klarte ikke å sette $interfaceName til managed: ${result.error}")
-                false
-            }
-        }
-    }
-
-    override fun getActiveTethering(interfaceName: String): WifiTetheringNetwork? {
-        // 1. Sjekk først om vi kjører i "Aligned" modus (Hostapd)
-        // 2. Hvis hostapd ikke kjører, sjekk om NetworkManager har en aktiv hotspot på dette interfacet
-        val nmResult = runner.run("nmcli", "-t", "-f", "GENERAL.CONNECTION,GENERAL.DEVICE", "device", "show", interfaceName)
-
-        if (nmResult is WifiRunner.CommandResult.Success) {
-
-            val (channel, freq) = runner.run("sudo", "iw", "dev", interfaceName, "info")
-                .map { WifiPhyInfoParser().getWifiInfoFromInterface(it) } ?: (0 to 0)
-
-
-            // Vi parser outputen for å se om det finnes en aktiv connection
-            val output = nmResult.output
-
-            // Sjekker om det finnes en linje som indikerer en aktiv tilkobling (ikke tom)
-            // Her antar vi at du ser etter profiler som starter med "kammich-hotspot-"
-            val connectionLine = output.lines().find { it.startsWith("GENERAL.CONNECTION:") }
-            val connectionName = connectionLine?.substringAfter(":")?.takeIf { it.isNotBlank() && it != "--" }
-
-            if (connectionName != null) {
-                // Vi henter SSID fra profilen via nmcli
-                val ssidResult = runner.run("nmcli", "-s", "-g", "802-11-wireless.ssid", "connection", "show", connectionName)
-                val ssid = if (ssidResult is WifiRunner.CommandResult.Success) ssidResult.output.trim() else "Unknown"
-
-                return WifiTetheringNetwork(
-                    ssid = ssid,
-                    channel = channel, // NM styrer kanal automatisk, vi vet ikke alltid hvilken
-                    frequencyMhz = freq,
-                )
-            }
+    override fun getState(interfaceName: String): WifiNetworkTether {
+        // 0 Sjekk om vi er i AP føst
+        val usabale = iw.getMode(interfaceName)
+        if (usabale == IW.InterfaceMode.AP) {
+            return WifiNetworkTether(interfaceName, WirelessTetheringState.Idle, null)
         }
 
-        return null
+        val general = nmcli.general(interfaceName)
+        if (general?.state != Nmcli.NmState.CONNECTED) {
+            return WifiNetworkTether(interfaceName, WirelessTetheringState.Idle, null)
+        }
+
+        val wifi = nmcli.wifi().find { it.device == interfaceName } ?: return WifiNetworkTether(interfaceName, WirelessTetheringState.Idle)
+
+        val freq = wifi.frequency.split(" ")[0].toIntOrNull() ?: -1
+
+        return WifiNetworkTether(
+            name = interfaceName,
+            state = WirelessTetheringState.Broadcasting,
+            network = WifiNetwork(
+                ssid = wifi.ssid ?: "",
+                signalPercent = wifi.signal,
+                isSecure = wifi.security.isNotBlank(),
+                bssid = wifi.bssid ?: "00:00:00:00:00:00",
+                securityType = wifi.security,
+                interfaceName = interfaceName,
+                isHidden = wifi.ssid.isNullOrBlank(),
+                channel = wifi.channel,
+                frequencyMhz = freq,
+                hwMode = if (freq < 5000) WifiNetworkHardwareMode.g else WifiNetworkHardwareMode.a
+            )
+        )
     }
 }

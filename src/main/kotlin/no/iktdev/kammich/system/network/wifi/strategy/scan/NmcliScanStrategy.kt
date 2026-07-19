@@ -1,8 +1,8 @@
 package no.iktdev.kammich.system.network.wifi.strategy.scan
 
-import no.iktdev.kammich.models.internal.network.WifiScanResult
+import no.iktdev.kammich.models.internal.network.WifiScanState
 import no.iktdev.kammich.models.shared.network.WifiNetwork
-import no.iktdev.kammich.models.shared.network.WifiScanState
+import no.iktdev.kammich.models.shared.network.WifiNetworkHardwareMode
 import no.iktdev.kammich.system.network.wifi.WifiRunner
 import no.iktdev.kammich.system.network.wifi.parser.NmcliHelper
 import org.slf4j.LoggerFactory
@@ -14,14 +14,12 @@ import org.springframework.stereotype.Component
 class NmcliScanStrategy(private val runner: WifiRunner) : WifiScanStrategy, NmcliHelper() {
     private val log = LoggerFactory.getLogger(NmcliScanStrategy::class.java)
 
-    override fun scan(interfaceName: String): WifiScanResult {
+    override fun scan(interfaceName: String): WifiScanState {
         val result = runner.run("nmcli", "-t", "-f", "SSID,BSSID,SECURITY,SIGNAL,CHAN,FREQ", "device", "wifi", "list", "ifname", interfaceName)
 
         if (result !is WifiRunner.CommandResult.Success) {
             log.error("Nmcli scan feilet: ${result.let { (it as? WifiRunner.CommandResult.Failure)?.error }}")
-            return WifiScanResult(
-                WifiScanState.ERROR,
-                false,
+            return WifiScanState(
                 networks = emptyList(),
             )
         }
@@ -49,14 +47,14 @@ class NmcliScanStrategy(private val runner: WifiRunner) : WifiScanStrategy, Nmcl
                     isHidden = ssid.isBlank(),
                     channel = channel,
                     frequencyMhz = freq,
-                    hwMode = if (freq != null && freq < 5000) "g" else "a"
+                    hwMode = if (freq != null && freq < 5000) WifiNetworkHardwareMode.g else WifiNetworkHardwareMode.a
                 )
             } catch (e: Exception) {
                 null
             }
         }
 
-        return WifiScanResult(networks = networks, state =  WifiScanState.IDLE, success =  true)
+        return WifiScanState(networks = networks)
     }
 
     override fun isSupported(): Boolean {

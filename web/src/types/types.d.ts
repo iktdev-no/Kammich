@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-07-15T15:56:42.337909170Z
+// Time: 2026-07-19T18:43:02.236239899Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -82,83 +82,94 @@ export type Severity = "Info" | "Warning" | "Error"
 
 export type WFileType = "FILE" | "DIRECTORY"
 
-export interface WifiInterfaceInfo {
-  deviceId: string;
-  hardwareName: string;
+export interface WirelessNetworkSearch {
+  lastSearched: string;
+  networks: WifiNetwork[];
+}
+
+export interface NetworkInterface {
   interfaceName: string;
-  limitation: InterfaceLimitation;
-  supportsAp: boolean;
-  supportsApAndStationSimultaneously: boolean;
+  macAdress: string;
+  mode: NetworkInterfaceMode;
+  type: NetworkInterfaceType;
 }
 
-export interface WifiInterfaceState {
-  connectivityState: ConnectivityState;
-  interfaceName: string;
-  network: WifiNetwork | null;
-}
+export type NetworkInterfaceType = "Ethernet" | "Wifi"
 
-export interface WifiTetheringNetwork {
-  alignedToSSID: string | null;
-  channel: number;
-  frequencyMhz: number;
-  isAligned: boolean;
-  ssid: string;
-}
-
-export type ConnectivityState = "IDLE" | "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "CAPTIVE_PORTAL" | "FAILED" | "ERROR"
-
-export type WifiSecurityType = "NONE" | "WPA2" | "WPA3"
-
-export interface WifiInterface {
-  deviceId: string;
-  name: string;
-  supportsAp: boolean;
-  supportsSimultaneousApSta: boolean;
-}
-
-export interface WifiTetherInterface {
-  deviceId: string;
-  enabled: boolean;
-  name: string;
-  supportsAp: boolean;
-  supportsApAndStationSimultaneously: boolean;
-}
-
-export type InterfaceLimitation = "NONE" | "CHANNEL_1_TO_1" | "NO_CONCURRENT"
-
-export interface WifiTetherSetting {
+export interface WifiTetherAP {
   password: string;
   security: WifiSecurityType;
   ssid: string;
 }
 
-export interface WifiInterfaceScanState {
-  interfaceName: string;
-  networks: WifiNetwork[];
-  scanning: WifiScanState;
+export type InterfaceActiveState = "Idle" | "Scanning" | "StartingTether" | "Tethering" | "StoppingTether" | "Connecting" | "Connected" | "Disconnected" | "CaptivePortal"
+
+export interface WirelessTethering {
+  network: WifiNetwork | null;
+  state: WirelessTetheringState;
 }
+
+export interface WifiNetworkConnection {
+  name: string;
+  network: WifiNetwork | null;
+  state: InterfaceActiveState;
+}
+
+export interface WifiNetworkTether {
+  name: string;
+  network: WifiNetwork | null;
+  state: WirelessTetheringState;
+}
+
+export type WirelessTetheringState = "Idle" | "Broadcasting"
+
+export type NetworkInterfaceMode = "External" | "Master" | "Client" | "Idle"
+
+export type WifiNetworkHardwareMode = "a" | "g"
+
+export interface WirelessNetworkInterface extends NetworkInterface {
+  caps: WirelessNetworkInterfaceCapability[];
+}
+
+export interface WirelessConnection {
+  network: WifiNetwork | null;
+  state: InterfaceActiveState;
+}
+
+export type WirelessOperatingState = "AP" | "STA" | "Idle"
+
+export type WifiSecurityType = "NONE" | "WPA2" | "WPA3"
 
 export interface WifiConnectionResult {
   message: string;
-  status: ConnectivityState;
+  status: InterfaceActiveState;
   success: boolean;
 }
 
-export interface WifiTethering {
-  iface: WifiTetherInterface;
-  network: WifiTetheringNetwork | null;
-  state: WifiTetheringState;
+export type WirelessNetworkInterfaceCapability = "STA" | "AP" | "Concurrent" | "Concurrent_Restricted_Same_Channel"
+
+export interface WirelessInterface {
+  address: string;
+  connection: WirelessConnection | null;
+  isAvailable: boolean;
+  name: string;
+  operatingState: WirelessOperatingState;
+  search: WirelessNetworkSearch | null;
+  tethering: WirelessTethering | null;
 }
 
-export type WifiScanState = "IDLE" | "SCANNING" | "ERROR"
+export interface WifiNetworkScan {
+  name: string;
+  networks: WifiNetwork[];
+  state: InterfaceActiveState;
+}
 
-export type WifiTetheringState = "IDLE" | "STARTING" | "RUNNING" | "ALIGNING" | "RUNNING_ALIGNED" | "ERROR"
 
 export interface WifiNetwork {
   bssid: string;
   channel: number | null;
   frequencyMhz: number | null;
-  hwMode: string | null;
+  hwMode: WifiNetworkHardwareMode;
   interfaceName: string;
   isHidden: boolean;
   isSecure: boolean;
@@ -167,10 +178,7 @@ export interface WifiNetwork {
   ssid: string;
 }
 
-export interface WifiSseEvent {
-  errorMessage: string | null;
-  networks: WifiNetwork[];
-  status: ConnectivityState;
+export interface EthernetNetworkInterface extends NetworkInterface {
 }
 
 export interface RemoteFile {
@@ -200,11 +208,8 @@ export interface LsblkBlockDevice {
   transport: Transport;
 }
 
-export interface NvmeRoot {
+export interface NvmeRoot extends SmartCtlRoot {
   log: NvmeLog;
-  modelName: string;
-  serialNumber: string;
-  smartStatus: SmartStatus;
 }
 
 export interface StorageInfo {
@@ -216,11 +221,8 @@ export interface SataAttributes {
   table: SataAttribute[];
 }
 
-export interface SataRoot {
+export interface SataRoot extends SmartCtlRoot {
   attrs: SataAttributes;
-  modelName: string;
-  serialNumber: string;
-  smartStatus: SmartStatus;
 }
 
 export interface NvmeLog {

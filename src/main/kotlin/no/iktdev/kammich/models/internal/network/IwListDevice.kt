@@ -1,6 +1,7 @@
 package no.iktdev.kammich.models.internal.network
 
 import com.google.gson.annotations.SerializedName
+import no.iktdev.kammich.models.shared.network.WifiNetworkHardwareMode
 
 // --- MODELLER FOR IW LIST ---
 data class IwListDevice(
@@ -74,6 +75,6 @@ data class IwScanItem(
                 else -> null
             }
         }
-    val hwMode: String
-        get() = if (freq != null && freq < 5000) "g" else "a"
+    val hwMode: WifiNetworkHardwareMode
+        get() = if (freq != null && freq < 5000) WifiNetworkHardwareMode.g else WifiNetworkHardwareMode.a
 }

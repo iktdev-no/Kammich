@@ -1,4 +1,4 @@
-import type { StorageInfo, Notification, MediaStats, WifiInterfaceScanState, WifiInterfaceState, WifiTethering, WifiTetherInterface } from "../types/types";
+import type { StorageInfo, Notification, MediaStats, WifiNetworkScan, WifiNetworkConnection, WifiNetworkTether, } from "../types/types";
 
 export type SseEvent =
   | { type: 'ping'; timestamp: number }
@@ -12,8 +12,8 @@ export type SseEvent =
   | { type: "sse-offline"; }
   | { type: "notifications"; payload: Array<Notification> }
   | { type: "storage-stats-media"; payload: MediaStats }
-  | { type: "wifi-scan"; payload: Array<WifiInterfaceScanState> }
-  | { type: "wifi-connectivity"; payload: Array<WifiInterfaceState> }
-  | { type: "wifi-tethering"; payload: WifiTethering }
-  | { type: "wifi-tethering-selected-interface"; payload: WifiTetherInterface | undefined }
+  | { type: "wifi-scan"; payload: Array<WifiNetworkScan> }
+  | { type: "wifi-connectivity"; payload: Array<WifiNetworkConnection> }
+  | { type: "wifi-tethering"; payload: WifiNetworkTether }
+  | { type: "wifi-tethering-selected-interface"; payload: WifiNetworkTether | undefined }
   ;

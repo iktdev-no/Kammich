@@ -1,5 +1,7 @@
 package no.iktdev.kammich.system.network.wifi.parser
 
+import no.iktdev.kammich.models.shared.network.WirelessNetworkInterfaceCapability
+
 class WifiPhyInfoParser {
 
     data class WifiCapability(
@@ -49,6 +51,48 @@ class WifiPhyInfoParser {
         }
 
         return WifiCapability(supportsAP, isConcurrent, sameChannelConstraint)
+    }
+
+    fun parseCapabilities(output: String): Set<WirelessNetworkInterfaceCapability> {
+        val capabilities = mutableSetOf<WirelessNetworkInterfaceCapability>()
+
+        // Anta alltid STA støtte hvis det er et trådløst kort (Managed mode er standard)
+        capabilities.add(WirelessNetworkInterfaceCapability.STA)
+
+        var currentSection: Section = Section.UNKNOWN
+        val lines = output.lineSequence().map { it.trim() }.toList()
+
+        lines.forEach { line ->
+            // 1. Seksjons-deteksjon
+            when {
+                line.startsWith("Supported interface modes:") -> currentSection = Section.MODES
+                line.startsWith("valid interface combinations:") -> currentSection = Section.COMBINATIONS
+                line.isNotEmpty() && !line.startsWith("*") && !line.startsWith("(") -> currentSection = Section.UNKNOWN
+            }
+
+            // 2. Kapasitets-deteksjon
+            when (currentSection) {
+                Section.MODES -> {
+                    if (line.contains("* AP")) {
+                        capabilities.add(WirelessNetworkInterfaceCapability.AP)
+                    }
+                }
+                Section.COMBINATIONS -> {
+                    // Sjekk etter konkurrent-støtte
+                    if (line.contains("managed") && line.contains("AP")) {
+                        capabilities.add(WirelessNetworkInterfaceCapability.Concurrent)
+
+                        // Sjekk etter kanal-begrensning
+                        if (line.contains("channels <= 1")) {
+                            capabilities.add(WirelessNetworkInterfaceCapability.Concurrent_Restricted_Same_Channel)
+                        }
+                    }
+                }
+                Section.UNKNOWN -> {}
+            }
+        }
+
+        return capabilities
     }
 
     fun getWifiInfoFromInterface(output: String): Pair<Int, Int>? {

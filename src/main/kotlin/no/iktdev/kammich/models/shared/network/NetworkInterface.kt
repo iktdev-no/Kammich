@@ -8,13 +8,16 @@ abstract class NetworkInterface {
     abstract fun withMode(newMode: NetworkInterfaceMode): NetworkInterface
 }
 
+fun NetworkInterface.asWifi(): WirelessNetworkInterface? = this as? WirelessNetworkInterface
+
+
 data class WirelessNetworkInterface(
     override val interfaceName: String,
     override val macAdress: String,
-    override val mode: NetworkInterfaceMode = NetworkInterfaceMode.Idle
+    override val mode: NetworkInterfaceMode = NetworkInterfaceMode.Idle,
+    val caps: Set<WirelessNetworkInterfaceCapability> = emptySet(),
 ) : NetworkInterface() {
     override val type: NetworkInterfaceType = NetworkInterfaceType.Wifi
-
     override fun withMode(newMode: NetworkInterfaceMode) = this.copy(mode = newMode)
 }
 
@@ -38,4 +41,11 @@ enum class NetworkInterfaceMode {
     Master, // Fallback
     Client,
     Idle,
+}
+
+enum class WirelessNetworkInterfaceCapability {
+    STA,
+    AP,
+    Concurrent,
+    Concurrent_Restricted_Same_Channel
 }

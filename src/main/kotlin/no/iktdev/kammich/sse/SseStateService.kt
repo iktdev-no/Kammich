@@ -36,7 +36,7 @@ class SseStateService(
         emitter.send(dss.getPayload())
         emitter.send(wifiScanner.getSSEPayload())
         emitter.send(wifiConnectivityService.getSSEPayload())
-        emitter.send(wifiTetherService.getSSEPayload())
+        emitter.send(wifiTetherService.getSSETetheringPayload())
     }
 
     @EventListener

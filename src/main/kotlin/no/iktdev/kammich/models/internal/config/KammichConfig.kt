@@ -1,7 +1,7 @@
 package no.iktdev.kammich.models.internal.config
 
 import no.iktdev.kammich.models.immich.auth.ImmichAuth
-import no.iktdev.kammich.models.shared.network.WifiTetherSetting
+import no.iktdev.kammich.models.shared.network.WifiTetherAP
 
 interface IKammichConfig {
     val mediaPath: String?
@@ -9,9 +9,8 @@ interface IKammichConfig {
     val assignUnknownDeviceAsBlockDevice: Boolean?
     val autoImportCameraByDefault: Boolean?
     val deviceSettings: MutableMap<String, DeviceSettings>?
-    val tetherSetting: WifiTetherSetting?
-    val tetherDevice: StoredTetherDevice?
-    val kammichHostpadPath: String?
+    val tetherSetting: WifiTetherAP?
+    val selectedWirelessTetherInterface: SelectedWirelessTetherInterface?
 }
 
 data class RuntimeKammichConfig(
@@ -20,9 +19,8 @@ data class RuntimeKammichConfig(
     override val assignUnknownDeviceAsBlockDevice: Boolean = false,
     override val autoImportCameraByDefault: Boolean = true,
     override val deviceSettings: MutableMap<String, DeviceSettings> = mutableMapOf(),
-    override val tetherSetting: WifiTetherSetting = WifiTetherSetting("Kammich", "kammich"),
-    override val tetherDevice: StoredTetherDevice? = null,
-    override val kammichHostpadPath: String = "/var/lib/kammich/ap.conf",
+    override val tetherSetting: WifiTetherAP = WifiTetherAP("Kammich", "kammich"),
+    override val selectedWirelessTetherInterface: SelectedWirelessTetherInterface? = null,
 ): IKammichConfig {
     companion object {
         private val defaults = RuntimeKammichConfig()
@@ -35,8 +33,7 @@ data class RuntimeKammichConfig(
                 autoImportCameraByDefault = stored.autoImportCameraByDefault ?: defaults.autoImportCameraByDefault,
                 deviceSettings = stored.deviceSettings ?: defaults.deviceSettings,
                 tetherSetting = stored.tetherSetting ?: defaults.tetherSetting,
-                tetherDevice = stored.tetherDevice ?: defaults.tetherDevice,
-                kammichHostpadPath = stored.kammichHostpadPath ?: defaults.kammichHostpadPath,
+                selectedWirelessTetherInterface = stored.selectedWirelessTetherInterface ?: defaults.selectedWirelessTetherInterface,
             )
         }
     }
@@ -49,24 +46,11 @@ data class StoredKammichConfig(
     override val assignUnknownDeviceAsBlockDevice: Boolean?,
     override val autoImportCameraByDefault: Boolean?,
     override val deviceSettings: MutableMap<String, DeviceSettings>?,
-    override val tetherSetting: WifiTetherSetting?,
-    override val tetherDevice: StoredTetherDevice?,
-    override val kammichHostpadPath: String?
+    override val tetherSetting: WifiTetherAP?,
+    override val selectedWirelessTetherInterface: SelectedWirelessTetherInterface?,
 ):  IKammichConfig
 
-open class StoredTetherDevice(
-    open val enabled: Boolean,
-    open val deviceId: String) {
-}
-
-class TetherDevice(
-    enabled: Boolean,
-    deviceId: String,
-): StoredTetherDevice(enabled, deviceId)
-
-class VirtualTetherDevice(
-    enabled: Boolean,
-    deviceId: String,
-    val parentDeviceId: String,
-    val vIfaceName: String,
-): StoredTetherDevice(enabled, deviceId)
+data class SelectedWirelessTetherInterface(
+    val autostart: Boolean,
+    val deviceId: String,
+)

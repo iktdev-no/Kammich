@@ -22,9 +22,9 @@ import WifiOffIcon from '@mui/icons-material/WifiOff';
 
 
 import { useSseSelector } from "../../sse/useSseSelector";
-import type { WifiInterface, WifiInterfaceScanState, WifiInterfaceState, WifiNetwork } from "../../types/types";
-import { connectToWifi, disconnectFromWifi, getWifiInterfaces, startWifiScan } from "../../api/wifiApi"; // Sørg for at stien stemmer overens med ditt prosjekt
+import type { WifiNetwork, WifiNetworkConnection, WifiNetworkScan, WirelessInterface } from "../../types/types";
 import { WifiSignalIcon } from "../../components/wifi/WifiIcon";
+import { connectToWifi, disconnectFromWifi, getInterfaces, getNewNetworks } from "../../api/networking/connection";
 
 export default function WifiSettings() {
     const [activeInterface, setActiveInterface] = useState<string>("");
@@ -35,21 +35,21 @@ export default function WifiSettings() {
     };
 
     // Data fra SSE
-    const [interfaces, setInterfaces] = useState<WifiInterface[]>([]);
+    const [interfaces, setInterfaces] = useState<WirelessInterface[]>([]);
     const [isLoadingInterfaces, setIsLoadingInterfaces] = useState(true);
 
 
     const wifiScans = useSseSelector(state => state.wifiScans) || [];
     const wifiConnections = useSseSelector(state => state.wifiConnections) || [];
 
-    const activeScan = wifiScans.find(s => s.interfaceName === activeInterface);
-    const activeConn = wifiConnections.find(c => c.interfaceName === activeInterface);
+    const activeScan = wifiScans.find(s => s.name === activeInterface);
+    const activeConn = wifiConnections.find(c => c.name === activeInterface);
 
 
     useEffect(() => {
         async function loadInterfaces() {
             try {
-                const data = await getWifiInterfaces();
+                const data = await getInterfaces();
                 setInterfaces(data);
                 if (data.length > 0) {
                     // 1. Sett aktivt grensesnitt
@@ -72,8 +72,8 @@ export default function WifiSettings() {
             <Typography variant="h5" sx={{ fontWeight: 600 }}>Wi-Fi Settings</Typography>
 
             {interfaces.map((iface) => {
-                const scanData = wifiScans.find(s => s.interfaceName === iface.name);
-                const connData = wifiConnections.find(c => c.interfaceName === iface.name);
+                const scanData = wifiScans.find(s => s.name === iface.name);
+                const connData = wifiConnections.find(c => c.name === iface.name);
 
                 return (
                     <Accordion
@@ -116,19 +116,19 @@ export default function WifiSettings() {
 }
 
 
-const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }: { scanData: WifiInterfaceScanState | undefined, connData: WifiInterfaceState | undefined, interfaceName: string, isExpanded: boolean }) => {
-    const isScanning = scanData?.scanning === "SCANNING";
+const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }: { scanData: WifiNetworkScan | undefined, connData: WifiNetworkConnection | undefined, interfaceName: string, isExpanded: boolean }) => {
+    const isScanning = scanData?.state === "Scanning";
     const [showHidden, setShowHidden] = useState(false); // 1. Toggle for skjulte
 
     useEffect(() => {
         if (!isExpanded) return;
         const interval = setInterval(() => {
-            if (scanData?.scanning !== "SCANNING") {
-                startWifiScan(interfaceName);
+            if (scanData?.state !== "Scanning") {
+                getNewNetworks(interfaceName);
             }
         }, 30000);
         return () => clearInterval(interval);
-    }, [interfaceName, scanData?.scanning, isExpanded]);
+    }, [interfaceName, scanData?.state, isExpanded]);
 
     // 2. Logikk for filtrering
     const visibleNetworks = (scanData?.networks || [])
@@ -142,7 +142,7 @@ const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }:
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {connData?.connectivityState === "CONNECTED" && connData.network && (
+            {connData?.state === "Connected" && connData.network && (
                 <Box sx={{ bgcolor: 'rgba(76, 175, 80, 0.1)', p: 2, borderRadius: 1, border: '1px solid rgba(76, 175, 80, 0.3)' }}>
                     <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600, mb: 1, display: 'block' }}>
                         ACTIVE CONNECTION
@@ -157,7 +157,7 @@ const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }:
 
                     <Button
                         size="small"
-                        onClick={() => startWifiScan(interfaceName)}
+                        onClick={() => getNewNetworks(interfaceName)}
                         disabled={isScanning}
                         startIcon={isScanning ? <CircularProgress size={14} color="inherit" /> : null}
                     >
@@ -173,7 +173,7 @@ const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }:
                 {!isScanning && visibleNetworks.length === 0 && (
                     <Box sx={{ textAlign: 'center', p: 3, color: 'text.secondary' }}>
                         <Typography variant="body2">No networks found.</Typography>
-                        {connData?.connectivityState === "CONNECTED" && (
+                        {connData?.state === "Connected" && (
                             <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
                                 Hint: Some systems restrict scanning while connected.
                             </Typography>

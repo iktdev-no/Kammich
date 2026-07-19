@@ -4,8 +4,11 @@ import no.iktdev.kammich.models.shared.network.EthernetNetworkInterface
 import no.iktdev.kammich.models.shared.network.NetworkInterfaceMode
 import no.iktdev.kammich.models.shared.network.NetworkInterfaceType
 import no.iktdev.kammich.models.shared.network.WirelessNetworkInterface
+import no.iktdev.kammich.models.shared.network.WirelessNetworkInterfaceCapability
 import no.iktdev.kammich.system.SysCommand
 import no.iktdev.kammich.system.network.wifi.WifiTetherService
+import no.iktdev.kammich.system.network.wifi.parser.WifiPhyInfoParser
+import org.slf4j.LoggerFactory
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
@@ -15,6 +18,7 @@ class NetworkInterfaceScanner(
     private val networkInterfaceRegistry: NetworkInterfaceRegistry,
     private val exec: SysCommand
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
     private val ignoredTypes = setOf("loopback", "tun", "wifi-p2p")
 
     @EventListener(ApplicationReadyEvent::class)
@@ -39,18 +43,18 @@ class NetworkInterfaceScanner(
 
                 val (mac, connName) = getDeviceInfo(interfaceName)
 
-                val mode = when {
-                    isExternal -> NetworkInterfaceMode.External
-                    interfaceState != "connected" -> NetworkInterfaceMode.Idle
-                    else -> if (connName == WifiTetherService.ap_profileName) NetworkInterfaceMode.Master else NetworkInterfaceMode.Client
-                }
+                val mode = determineMode(interfaceState, connName, isExternal)
 
                 val nif = when (interfaceType) {
-                    NetworkInterfaceType.Wifi -> WirelessNetworkInterface(
-                        interfaceName = interfaceName,
-                        macAdress = mac, // Her legger du inn MACen du hentet
-                        mode = mode
-                    )
+                    NetworkInterfaceType.Wifi -> {
+                        val caps = getWirelessCapabilities(interfaceName)
+                        WirelessNetworkInterface(
+                            interfaceName = interfaceName,
+                            macAdress = mac, // Her legger du inn MACen du hentet
+                            mode = mode,
+                            caps = caps,
+                        )
+                    }
                     NetworkInterfaceType.Ethernet -> EthernetNetworkInterface(
                         interfaceName = interfaceName,
                         macAdress = mac,
@@ -65,29 +69,66 @@ class NetworkInterfaceScanner(
     }
 
     private fun getDeviceInfo(interfaceName: String): Pair<String, String?> {
-        // -g står for "get", GENERAL.HWADDR henter macen, GENERAL.CONNECTION henter profilen
-        val cmd = exec.nonSudo("nmcli", "-g", "GENERAL.HWADDR,GENERAL.CONNECTION", "device", "show", interfaceName)
-        val output = cmd.getOrNull()?.split(":") ?: return "unknown" to null
+        val cmd = exec.nonSudo("nmcli", "-t", "-f", "GENERAL.HWADDR,GENERAL.CONNECTION", "device", "show", interfaceName)
+        val output = cmd.getOrNull() ?: return "unknown" to null
 
-        // Output blir ofte "XX:XX:XX:XX:XX:XX:NameOfConnection"
-        // Vi må være litt forsiktige hvis navnet inneholder kolon, men for MAC er det trygt
-        val mac = output.take(6).joinToString(":")
-        val connName = output.drop(6).joinToString(":").trim()
+        // Splitter på linjeskift for å få de to linjene
+        val lines = output.lines()
 
-        return mac to (connName.takeIf { it.isNotEmpty() })
+        // Finn MAC-adressen ved å se etter linjen som starter med GENERAL.HWADDR:
+        val mac = lines.find { it.startsWith("GENERAL.HWADDR:") }
+            ?.substringAfter("GENERAL.HWADDR:") ?: "unknown"
+
+        // Finn connection-navnet ved å se etter linjen som starter med GENERAL.CONNECTION:
+        // Merk: Vi bruker substringAfter første ':' for å håndtere hvis navnet selv inneholder ':'
+        val connName = lines.find { it.startsWith("GENERAL.CONNECTION:") }
+            ?.substringAfter("GENERAL.CONNECTION:")
+            ?.takeIf { it.isNotBlank() }
+
+        return mac to connName
     }
 
-    // Inne i NetworkInterfaceScanner
+    // Gjør denne funksjonen til din "Source of Truth" for modus-logikk
+    private fun determineMode(state: String, connName: String?, isExternal: Boolean): NetworkInterfaceMode {
+        if (isExternal) return NetworkInterfaceMode.External
+        if (state != "connected") return NetworkInterfaceMode.Idle
+
+        return when (connName) {
+            WifiTetherService.ap_profileName -> NetworkInterfaceMode.Master
+            else -> NetworkInterfaceMode.Client
+        }
+    }
+
     private fun getActiveMode(interfaceName: String): NetworkInterfaceMode {
-        // Spør NM om den aktive forbindelsen på dette interfacet
-        val cmd = exec.nonSudo("nmcli", "-g", "GENERAL.CONNECTION", "device", "show", interfaceName)
-        val connectionName = cmd.getOrNull()?.trim() ?: return NetworkInterfaceMode.Idle
+        val cmd = exec.nonSudo("nmcli", "-t", "-f", "GENERAL.CONNECTION", "device", "show", interfaceName)
+        val output = cmd.getOrNull()?.trim() ?: return NetworkInterfaceMode.Idle
 
-        // Sjekk om dette er vår egen hotspot-profil
-        if (connectionName == "kammich-ap") return NetworkInterfaceMode.Master
+        // Håndter tilfeller hvor det ikke er noen aktiv forbindelse (output er ofte tom eller ":")
+        if (output.isBlank() || output == ":") return NetworkInterfaceMode.Idle
 
-        // Hvis vi er tilkoblet noe annet, er vi Client/Backhaul
-        return NetworkInterfaceMode.Client
+        return when (output) {
+            WifiTetherService.ap_profileName -> NetworkInterfaceMode.Master
+            else -> NetworkInterfaceMode.Client
+        }
+    }
+
+    private fun getPhyFromInterface(interfaceName: String): String? {
+        val output = exec.nonSudo("iw", "dev", interfaceName, "info").getOrNull() ?: return null
+        return output.lines()
+            .map { it.trim() }
+            .find { it.startsWith("wiphy") }
+            ?.split(Regex("\\s+")) // Splitter på alle typer whitespace (space, tab, etc.)
+            ?.lastOrNull()         // Henter ut det siste elementet (tallet)
+            ?.let { "phy$it" }     // Konverterer til "phy0"
+    }
+
+    private fun getWirelessCapabilities(interfaceName: String): Set<WirelessNetworkInterfaceCapability> {
+        val phy = getPhyFromInterface(interfaceName) ?: run {
+            log.info("Could not find pyh network interface {}", interfaceName)
+            return emptySet()
+        }
+        val phyOut = exec.nonSudo("iw", "phy", phy, "info").getOrNull() ?: run { log.info("Could not find phy network interface {}", phy); return emptySet() }
+        return WifiPhyInfoParser().parseCapabilities(phyOut)
     }
 
 }
