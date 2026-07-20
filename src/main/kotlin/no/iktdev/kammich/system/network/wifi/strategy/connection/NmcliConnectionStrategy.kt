@@ -27,6 +27,22 @@ class NmcliConnectionStrategy(
         val cleaned = exec.sudo("nmcli", "con", "delete", conn)
     }
 
+    fun setAutoconnect(profileName: String, enable: Boolean): Boolean {
+        val value = if (enable) "yes" else "no"
+        val result = exec.sudo(
+            "nmcli", "con", "modify", profileName,
+            "connection.autoconnect", value
+        )
+
+        if (result.isSuccess()) {
+            log.info("Autoconnect set to $value for $profileName")
+            return true
+        } else {
+            log.error("Failed to set autoconnect for $profileName: ${result}")
+            return false
+        }
+    }
+
     override fun connect(interfaceName: String, network: WifiNetwork, password: String?): WifiNetworkConnection {
         val profileName = "Kammich-${network.bssid}"
         cleanup(profileName)
@@ -47,7 +63,8 @@ class NmcliConnectionStrategy(
             "ifname", interfaceName,
             "con-name", profileName,
             "ssid", "\"${network.ssid}\"",
-            "802-11-wireless.bssid", network.bssid
+            "802-11-wireless.bssid", network.bssid,
+            "connection.autoconnect", "no",
         )
 
         if (password != null) {
@@ -103,7 +120,7 @@ class NmcliConnectionStrategy(
             return WifiNetworkConnection(interfaceName, InterfaceActiveState.Disconnected, null)
         }
 
-        val wifi = nmcli.wifi().find { it.device == interfaceName } ?: return WifiNetworkConnection(interfaceName, InterfaceActiveState.Disconnected)
+        val wifi = nmcli.wifi().filter { it.device == interfaceName }.find { it.inUse } ?: return WifiNetworkConnection(interfaceName, InterfaceActiveState.Disconnected)
 
         val freq = wifi.frequency.split(" ")[0].toIntOrNull() ?: -1
 

@@ -4,7 +4,7 @@ import no.iktdev.kammich.models.shared.network.InterfaceActiveState
 import no.iktdev.kammich.models.shared.network.WifiNetwork
 import no.iktdev.kammich.models.shared.network.WifiNetworkHardwareMode
 import no.iktdev.kammich.models.shared.network.WifiNetworkTether
-import no.iktdev.kammich.models.shared.network.old.WifiSecurityType
+import no.iktdev.kammich.models.shared.network.WifiSecurityType
 import no.iktdev.kammich.models.shared.network.WifiTetherAP
 import no.iktdev.kammich.models.shared.network.WirelessTetheringState
 import no.iktdev.kammich.system.SysCommand
@@ -29,7 +29,23 @@ class NmcliAccessPointStrategy(
         val cleaned = exec.sudo("nmcli", "con", "delete", WifiTetherService.ap_profileName)
     }
 
-    override fun start(interfaceName: String, tether: WifiTetherAP): SysCommand.Result {
+    fun setAutoconnect(profileName: String, enable: Boolean): Boolean {
+        val value = if (enable) "yes" else "no"
+        val result = exec.sudo(
+            "nmcli", "con", "modify", profileName,
+            "connection.autoconnect", value
+        )
+
+        if (result.isSuccess()) {
+            logger.info("Autoconnect set to $value for $profileName")
+            return true
+        } else {
+            logger.error("Failed to set autoconnect for $profileName: ${result}")
+            return false
+        }
+    }
+
+    override fun start(interfaceName: String, tether: WifiTetherAP, autoconnect: Boolean): SysCommand.Result {
 
         cleanup()
 
@@ -47,6 +63,7 @@ class NmcliAccessPointStrategy(
             "802-11-wireless.mode", "ap", // Dette er den moderne måten
             "802-11-wireless.band", "bg", // 2.4GHz (legg til "a" for 5GHz hvis støttet)
             "ipv4.method", "shared",
+            "connection.autoconnect", if (autoconnect) "yes" else "no",
         )
         val password = if (sec != null) {
             listOf(
@@ -81,8 +98,9 @@ class NmcliAccessPointStrategy(
 
     override fun getState(interfaceName: String): WifiNetworkTether {
         // 0 Sjekk om vi er i AP føst
-        val usabale = iw.getMode(interfaceName)
-        if (usabale == IW.InterfaceMode.AP) {
+        val mode = iw.getMode(interfaceName)
+        if (mode != IW.InterfaceMode.AP) {
+            logger.debug("Not in ap mode...")
             return WifiNetworkTether(interfaceName, WirelessTetheringState.Idle, null)
         }
 
@@ -91,7 +109,7 @@ class NmcliAccessPointStrategy(
             return WifiNetworkTether(interfaceName, WirelessTetheringState.Idle, null)
         }
 
-        val wifi = nmcli.wifi().find { it.device == interfaceName } ?: return WifiNetworkTether(interfaceName, WirelessTetheringState.Idle)
+        val wifi = nmcli.wifi().filter { it.device == interfaceName }.find { it.inUse }  ?: return WifiNetworkTether(interfaceName, WirelessTetheringState.Idle)
 
         val freq = wifi.frequency.split(" ")[0].toIntOrNull() ?: -1
 

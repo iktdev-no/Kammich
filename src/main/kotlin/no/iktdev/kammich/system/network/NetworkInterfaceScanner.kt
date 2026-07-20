@@ -57,7 +57,10 @@ class NetworkInterfaceScanner(
                 val (mac, connName) = getDeviceInfo(interfaceName)
 
                 val mode = determineMode(interfaceState, connName, isExternal)
-                val currentState = getActiveMode(interfaceName)
+                val currentState = when (interfaceType) {
+                    NetworkInterfaceType.Wifi -> getActiveMode(interfaceName)
+                    else -> null
+                }
                 repository
 
                 val nif = when (interfaceType) {
@@ -79,7 +82,7 @@ class NetworkInterfaceScanner(
                 }
                 if (nif != null) {
                     networkInterfaceRegistry.registerOrUpdate(nif)
-                    if (currentState.stateObject != null) {
+                    if (currentState?.stateObject != null) {
                         if (nif is WirelessNetworkInterface) {
                             repository.updateInterface( currentState, nif)
                         }

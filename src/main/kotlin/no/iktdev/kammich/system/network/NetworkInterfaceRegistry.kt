@@ -201,11 +201,35 @@ class NetworkInterfaceRegistry(
     fun getInterfaces(type: NetworkInterfaceType, desiredModes: Set<NetworkInterfaceMode>): List<InterfaceAvailability> {
         return registry.filter { it.type == type }.map { nif ->
             val state = repository.getCurrentState().interfaces[nif.interfaceName]
-            val mode = state?.mode ?: nif.mode
+            val currentMode = state?.mode ?: nif.mode
 
-            val isAvailable = if (state?.mode == NetworkInterfaceMode.Master) {
-                nif.asWifi()?.caps?.any { it in listOf(WirelessNetworkInterfaceCapability.AP, WirelessNetworkInterfaceCapability.Concurrent) } ?: false
-            } else (mode in desiredModes || mode == NetworkInterfaceMode.Idle)
+            // Definer hva som er "kompatibelt" med desiredModes
+            val isModeCompatible = currentMode in desiredModes
+            val isIdle = currentMode == NetworkInterfaceMode.Idle
+
+            // Hovedregel:
+            // 1. Hvis den er i ønsket modus, er den tilgjengelig.
+            // 2. Hvis den er Idle, er den tilgjengelig.
+            // 3. Hvis den er Master og vi ber om Client, er den IKKE tilgjengelig.
+
+            val isAvailable = when {
+                // Hvis vi ber om Master, sjekk også hardware-støtte
+                desiredModes.contains(NetworkInterfaceMode.Master) -> {
+                    val supportsAp = nif.asWifi()?.caps?.any {
+                        it in listOf(WirelessNetworkInterfaceCapability.AP, WirelessNetworkInterfaceCapability.Concurrent)
+                    } ?: false
+
+                    supportsAp && (isIdle || isModeCompatible)
+                }
+
+                // Hvis vi ber om Client (eller annet), sjekk kun modus
+                else -> isIdle || isModeCompatible
+            }
+
+            // Logging for å debugge hvorfor den feiler
+            if (!isAvailable) {
+                log.info("${nif.interfaceName} is in $currentMode, returning isAvailable false for request which states: $desiredModes")
+            }
 
             InterfaceAvailability(
                 nif = nif,

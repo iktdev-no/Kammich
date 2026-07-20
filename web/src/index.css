@@ -1,3 +1,10 @@
+* {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -53,19 +60,20 @@ body {
 
 /* Tvinger alle elementer til å respektere sentrering likt i alle browsere */
 * {
-    /* Fjerner Firefox sin tendens til å legge til ekstra 'font-leading' */
-    -moz-text-size-adjust: none;
+  /* Fjerner Firefox sin tendens til å legge til ekstra 'font-leading' */
+  -moz-text-size-adjust: none;
 }
 
 
 /* "The Nuclear Option" for alle tekst-containere */
 :where(.MuiChip-label, .MuiTypography-root, .MuiListItemText-primary) {
-    /* Fjerner luft over/under tekst som ofte dytter ting ut av senter i FF */
-    line-height: 1 !important; 
+  /* Fjerner luft over/under tekst som ofte dytter ting ut av senter i FF */
+  line-height: 1 !important;
 }
 
 
 /* Hvis du vil være helt trygg på at Typography i brødtekst ikke blir med på leken */
 .MuiTypography-body1:not(.MuiListItemText-primary) {
-    line-height: inherit !important; /* Respekter designet ditt */
+  line-height: inherit !important;
+  /* Respekter designet ditt */
 }

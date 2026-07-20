@@ -99,7 +99,7 @@ class WifiTetherService(
             }
             CompletableFuture.runAsync {
                 try {
-                    val result = strategy.start(useInterface.name, useAPSettings)
+                    val result = strategy.start(useInterface.name, useAPSettings, true)
                     val network = if (result.isSuccess()) {
                         strategy.getState(useInterface.name).network
                     } else {

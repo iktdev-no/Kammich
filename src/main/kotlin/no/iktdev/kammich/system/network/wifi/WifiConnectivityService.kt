@@ -41,7 +41,7 @@ class WifiConnectivityService(
     fun getWifiClientInterfaces(): List<WirelessInterface> {
         val ifaces = interfaceRegistry.getInterfaces(
             NetworkInterfaceType.Wifi,
-            setOf(NetworkInterfaceMode.Client, NetworkInterfaceMode.Idle)
+            setOf(NetworkInterfaceMode.Client)
         )
             .map { (iface, state, isAvailable) ->
                 val wifiState = state?.asWifi()

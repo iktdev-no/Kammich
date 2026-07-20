@@ -13,8 +13,7 @@ class IW(
             return InterfaceMode.Unavailable
         val type = out.lines()
             .filter { it -> it.trim().startsWith("type") }
-            .map { it.trim() }
-            .map { it.substringAfter("type") }
+            .map { it.substringAfter("type").trim() }
             .singleOrNull() ?: return InterfaceMode.Unavailable
 
         return when (type) {

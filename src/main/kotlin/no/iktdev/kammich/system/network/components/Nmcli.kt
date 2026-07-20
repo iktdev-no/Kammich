@@ -15,9 +15,6 @@ class Nmcli(
         val result = exec.nonSudo("nmcli", "-t", "-f",
             General.entries.joinToString(",") { it.type }, "device", "show", iface).getOrNull() ?: return null
         val data = result.lines().filter { it ->
-            if (!it.contains(":")) {
-                log.warn("Line does not contain ':' -> $it")
-            }
             it.contains(":")
         }.associate { line ->
             val (k, v) = line.split(":", limit = 2)
