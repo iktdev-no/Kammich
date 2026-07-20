@@ -268,10 +268,10 @@ configure_network() {
 }
 
 ###############################################
-# 6. Kiosk Mode (Chromium + Xorg)
+# 6. Kiosk Mode (Chromium + Xorg + EDID + Window Manager)
 ###############################################
 configure_kiosk() {
-    echo "--- Konfigurerer Kiosk-modus med touch-støtte ---"
+    echo "--- Konfigurerer robust Kiosk-modus med EDID-sjekk og logging ---"
 
     # Sikre at Xorg har SUID-rettigheter slik at kammich kan åpne VT1 uten sirkus
     if [ -f /usr/lib/xorg/Xorg ]; then
@@ -281,35 +281,68 @@ configure_kiosk() {
     fi
 
     ###############################################
-    # 1. Lag kiosk-skriptet
+    # 1. Lag det fullstendige start-skriptet med EDID-logging og fallback
     ###############################################
-    cat <<EOF > /usr/local/bin/kammich-kiosk
+    cat << 'EOF' > /usr/local/bin/kammich-kiosk
 #!/bin/bash
 
-# Vent til X-serveren svarer på display :0
+LOG_FILE="/var/log/kammich-kiosk.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "=== Kiosk-skript startet: $(date) ==="
+
+export DISPLAY=:0
+export XAUTHORITY=/home/kammich/.Xauthority
+
+# Vent på at X-serveren svarer
+echo "Venter på at X-serveren skal bli klar på :0..."
+COUNTER=0
 until xdpyinfo -display :0 &>/dev/null; do
     sleep 0.5
+    COUNTER=$((COUNTER + 1))
+    if [ $COUNTER -gt 30 ]; then
+        echo "FEIL: X-serveren brukte for lang tid på å starte!"
+        exit 1
+    fi
 done
+echo "X-serveren svarer!"
+
+# Sjekk EDID og oppløsning via xrandr
+echo "Sjekker skjermport og EDID..."
+CONNECTED_OUTPUT=$(xrandr --query | grep " connected" | awk '{print $1}')
+
+if [ -n "$CONNECTED_OUTPUT" ]; then
+    echo "Fant tilkoblet skjermport: $CONNECTED_OUTPUT"
+
+    if xrandr --query | grep -A 5 "^$CONNECTED_OUTPUT" | grep -q "[0-9]\+x[0-9]\+"; then
+        echo "EDID ble lest vellykket. Bruker auto-detektert oppløsning."
+    else
+        echo "ADVARSEL: Fant skjermport ($CONNECTED_OUTPUT), men klarte ikke å lese EDID."
+        echo "FALLBACK: Tvinger oppløsning til 800x480 som sikkerhet."
+        xrandr --output "$CONNECTED_OUTPUT" --mode 800x480 2>/dev/null || echo "Klarte ikke å tvinge 800x480 via xrandr."
+    fi
+else
+    echo "ADVARSEL: Ingen skjermport rapporterte 'connected' via xrandr!"
+fi
 
 # Deaktiver skjermsparing
 xset s off
 xset -dpms
 xset s noblank
 
-# Chromium krever crashpad-database og riktige rettigheter
+# Chromium-konfigurasjon
 mkdir -p /home/kammich/.config/chromium/Crashpad
 chown -R kammich:kammich /home/kammich/.config/chromium
-
-# Fjern låsefiler
 rm -rf /home/kammich/.config/chromium/Default/Singleton*
 
-# Skjul mus
+# Start GUI-elementer
+echo "Starter unclutter, matchbox-window-manager og matchbox-keyboard..."
 unclutter -idle 1 &
-
-# Skjermtastatur
+matchbox-window-manager &
 matchbox-keyboard &
 
 # Start Chromium
+echo "Starter Chromium i kiosk-modus..."
 exec chromium \
     --kiosk http://localhost:8080 \
     --noerrdialogs \
@@ -317,6 +350,7 @@ exec chromium \
     --touch-events=enabled \
     --overscroll-history-navigation=0 \
     --disable-pinch \
+    --start-maximized \
     --disable-session-crashed-bubble \
     --disable-features=TranslateUI \
     --enable-crashpad
@@ -325,11 +359,10 @@ EOF
     chmod +x /usr/local/bin/kammich-kiosk
     chown kammich:kammich /usr/local/bin/kammich-kiosk
 
-
     ###############################################
-    # 2. Lag Xorg-tjenesten (starter GUI)
+    # 2. Lag Xorg-tjenesten
     ###############################################
-    cat <<EOF > /etc/systemd/system/kammich-x.service
+    cat << 'EOF' > /etc/systemd/system/kammich-x.service
 [Unit]
 Description=Kammich Xorg Session
 After=systemd-user-sessions.service network.target
@@ -339,13 +372,11 @@ Requires=systemd-user-sessions.service
 User=kammich
 Group=kammich
 
-# Kritisk: gi Xorg tilgang til VT1
 TTYPath=/dev/tty1
 StandardInput=tty
 StandardOutput=journal
 StandardError=journal
 
-# Kritisk: Xorg må ha rettigheter til GPU/input
 SupplementaryGroups=video input tty audio
 
 Environment=DISPLAY=:0
@@ -360,11 +391,10 @@ RestartSec=2
 WantedBy=multi-user.target
 EOF
 
-
     ###############################################
-    # 3. Lag kiosk-tjenesten (starter Chromium)
+    # 3. Lag kiosk-tjenesten
     ###############################################
-    cat <<EOF > /etc/systemd/system/kammich-kiosk.service
+    cat << 'EOF' > /etc/systemd/system/kammich-kiosk.service
 [Unit]
 Description=Kammich Chromium Kiosk
 After=kammich-x.service
@@ -382,13 +412,12 @@ RestartSec=2
 WantedBy=multi-user.target
 EOF
 
-
     # 4. Aktiver tjenester
     systemctl daemon-reload
     systemctl enable kammich-x.service
     systemctl enable kammich-kiosk.service
 
-    echo "--- Kiosk-modus er konfigurert ---"
+    echo "--- Kiosk-modus er konfigurert med EDID-sjekk og logging til /var/log/kammich-kiosk.log ---"
 }
 
 ###############################################
@@ -399,9 +428,11 @@ apply_changes() {
     systemctl daemon-reload
     udevadm control --reload-rules && udevadm trigger
 
+    # Start Xorg først, vent litt, og start deretter kiosken
     systemctl restart kammich-x.service
     sleep 2
     systemctl restart kammich-kiosk.service
+
     echo "--- Kammich-miljøet er nå klargjort og kjører! ---"
 }
 
