@@ -10,26 +10,34 @@ TARGET_USER="kammich"
 MOUNT_ROOT="/run/kammich/removable"
 STATE_ROOT="/run/kammich"
 
-echo "[+] Starter komplett installasjon for Kammich-miljøet..."
+echo "[+] Starter oppsett av robust Python-kiosk og systemd-tjeneste..."
 
 ###############################################
-# 1. Fjern Snap-dritt og "falske" apt-pakker
+# 0. Full opprydding av gamle feilede løsninger
 ###############################################
-echo "[*] Fjerner eventuelle Snap-rester og stubber..."
-systemctl stop snapd.service snapd.socket snapd.seeded.service 2>/dev/null
-systemctl disable snapd.service snapd.socket snapd.seeded.service 2>/dev/null
+cleanup_system() {
+    echo "[*] Kjører systemrydding (cleanup)..."
 
-if command -v snap &> /dev/null; then
-    for snap_pkg in $(snap list | awk 'NR>1 {print $1}'); do
-        snap remove --purge "$snap_pkg" 2>/dev/null
-    done
-fi
+    systemctl stop lightdm kammich-kiosk.service 2>/dev/null
+    systemctl disable lightdm kammich-kiosk.service 2>/dev/null
+    rm -f /etc/systemd/system/kammich-kiosk.service
 
-dpkg --remove --force-remove-reinstreq chromium chromium-browser chromium-browser-l10n chromium-codecs-ffmpeg-extra firefox firefox-locale-en thunderbird gnome-software 2>/dev/null
-apt-get purge -y snapd gnome-software-plugin-snap 2>/dev/null
-apt-get autoremove --purge -y 2>/dev/null
+    if command -v snap &> /dev/null; then
+        for snap_pkg in $(snap list | awk 'NR>1 {print $1}'); do
+            snap remove --purge "$snap_pkg" 2>/dev/null
+        done
+    fi
 
-rm -rf /snap /var/snap /var/lib/snapd /var/cache/snapd /etc/snapd ~/snap
+    apt-get purge -y lightdm openbox lxde-core lxde lxde-common touchegg 2>/dev/null
+    dpkg --remove --force-remove-reinstreq chromium chromium-browser chromium-browser-l10n chromium-codecs-ffmpeg-extra firefox firefox-locale-en thunderbird gnome-software 2>/dev/null
+    apt-get purge -y snapd gnome-software-plugin-snap 2>/dev/null
+    apt-get autoremove --purge -y 2>/dev/null
+
+    rm -rf /snap /var/snap /var/lib/snapd /var/cache/snapd /etc/snapd ~/snap
+    rm -rf /etc/systemd/system/getty@tty1.service.d
+}
+
+cleanup_system
 
 cat << 'EOF' > /etc/apt/preferences.d/no-snap.pref
 Package: snapd
@@ -38,9 +46,32 @@ Pin-Priority: -1
 EOF
 
 ###############################################
-# 2. Opprett dedikert bruker
+# 1. Sett opp Debian-repositorium for ren Chromium
 ###############################################
-echo "[*] Oppretter/sjekker brukeren $TARGET_USER..."
+echo "[*] Konfigurerer Debian-repo for ren Chromium..."
+
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://ftp-master.debian.org/keys/archive-key-12.asc | gpg --yes --dearmor -o /etc/apt/keyrings/debian-archive-keyring.gpg
+
+cat << 'EOF' > /etc/apt/preferences.d/debian-chromium
+Package: chromium chromium-common chromium-sandbox
+Pin: release o=Debian
+Pin-Priority: 900
+EOF
+
+cat << 'EOF' > /etc/apt/sources.list.d/debian-chromium.list
+deb [signed-by=/etc/apt/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian bookworm main
+EOF
+
+###############################################
+# 2. Opprett dedikert bruker og grupper
+###############################################
+echo "[*] Oppretter bruker og sikrer systemgrupper..."
+
+for grp in input tty audio video; do
+    getent group "$grp" &>/dev/null || groupadd "$grp"
+done
+
 if ! id "$TARGET_USER" &>/dev/null; then
     adduser --disabled-password --gecos "" "$TARGET_USER"
 fi
@@ -49,29 +80,43 @@ mkdir -p /home/$TARGET_USER/logs
 chown -R "$TARGET_USER:$TARGET_USER" /home/$TARGET_USER
 chmod 755 /home/$TARGET_USER
 
-# Gi brukeren tilgang til nødvendige grupper (inkludert seat for Wayland)
-usermod -aG input,tty,audio,video,seat "$TARGET_USER"
+usermod -aG input,tty,audio,video,render "$TARGET_USER"
 
 USER_ID=$(id -u "$TARGET_USER")
 GROUP_ID=$(id -g "$TARGET_USER")
 
+systemctl daemon-reload
+
 ###############################################
-# 3. Installer systemavhengigheter + Wayland-kiosk
+# 3. Installer avhengigheter (Xorg, Onboard, Python3, Chromium)
 ###############################################
-echo "[*] Installerer pakker (Java, Chromium, Wayland-komponenter, seatd)..."
+echo "[*] Installerer pakker (Xorg, Onboard, Python3, Chromium)..."
 apt-get update
 apt-get install -y \
     gphoto2 smartmontools hdparm openjdk-21-jdk rfkill jc network-manager \
-    seatd cage wvkbd
+    xserver-xorg x11-xserver-utils xinit onboard python3-tk xdotool chromium chromium-common dbus-x11
 
-apt-get install -y \
-    chromium chromium-common
-
-# Aktiver seatd-tjenesten systemomspennende
-systemctl enable --now seatd
+# Gi bruker rettighet til å starte X uten passord
+chmod u+s /usr/lib/xorg/Xorg 2>/dev/null || chmod u+s /usr/bin/Xorg 2>/dev/null
 
 ###############################################
-# 4. Setup Base-struktur (USB Mount)
+# 4. Deaktiver Hibernate / Sleep og Network-wait-online
+###############################################
+echo "[*] Deaktiverer dvale/hibernate og nettverkstvang under boot..."
+
+cat << 'EOF' > /etc/systemd/sleep.conf
+[Sleep]
+AllowSuspend=no
+AllowHibernation=no
+AllowSuspendThenHibernate=no
+AllowHybridSleep=no
+EOF
+
+systemctl mask sleep.target suspend.target hibernation.target hybrid-sleep.target
+systemctl mask NetworkManager-wait-online.service
+
+###############################################
+# 5. Setup Base-struktur (USB Mount)
 ###############################################
 echo "[*] Setter opp mapper og udev-regler for USB..."
 mkdir -p "$MOUNT_ROOT"
@@ -89,7 +134,7 @@ ACTION=="remove", SUBSYSTEM=="block", KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9
 EOF
 
 ###############################################
-# 5. Mount/Unmount Helper & Eject
+# 6. Mount/Unmount Helper & Eject
 ###############################################
 cat <<EOF > /usr/local/bin/kammich-mount-helper
 #!/bin/bash
@@ -186,7 +231,7 @@ EOF
 chmod +x /usr/local/bin/kammich-eject
 
 ###############################################
-# 6. Sudoers & Network Forwarding
+# 7. Sudoers & Network Forwarding
 ###############################################
 echo "[*] Konfigurerer sudoers og nettverk..."
 cat << 'EOF' > /etc/sudoers.d/kammich
@@ -200,61 +245,179 @@ echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-kammich-forwarding.conf
 sysctl -p /etc/sysctl.d/99-kammich-forwarding.conf
 
 ###############################################
-# 7. Kiosk Oppsett (Cage + wvkbd + Chromium)
+# 8. Opprett komplett Python Kiosk Manager & Navbar (med EDID-støtte)
 ###############################################
-echo "[*] Konfigurerer Wayland-kiosk skript og tjeneste..."
+echo "[*] Oppretter Python-basert kiosk- og navigasjonsstyring..."
 
-cat << 'EOF' > /usr/local/bin/kammich-kiosk
-#!/bin/bash
-LOG_FILE="/home/kammich/logs/kiosk.log"
-exec > >(tee -a "$LOG_FILE") 2>&1
+cat << 'EOF' > /home/kammich/kiosk-manager.py
+import tkinter as tk
+import subprocess
+import os
+import time
 
-echo "=== Kiosk startet: $(date) ==="
+def go_back():
+    subprocess.run(["xdotool", "key", "Alt+Left"])
 
-# Start virtuelt tastatur i bakgrunnen (skjult til felt får fokus)
-wvkbd-mobintl --hidden --landscape-layers "simple,special" --alpha 200 &
+def go_home():
+    subprocess.run(["xdotool", "key", "ctrl+l"])
+    time.sleep(0.1)
+    subprocess.run(["xdotool", "type", "https://iktdev.no"])
+    subprocess.run(["xdotool", "key", "Return"])
 
-# Start Cage med Chromium
-exec cage -- chromium \
-    --kiosk \
-    --no-first-run \
-    --disable-infobars \
-    --disable-session-crashed-bubble \
-    --disable-features=TranslateUI \
-    --enable-features=TouchpadOverscrollHistoryNavigation=0 \
-    http://localhost:8080
+def toggle_keyboard():
+    res = subprocess.run(["pgrep", "onboard"], capture_output=True)
+    if res.returncode != 0:
+        subprocess.Popen(["onboard"])
+    else:
+        os.system("pkill onboard")
+
+# Start Onboard i bakgrunnen
+subprocess.Popen(["onboard"])
+
+# Start Tkinter og hent ekte oppløsning fra Xorgs EDID-lesing
+root = tk.Tk()
+root.overrideredirect(True)
+root.attributes("-topmost", True)
+
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+bar_height = 50
+web_height = screen_height - bar_height
+
+# Plasser navbar nederst med full bredde og sørg for at den ligger øverst
+root.geometry(f"{screen_width}x{bar_height}+0+{web_height}")
+root.configure(bg="#111111")
+
+btn_config = {
+    "bg": "#222222",
+    "fg": "white",
+    "font": ("Arial", 16, "bold"),
+    "bd": 0,
+    "activebackground": "#444444",
+    "activeforeground": "white"
+}
+
+btn_back = tk.Button(root, text=" ◀  Tilbake ", command=go_back, **btn_config)
+btn_back.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+btn_home = tk.Button(root, text=" 🏠  Hjem ", command=go_home, **btn_config)
+btn_home.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+btn_kb = tk.Button(root, text=" ⌨  Tastatur ", command=toggle_keyboard, **btn_config)
+btn_kb.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+# Start Chromium i ekte kiosk-modus
+chromium_proc = subprocess.Popen([
+    "chromium",
+    "--kiosk",
+    f"--window-size={screen_width},{web_height}",
+    "--window-position=0,0",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-infobars",
+    "--disable-session-crashed-bubble",
+    "--disable-dev-shm-usage",
+    "--password-store=basic",
+    "--user-data-dir=/home/kammich/.config/chromium",
+    "https://iktdev.no"
+])
+
+def monitor_chromium():
+    if chromium_proc.poll() is not None:
+        root.destroy()
+    else:
+        root.after(1000, monitor_chromium)
+
+root.after(1000, monitor_chromium)
+root.mainloop()
+
+chromium_proc.terminate()
+os.system("pkill onboard")
 EOF
 
-chmod +x /usr/local/bin/kammich-kiosk
-chown kammich:kammich /usr/local/bin/kammich-kiosk
+chown kammich:kammich /home/kammich/kiosk-manager.py
+chmod +x /home/kammich/kiosk-manager.py
 
-cat << EOF > /etc/systemd/system/kammich-kiosk.service
+###############################################
+# 9. Oppstartsskript for X11 / xinit (med justerbar skjermsparer)
+###############################################
+cat << 'EOF' > /home/kammich/kiosk-start.sh
+#!/bin/bash
+export DISPLAY=:0
+export XAUTHORITY=$HOME/.Xauthority
+
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+    eval $(dbus-launch --sh-syntax)
+    export DBUS_SESSION_BUS_ADDRESS
+    export DBUS_SESSION_BUS_PID
+fi
+
+# =========================================================================
+# VARIABEL FOR SKJERMSTIDSAVBRUDD (DPMS)
+# Setter tid i sekunder før skjermen skrur av baklyset (for å hindre innbrenning).
+# 300 sekunder = 5 minutter. Sett til 0 for å deaktivere helt under testing.
+# =========================================================================
+SCREENSAVER_TIMEOUT=300
+
+xset s off
+xset -dpms
+xset dpms 0 0 "$SCREENSAVER_TIMEOUT"
+
+# Sett et pent og moderne utseende på Onboard-tastaturet
+gsettings set org.onboard theme 'Nightshade' 2>/dev/null
+
+# Sett en fast START-posisjon og størrelse (uten å låse den fast for alltid)
+# Beregner automatisk en fin plassering sentrert nederst over navbar
+screen_w=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f1)
+screen_h=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f2)
+if [ -n "$screen_w" ] && [ -n "$screen_h" ]; then
+    kb_w=$(( screen_w * 4 / 5 )) # 80% av skjermbredden
+    kb_h=250
+    kb_x=$(( (screen_w - kb_w) / 2 ))
+    kb_y=$(( screen_h - kb_h - 55 ))
+    gsettings set org.onboard.window.landscape x "$kb_x" 2>/dev/null
+    gsettings set org.onboard.window.landscape y "$kb_y" 2>/dev/null
+    gsettings set org.onboard.window.landscape width "$kb_w" 2>/dev/null
+    gsettings set org.onboard.window.landscape height "$kb_h" 2>/dev/null
+fi
+
+# Start Python Kiosk Manager
+exec python3 /home/kammich/kiosk-manager.py
+EOF
+
+chown kammich:kammich /home/kammich/kiosk-start.sh
+chmod +x /home/kammich/kiosk-start.sh
+
+###############################################
+# 10. Opprett Systemd-tjeneste for kiosken
+###############################################
+echo "[*] Oppretter systemd kiosk-tjeneste..."
+
+cat << 'EOF' > /etc/systemd/system/kammich-kiosk.service
 [Unit]
-Description=Kammich Wayland Kiosk (Cage + wvkbd + Chromium)
-After=network.target local-fs.target seatd.service
+Description=Kammich Python Kiosk Service
+After=network.target sound.target udev.service
 
 [Service]
-User=$TARGET_USER
-Group=$TARGET_USER
-
-RuntimeDirectory=kammich-kiosk
-Environment=XDG_RUNTIME_DIR=/run/kammich-kiosk
-Environment=WLR_BACKENDS=drm,libinput
-
-ExecStart=/usr/local/bin/kammich-kiosk
+User=kammich
+Group=kammich
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/startx /home/kammich/kiosk-start.sh -- :0 vt1
 Restart=always
-RestartSec=3
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 ###############################################
-# 8. Aktiver alt
+# 11. Aktiver alt og start tjenesten med en gang
 ###############################################
-echo "[*] Aktiverer systemd og udev..."
+echo "[*] Aktiverer og starter systemd-tjenesten umiddelbart..."
 systemctl daemon-reload
-udevadm control --reload-rules && udevadm trigger
+systemctl disable getty@tty1.service 2>/dev/null
 systemctl enable kammich-kiosk.service
+systemctl restart kammich-kiosk.service
 
-echo "[+] Installasjonen er fullført! Start kiosken med: sudo systemctl start kammich-kiosk.service"
+echo "[+] Installasjon og oppstart fullført!"
