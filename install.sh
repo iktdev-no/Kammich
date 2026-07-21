@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Sjekk at skriptet kjøres som root
+# Sjekk root
 if [[ $EUID -ne 0 ]]; then
-    echo "[-] Dette skriptet må kjøres som root (sudo)."
+    echo "Dette scriptet må kjøres som root (sudo)"
     exit 1
 fi
 
@@ -10,14 +10,13 @@ TARGET_USER="kammich"
 MOUNT_ROOT="/run/kammich/removable"
 STATE_ROOT="/run/kammich"
 
-echo "[+] Starter oppsett av robust Python-kiosk og systemd-tjeneste..."
+echo "[+] Starter komplett og robust oppsett av Kammich Kiosk..."
 
 ###############################################
 # 0. Full opprydding av gamle feilede løsninger
 ###############################################
 cleanup_system() {
     echo "[*] Kjører systemrydding (cleanup)..."
-
     systemctl stop lightdm kammich-kiosk.service 2>/dev/null
     systemctl disable lightdm kammich-kiosk.service 2>/dev/null
     rm -f /etc/systemd/system/kammich-kiosk.service
@@ -49,7 +48,6 @@ EOF
 # 1. Sett opp Debian-repositorium for ren Chromium
 ###############################################
 echo "[*] Konfigurerer Debian-repo for ren Chromium..."
-
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://ftp-master.debian.org/keys/archive-key-12.asc | gpg --yes --dearmor -o /etc/apt/keyrings/debian-archive-keyring.gpg
 
@@ -67,7 +65,6 @@ EOF
 # 2. Opprett dedikert bruker og grupper
 ###############################################
 echo "[*] Oppretter bruker og sikrer systemgrupper..."
-
 for grp in input tty audio video; do
     getent group "$grp" &>/dev/null || groupadd "$grp"
 done
@@ -79,7 +76,6 @@ fi
 mkdir -p /home/$TARGET_USER/logs
 chown -R "$TARGET_USER:$TARGET_USER" /home/$TARGET_USER
 chmod 755 /home/$TARGET_USER
-
 usermod -aG input,tty,audio,video,render "$TARGET_USER"
 
 USER_ID=$(id -u "$TARGET_USER")
@@ -88,19 +84,18 @@ GROUP_ID=$(id -g "$TARGET_USER")
 systemctl daemon-reload
 
 ###############################################
-# 3. Installer avhengigheter (Xorg, Onboard, Python3, Chromium)
+# 3. Installer avhengigheter
 ###############################################
-echo "[*] Installerer pakker (Xorg, Onboard, Python3, Chromium)..."
+echo "[*] Installerer systemavhengigheter..."
 apt-get update
 apt-get install -y \
     gphoto2 smartmontools hdparm openjdk-21-jdk rfkill jc network-manager \
     xserver-xorg x11-xserver-utils xinit onboard python3-tk xdotool chromium chromium-common dbus-x11
 
-# Gi bruker rettighet til å starte X uten passord
 chmod u+s /usr/lib/xorg/Xorg 2>/dev/null || chmod u+s /usr/bin/Xorg 2>/dev/null
 
 ###############################################
-# 4. Deaktiver Hibernate / Sleep og Network-wait-online
+# 4. Deaktiver Hibernate / Sleep
 ###############################################
 echo "[*] Deaktiverer dvale/hibernate og nettverkstvang under boot..."
 
@@ -231,7 +226,7 @@ EOF
 chmod +x /usr/local/bin/kammich-eject
 
 ###############################################
-# 7. Sudoers & Network Forwarding
+# 7. Sudoers & Network Forwarding (med visudo-sjekk)
 ###############################################
 echo "[*] Konfigurerer sudoers og nettverk..."
 cat << 'EOF' > /etc/sudoers.d/kammich
@@ -241,11 +236,18 @@ kammich ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
 EOF
 chmod 0440 /etc/sudoers.d/kammich
 
+if visudo -cf /etc/sudoers.d/kammich; then
+    echo "Suksess: sudoers-filen er validert."
+else
+    echo "FEIL: Sudoers-validering feilet!"
+    exit 1
+fi
+
 echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-kammich-forwarding.conf
 sysctl -p /etc/sysctl.d/99-kammich-forwarding.conf
 
 ###############################################
-# 8. Opprett komplett Python Kiosk Manager & Navbar (med EDID-støtte)
+# 8. Kiosk Manager (Python / Tkinter)
 ###############################################
 echo "[*] Oppretter Python-basert kiosk- og navigasjonsstyring..."
 
@@ -271,10 +273,8 @@ def toggle_keyboard():
     else:
         os.system("pkill onboard")
 
-# Start Onboard i bakgrunnen
 subprocess.Popen(["onboard"])
 
-# Start Tkinter og hent ekte oppløsning fra Xorgs EDID-lesing
 root = tk.Tk()
 root.overrideredirect(True)
 root.attributes("-topmost", True)
@@ -285,7 +285,6 @@ screen_height = root.winfo_screenheight()
 bar_height = 50
 web_height = screen_height - bar_height
 
-# Plasser navbar nederst med full bredde og sørg for at den ligger øverst
 root.geometry(f"{screen_width}x{bar_height}+0+{web_height}")
 root.configure(bg="#111111")
 
@@ -307,7 +306,6 @@ btn_home.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 btn_kb = tk.Button(root, text=" ⌨  Tastatur ", command=toggle_keyboard, **btn_config)
 btn_kb.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-# Start Chromium i ekte kiosk-modus
 chromium_proc = subprocess.Popen([
     "chromium",
     "--kiosk",
@@ -340,7 +338,7 @@ chown kammich:kammich /home/kammich/kiosk-manager.py
 chmod +x /home/kammich/kiosk-manager.py
 
 ###############################################
-# 9. Oppstartsskript for X11 / xinit (med justerbar skjermsparer)
+# 9. X11 / xinit Oppstartsskript (med DPMS)
 ###############################################
 cat << 'EOF' > /home/kammich/kiosk-start.sh
 #!/bin/bash
@@ -364,7 +362,6 @@ xset s off
 xset -dpms
 xset dpms 0 0 "$SCREENSAVER_TIMEOUT"
 
-# Sett et pent og moderne utseende på Onboard-tastaturet
 gsettings set org.onboard theme 'Nightshade' 2>/dev/null
 
 # Sett en fast START-posisjon og størrelse (uten å låse den fast for alltid)
@@ -372,7 +369,7 @@ gsettings set org.onboard theme 'Nightshade' 2>/dev/null
 screen_w=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f1)
 screen_h=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f2)
 if [ -n "$screen_w" ] && [ -n "$screen_h" ]; then
-    kb_w=$(( screen_w * 4 / 5 )) # 80% av skjermbredden
+    kb_w=$(( screen_w * 4 / 5 ))
     kb_h=250
     kb_x=$(( (screen_w - kb_w) / 2 ))
     kb_y=$(( screen_h - kb_h - 55 ))
@@ -382,7 +379,6 @@ if [ -n "$screen_w" ] && [ -n "$screen_h" ]; then
     gsettings set org.onboard.window.landscape height "$kb_h" 2>/dev/null
 fi
 
-# Start Python Kiosk Manager
 exec python3 /home/kammich/kiosk-manager.py
 EOF
 
@@ -390,7 +386,7 @@ chown kammich:kammich /home/kammich/kiosk-start.sh
 chmod +x /home/kammich/kiosk-start.sh
 
 ###############################################
-# 10. Opprett Systemd-tjeneste for kiosken
+# 10. Systemd Kiosk-tjeneste
 ###############################################
 echo "[*] Oppretter systemd kiosk-tjeneste..."
 
@@ -412,12 +408,13 @@ WantedBy=multi-user.target
 EOF
 
 ###############################################
-# 11. Aktiver alt og start tjenesten med en gang
+# 11. Aktiver og start
 ###############################################
-echo "[*] Aktiverer og starter systemd-tjenesten umiddelbart..."
+echo "[*] Aktiverer og starter systemd-tjenesten..."
 systemctl daemon-reload
 systemctl disable getty@tty1.service 2>/dev/null
 systemctl enable kammich-kiosk.service
 systemctl restart kammich-kiosk.service
+udevadm control --reload-rules && udevadm trigger
 
-echo "[+] Installasjon og oppstart fullført!"
+echo "[+] Alt er klart! Kiosken er oppe og kjører."
