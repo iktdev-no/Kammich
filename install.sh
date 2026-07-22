@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# --- KONFIGURASJON AV SKJERMROTASJON ---
+# Velg mellom: normal (0), right (90), inverted (180), left (-90/270)
+ROTATION="right"
+
 # Sjekk root
 if [[ $EUID -ne 0 ]]; then
     echo "Dette scriptet må kjøres som root (sudo)"
@@ -343,7 +347,8 @@ chromium_proc = subprocess.Popen([
     "--disable-dev-shm-usage",
     "--password-store=basic",
     "--touch-events=enabled",
-    "--overscroll-history-navigation=0"
+    "--no-cursor",
+    "--overscroll-history-navigation=0",
     "--user-data-dir=/home/kammich/.config/chromium",
     startUrl
 ])
@@ -384,7 +389,6 @@ xset s off
 xset -dpms
 xset dpms 0 0 "$SCREENSAVER_TIMEOUT"
 
-unclutter -idle 0 &
 
 gsettings set org.onboard theme 'Nightshade' 2>/dev/null
 
@@ -421,7 +425,7 @@ After=network.target sound.target udev.service
 User=kammich
 Group=kammich
 Environment=DISPLAY=:0
-ExecStart=/usr/bin/startx /home/kammich/kiosk-start.sh -- :0 vt1
+ExecStart=/usr/bin/startx /home/kammich/kiosk-start.sh -- :0 vt1 -nocursor
 Restart=always
 RestartSec=5
 
