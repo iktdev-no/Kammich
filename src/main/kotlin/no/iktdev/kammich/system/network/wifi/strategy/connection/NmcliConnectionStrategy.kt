@@ -62,7 +62,7 @@ class NmcliConnectionStrategy(
             "type", "wifi",
             "ifname", interfaceName,
             "con-name", profileName,
-            "ssid", "\"${network.ssid}\"",
+            "ssid", network.ssid,
             "802-11-wireless.bssid", network.bssid,
             "connection.autoconnect", "no",
         )
