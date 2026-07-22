@@ -9,6 +9,7 @@ fi
 TARGET_USER="kammich"
 MOUNT_ROOT="/run/kammich/removable"
 STATE_ROOT="/run/kammich"
+APP_DATA_ROOT="/var/lib/kammich"
 
 echo "[+] Starter komplett og robust oppsett av Kammich Kiosk..."
 
@@ -89,8 +90,8 @@ systemctl daemon-reload
 echo "[*] Installerer systemavhengigheter..."
 apt-get update
 apt-get install -y \
-    gphoto2 smartmontools hdparm openjdk-21-jdk rfkill jc network-manager \
-    xserver-xorg x11-xserver-utils xinit onboard python3-tk xdotool chromium chromium-common dbus-x11
+    gphoto2 smartmontools hdparm openjdk-21-jdk rfkill jc network-manager iw \
+    xserver-xorg x11-xserver-utils xinit onboard python3-tk xdotool chromium chromium-common dbus-x11 unclutter
 
 chmod u+s /usr/lib/xorg/Xorg 2>/dev/null || chmod u+s /usr/bin/Xorg 2>/dev/null
 
@@ -111,16 +112,31 @@ systemctl mask sleep.target suspend.target hibernation.target hybrid-sleep.targe
 systemctl mask NetworkManager-wait-online.service
 
 ###############################################
-# 5. Setup Base-struktur (USB Mount)
+# 5. Setup Base-struktur (USB Mount & /var/lib/kammich)
 ###############################################
-echo "[*] Setter opp mapper og udev-regler for USB..."
+echo "[*] Oppretter persistert lagringsrot og setter fleksible rettigheter for $TARGET_USER og utvikler..."
 mkdir -p "$MOUNT_ROOT"
+mkdir -p "$APP_DATA_ROOT"
+
+# Finn hvem som kjører installasjonen (f.eks. bskjon)
+DEV_USER=${SUDO_USER:-$TARGET_USER}
+
+# Sett eier til kammich, men sørg for full tilgang
+chown -R "$TARGET_USER:$TARGET_USER" "$APP_DATA_ROOT"
+chmod -R 775 "$APP_DATA_ROOT"
+
+# Slå på setgid (g+s) slik at undermapper og filer automatisk beholder riktige rettigheter
+find "$APP_DATA_ROOT" -type d -exec chmod g+s {} +
+
 echo "MOUNT_ROOT=\"$MOUNT_ROOT\"" > /etc/kammich.conf
 echo "STATE_ROOT=\"$STATE_ROOT\"" >> /etc/kammich.conf
+echo "APP_DATA_ROOT=\"$APP_DATA_ROOT\"" >> /etc/kammich.conf
 
 cat <<EOF > /etc/tmpfiles.d/kammich.conf
 d $STATE_ROOT 0755 root root -
+d $APP_DATA_ROOT 0775 $TARGET_USER $TARGET_USER -
 EOF
+echo "[*] Setter opp udev-regler for usb"
 
 cat <<EOF > /etc/udev/rules.d/99-kammich.rules
 ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", KERNEL=="sd[a-z][0-9]|nvme[0-9]n[0-9]p[0-9]", ENV{SYSTEMD_WANTS}+="usb-mount@%k.service"
@@ -226,14 +242,18 @@ EOF
 chmod +x /usr/local/bin/kammich-eject
 
 ###############################################
-# 7. Sudoers & Network Forwarding (med visudo-sjekk)
+# 7. Sudoers & Network Forwarding
 ###############################################
-echo "[*] Konfigurerer sudoers og nettverk..."
-cat << 'EOF' > /etc/sudoers.d/kammich
+echo "[*] Konfigurerer sudoers og nettverk for både $TARGET_USER og $DEV_USER..."
+
+cat << EOF > /etc/sudoers.d/kammich
 Cmnd_Alias KAMMICH_ADMIN = /usr/sbin/smartctl, /usr/local/bin/kammich-eject
 Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw, /usr/bin/nmcli, /usr/bin/pkill, /usr/bin/kill, /usr/sbin/ip
-kammich ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
+
+$TARGET_USER ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
+$DEV_USER ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
 EOF
+
 chmod 0440 /etc/sudoers.d/kammich
 
 if visudo -cf /etc/sudoers.d/kammich; then
@@ -249,13 +269,13 @@ sysctl -p /etc/sysctl.d/99-kammich-forwarding.conf
 ###############################################
 # 8. Kiosk Manager (Python / Tkinter)
 ###############################################
-echo "[*] Oppretter Python-basert kiosk- og navigasjonsstyring..."
-
 cat << 'EOF' > /home/kammich/kiosk-manager.py
 import tkinter as tk
 import subprocess
 import os
 import time
+
+startUrl="http://192.168.2.20:5173"
 
 def go_back():
     subprocess.run(["xdotool", "key", "Alt+Left"])
@@ -263,7 +283,7 @@ def go_back():
 def go_home():
     subprocess.run(["xdotool", "key", "ctrl+l"])
     time.sleep(0.1)
-    subprocess.run(["xdotool", "type", "https://iktdev.no"])
+    subprocess.run(["xdotool", "type", startUrl])
     subprocess.run(["xdotool", "key", "Return"])
 
 def toggle_keyboard():
@@ -278,6 +298,8 @@ subprocess.Popen(["onboard"])
 root = tk.Tk()
 root.overrideredirect(True)
 root.attributes("-topmost", True)
+
+root.focus_force()
 
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
@@ -297,13 +319,16 @@ btn_config = {
     "activeforeground": "white"
 }
 
-btn_back = tk.Button(root, text=" ◀  Tilbake ", command=go_back, **btn_config)
+btn_back = tk.Button(root, text=" ◀  Tilbake ", **btn_config)
+btn_back.bind("<ButtonPress-1>", lambda e: go_back())
 btn_back.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-btn_home = tk.Button(root, text=" 🏠  Hjem ", command=go_home, **btn_config)
+btn_home = tk.Button(root, text=" 🏠  Hjem ", **btn_config)
+btn_home.bind("<ButtonPress-1>", lambda e: go_home())
 btn_home.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-btn_kb = tk.Button(root, text=" ⌨  Tastatur ", command=toggle_keyboard, **btn_config)
+btn_kb = tk.Button(root, text=" ⌨  Tastatur ", **btn_config)
+btn_kb.bind("<ButtonPress-1>", lambda e: toggle_keyboard())
 btn_kb.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
 chromium_proc = subprocess.Popen([
@@ -317,8 +342,10 @@ chromium_proc = subprocess.Popen([
     "--disable-session-crashed-bubble",
     "--disable-dev-shm-usage",
     "--password-store=basic",
+    "--touch-events=enabled",
+    "--overscroll-history-navigation=0"
     "--user-data-dir=/home/kammich/.config/chromium",
-    "https://iktdev.no"
+    startUrl
 ])
 
 def monitor_chromium():
@@ -351,21 +378,16 @@ if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
     export DBUS_SESSION_BUS_PID
 fi
 
-# =========================================================================
-# VARIABEL FOR SKJERMSTIDSAVBRUDD (DPMS)
-# Setter tid i sekunder før skjermen skrur av baklyset (for å hindre innbrenning).
-# 300 sekunder = 5 minutter. Sett til 0 for å deaktivere helt under testing.
-# =========================================================================
 SCREENSAVER_TIMEOUT=300
 
 xset s off
 xset -dpms
 xset dpms 0 0 "$SCREENSAVER_TIMEOUT"
 
+unclutter -idle 0 &
+
 gsettings set org.onboard theme 'Nightshade' 2>/dev/null
 
-# Sett en fast START-posisjon og størrelse (uten å låse den fast for alltid)
-# Beregner automatisk en fin plassering sentrert nederst over navbar
 screen_w=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f1)
 screen_h=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f2)
 if [ -n "$screen_w" ] && [ -n "$screen_h" ]; then
@@ -417,4 +439,4 @@ systemctl enable kammich-kiosk.service
 systemctl restart kammich-kiosk.service
 udevadm control --reload-rules && udevadm trigger
 
-echo "[+] Alt er klart! Kiosken er oppe og kjører."
+echo "[+] Alt er klart! Kiosken og /var/lib/kammich er opprettet og klargjort."
