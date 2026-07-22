@@ -20,6 +20,10 @@ class StorageInfoPublisher(
 
     private lateinit var storageInfo: List<StorageInfo>
 
+    init {
+        poll()
+    }
+
     @Scheduled(fixedDelay = 100000)
     fun poll() {
         storageInfo = lsblkService.getAllPhysicalDevices(Transport.NVME, Transport.SATA)

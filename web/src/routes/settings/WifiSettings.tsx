@@ -14,7 +14,8 @@ import {
     InputLabel,
     Accordion,
     AccordionDetails,
-    AccordionSummary
+    AccordionSummary,
+    LinearProgress
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RouterIcon from '@mui/icons-material/Router';
@@ -22,7 +23,7 @@ import WifiOffIcon from '@mui/icons-material/WifiOff';
 import FiveGIcon from '@mui/icons-material/FiveG';
 
 import { useSseSelector } from "../../sse/useSseSelector";
-import type { WifiNetwork, WifiNetworkConnection, WifiNetworkScan, WirelessInterface } from "../../types/types";
+import type { InterfaceActiveState, WifiNetwork, WifiNetworkConnection, WifiNetworkScan, WirelessInterface } from "../../types/types";
 import { WifiSignalIcon } from "../../components/wifi/WifiIcon";
 import { connectToWifi, disconnectFromWifi, getInterfaces, getNewNetworks } from "../../api/networking/connection";
 
@@ -115,10 +116,15 @@ export default function WifiSettings() {
     );
 }
 
+interface WifiNetworkConnectionState {
+    bssid: string,
+    state: InterfaceActiveState
+}
 
 const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }: { scanData: WifiNetworkScan | undefined, connData: WifiNetworkConnection | undefined, interfaceName: string, isExpanded: boolean }) => {
     const isScanning = scanData?.state === "Scanning";
     const [showHidden, setShowHidden] = useState(false); // 1. Toggle for skjulte
+    const [connState, setConnState] = useState<WifiNetworkConnectionState | undefined>()
 
     useEffect(() => {
         if (!isExpanded) return;
@@ -129,6 +135,19 @@ const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }:
         }, 30000);
         return () => clearInterval(interval);
     }, [interfaceName, scanData?.state, isExpanded]);
+
+    useEffect(() => {
+        const activeNetwork = connData?.network
+        if (activeNetwork) {
+            setConnState({
+                bssid: activeNetwork.bssid,
+                state: connData.state
+            })
+        } else {
+            setConnState(undefined);
+        }
+    }, [connData, scanData])
+
 
     // 2. Logikk for filtrering
     const visibleNetworks = (scanData?.networks || [])
@@ -147,7 +166,7 @@ const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }:
                     <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600, mb: 1, display: 'block' }}>
                         ACTIVE CONNECTION
                     </Typography>
-                    <NetworkListItem network={connData.network} isConnected={true} />
+                    <NetworkListItem network={connData.network} isConnected={true} connState={connState} />
                 </Box>
             )}
 
@@ -183,7 +202,7 @@ const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }:
 
                 {/* 3. Selve listen - denne vises nå ALLTID, også under scanning */}
                 {visibleNetworks.map((net: WifiNetwork) => (
-                    <NetworkListItem key={`${net.bssid}-${net.ssid}`} network={net} isConnected={false} />
+                    <NetworkListItem key={`${net.bssid}-${net.ssid}`} network={net} isConnected={false} connState={connState} />
                 ))}
             </List>
             <Button size="small" onClick={() => setShowHidden(!showHidden)}>
@@ -193,7 +212,7 @@ const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }:
     );
 };
 
-export const NetworkListItem = ({ network, isConnected = false }: { network: WifiNetwork, isConnected: boolean }) => {
+export const NetworkListItem = ({ network, isConnected = false, connState }: { network: WifiNetwork, isConnected: boolean, connState: WifiNetworkConnectionState | undefined }) => {
     const [expanded, setExpanded] = useState(false);
     const [password, setPassword] = useState<string | undefined>(undefined);
 
@@ -255,6 +274,9 @@ export const NetworkListItem = ({ network, isConnected = false }: { network: Wif
                         </>
                     )}
                 </Box>
+            )}
+            {(connState?.bssid === network.bssid && connState.state === 'Connecting') && (
+                <LinearProgress />
             )}
         </Box>
     );

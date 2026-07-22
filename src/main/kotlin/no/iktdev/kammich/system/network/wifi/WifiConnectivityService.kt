@@ -81,15 +81,15 @@ class WifiConnectivityService(
 
         val result = interfaceRegistry.obtain(interfaceName, NetworkInterfaceMode.Client, onReject) { lease ->
             log.info("Connecting to $interfaceName with ssid ${network.ssid} using strategy: ${strategy::class.simpleName}")
-            lease.setState(InterfaceActiveState.Connecting) {
+            lease.setConnectionState(InterfaceActiveState.Connecting, network) {
                 updateSSE()
             }
             log.info("Starter oppkobling til ${network.ssid} på $interfaceName")
             CompletableFuture.runAsync {
                 val result = strategy.connect(interfaceName, network, password)
-                lease.update({ it.setNetwork(result.state, network) }) {
+                lease.setConnectionState(result.state, network) {
+                    updateSSE() // Push med en gang vi starter
                 }
-                updateSSE() // Push med en gang vi starter
             }
         }
         return true
@@ -141,6 +141,8 @@ class WifiConnectivityService(
     }
 
     private fun updateSSE() {
-        sseManager.send(getSSEPayload())
+        val payload = getSSEPayload()
+        log.info("SSE NMCLI payload: $payload")
+        sseManager.send(payload)
     }
 }

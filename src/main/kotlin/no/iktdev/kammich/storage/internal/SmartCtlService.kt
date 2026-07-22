@@ -6,31 +6,27 @@ import com.google.gson.JsonParser
 import no.iktdev.kammich.models.shared.storage.DiskHealth
 import no.iktdev.kammich.models.shared.storage.NvmeRoot
 import no.iktdev.kammich.models.shared.storage.SataRoot
+import no.iktdev.kammich.system.SysCommand
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
-class SmartCtlService {
+class SmartCtlService(
+    private val exec: SysCommand
+) {
 
     private val log = LoggerFactory.getLogger(SmartCtlService::class.java)
 
 
     fun getSMART(path: String): Result<DiskHealth> = runCatching {
-        val jsonString = getRawJson(path)
+        val jsonString = getRawJson(path) ?: throw RuntimeException("Failed to get JSON from $path")
         val result = mapToDiskHealth(jsonString, path)
         result
     }
 
-    fun getRawJson(device: String): String {
+    fun getRawJson(device: String): String? {
+       return exec.sudo("smartctl", "--json", "-x", device).getOrNull()
         // Her kjører vi den faktiske kommandoen
-        val command = listOf("sudo", "smartctl", "--json", "-x", device).also {
-            log.info("Executing command: ${it.joinToString(" ")}")
-        }
-        return ProcessBuilder(command)
-            .start()
-            .inputStream
-            .bufferedReader()
-            .use { it.readText() }
     }
 
     private fun mapToDiskHealth(jsonString: String, device: String): DiskHealth {

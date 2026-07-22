@@ -6,11 +6,13 @@ import no.iktdev.kammich.models.internal.network.InterfaceAvailability
 import no.iktdev.kammich.models.internal.network.InterfaceState
 import no.iktdev.kammich.models.internal.network.WifiInterfaceState
 import no.iktdev.kammich.models.internal.network.setMode
+import no.iktdev.kammich.models.internal.network.setNetwork
 import no.iktdev.kammich.models.internal.network.setState
 import no.iktdev.kammich.models.shared.network.EthernetNetworkInterface
 import no.iktdev.kammich.models.shared.network.NetworkInterface
 import no.iktdev.kammich.models.shared.network.NetworkInterfaceMode
 import no.iktdev.kammich.models.shared.network.NetworkInterfaceType
+import no.iktdev.kammich.models.shared.network.WifiNetwork
 import no.iktdev.kammich.models.shared.network.WirelessNetworkInterface
 import no.iktdev.kammich.models.shared.network.WirelessNetworkInterfaceCapability
 import no.iktdev.kammich.models.shared.network.asWifi
@@ -59,6 +61,10 @@ class NetworkInterfaceRegistry(
          */
         fun setState(newState: InterfaceActiveState, onUpdated: (InterfaceState) -> Unit) {
             update({ it.setState(newState) }, onUpdated)
+        }
+
+        fun setConnectionState(newState: InterfaceActiveState, network: WifiNetwork, onUpdated: (InterfaceState) -> Unit ) {
+            update({ it.setNetwork(newState,network) }, onUpdated)
         }
 
         // Basismetoden for all state-manipulasjon
