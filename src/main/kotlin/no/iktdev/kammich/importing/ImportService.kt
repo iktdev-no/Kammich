@@ -4,6 +4,7 @@ import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.ensureWritable
+import no.iktdev.kammich.gphoto2.GPhoto2
 import no.iktdev.kammich.infoNotification
 import no.iktdev.kammich.models.internal.DeviceReadyEvent
 import no.iktdev.kammich.models.internal.KFile
@@ -120,7 +121,15 @@ class ImportService(
         // 2. Start selve kopieringen (bør kjøre i egen tråd/Coroutine)
         Thread {
             files.forEach { file ->
-                val imported = provider.copyFile(device, storage, file)
+                val imported = try {
+                    provider.copyFile(device, storage, file)
+                } catch (e: GPhoto2.CopyException) {
+                    log.error("Failed to copy file {}", file, e)
+                    null
+                } catch (e: Exception) {
+                    log.error("An unexpected error occurred while importing file {}", file, e)
+                    null
+                }
                 if (imported != null) {
                     // Legg rett i køen med en gang filen er på disk
                     importQueues.getOrPut(device.id) { ConcurrentLinkedQueue() }
