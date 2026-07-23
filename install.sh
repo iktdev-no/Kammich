@@ -89,13 +89,13 @@ GROUP_ID=$(id -g "$TARGET_USER")
 systemctl daemon-reload
 
 ###############################################
-# 3. Installer avhengigheter
+# 3. Installer avhengigheter (Inkl. xinput)
 ###############################################
 echo "[*] Installerer systemavhengigheter..."
 apt-get update
 apt-get install -y \
     gphoto2 smartmontools hdparm openjdk-21-jdk rfkill jc network-manager iw \
-    xserver-xorg x11-xserver-utils xinit onboard python3-tk xdotool chromium chromium-common dbus-x11 unclutter
+    xserver-xorg x11-xserver-utils xinit onboard python3-tk xdotool chromium chromium-common dbus-x11 unclutter xinput
 
 chmod u+s /usr/lib/xorg/Xorg 2>/dev/null || chmod u+s /usr/bin/Xorg 2>/dev/null
 
@@ -122,14 +122,10 @@ echo "[*] Oppretter persistert lagringsrot og setter fleksible rettigheter for $
 mkdir -p "$MOUNT_ROOT"
 mkdir -p "$APP_DATA_ROOT"
 
-# Finn hvem som kjører installasjonen (f.eks. bskjon)
 DEV_USER=${SUDO_USER:-$TARGET_USER}
 
-# Sett eier til kammich, men sørg for full tilgang
 chown -R "$TARGET_USER:$TARGET_USER" "$APP_DATA_ROOT"
 chmod -R 775 "$APP_DATA_ROOT"
-
-# Slå på setgid (g+s) slik at undermapper og filer automatisk beholder riktige rettigheter
 find "$APP_DATA_ROOT" -type d -exec chmod g+s {} +
 
 echo "MOUNT_ROOT=\"$MOUNT_ROOT\"" > /etc/kammich.conf
@@ -251,7 +247,7 @@ chmod +x /usr/local/bin/kammich-eject
 echo "[*] Konfigurerer sudoers og nettverk for både $TARGET_USER og $DEV_USER..."
 
 cat << EOF > /etc/sudoers.d/kammich
-Cmnd_Alias KAMMICH_ADMIN = /usr/sbin/smartctl, /usr/local/bin/kammich-eject
+Cmnd_Alias KAMMICH_ADMIN = /usr/sbin/smartctl, /usr/local/bin/kammich-eject, /usr/bin/xrandr, /usr/bin/xinput
 Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw, /usr/bin/nmcli, /usr/bin/pkill, /usr/bin/kill, /usr/sbin/ip
 
 $TARGET_USER ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
@@ -271,7 +267,7 @@ echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-kammich-forwarding.conf
 sysctl -p /etc/sysctl.d/99-kammich-forwarding.conf
 
 ###############################################
-# 8. Kiosk Manager (Python / Tkinter)
+# 8. Kiosk Manager (Python / Tkinter med husket rotasjon og korrigert tastaturposisjon)
 ###############################################
 cat << 'EOF' > /home/kammich/kiosk-manager.py
 import tkinter as tk
@@ -280,6 +276,15 @@ import os
 import time
 
 startUrl="http://192.168.2.20:5173"
+
+# Rekkefølge: 0 (normal), 90 (right), 180 (inverted), 270 (left)
+rotations = [
+    ("normal", "1 0 0 0 1 0 0 0 1"),
+    ("right", "0 1 0 -1 0 1 0 0 1"),
+    ("inverted", "-1 0 1 0 -1 1 0 0 1"),
+    ("left", "0 -1 1 1 0 0 0 0 1")
+]
+current_rot_idx = 0
 
 def go_back():
     subprocess.run(["xdotool", "key", "Alt+Left"])
@@ -297,12 +302,89 @@ def toggle_keyboard():
     else:
         os.system("pkill onboard")
 
+def rotate_screen():
+    global current_rot_idx, chromium_proc
+    # Gå til neste i rekkefølgen: 0 -> 90 -> 180 -> 270 -> 0
+    current_rot_idx = (current_rot_idx + 1) % len(rotations)
+    rot_name, matrix = rotations[current_rot_idx]
+
+    res = subprocess.run("xrandr | grep ' connected' | awk '{print $1}'", shell=True, capture_output=True, text=True)
+    output = res.stdout.strip()
+
+    if output:
+        old_w = root.winfo_screenwidth()
+        old_h = root.winfo_screenheight()
+
+        # 1. Roter skjermen
+        subprocess.run(["sudo", "xrandr", "--output", output, "--rotate", rot_name])
+
+        # 2. Roter touch-matrisen
+        xinput_res = subprocess.run(["xinput", "list", "--name-only"], capture_output=True, text=True)
+        for dev in xinput_res.stdout.splitlines():
+            if any(k in dev.lower() for k in ["touch", "digitizer", "pen", "stylus", "ctp"]):
+                subprocess.run(["sudo", "xinput", "set-prop", dev, "Coordinate Transformation Matrix"] + matrix.split())
+
+        # 3. Vent på X11
+        time.sleep(0.5)
+
+        # 4. Beregn nye mål
+        new_width = root.winfo_screenwidth()
+        new_height = root.winfo_screenheight()
+
+        if rot_name in ["left", "right"] and new_width == old_w and new_height == old_h:
+            new_width, new_height = old_h, old_w
+
+        new_web_height = new_height - bar_height
+
+        # 5. Resize Tkinter-baren
+        root.geometry(f"{new_width}x{bar_height}+0+{new_web_height}")
+
+        # 6. Drep gammel Chromium og start en ny i kiosk-modus med riktige mål
+        if chromium_proc:
+            chromium_proc.terminate()
+            try:
+                chromium_proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                chromium_proc.kill()
+
+        os.system("pkill -f chromium")
+
+        chromium_proc = subprocess.Popen([
+            "chromium",
+            "--kiosk",
+            f"--window-size={new_width},{new_web_height}",
+            "--window-position=0,0",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--disable-infobars",
+            "--disable-session-crashed-bubble",
+            "--disable-dev-shm-usage",
+            "--password-store=basic",
+            "--touch-events=enabled",
+            "--no-cursor",
+            "--overscroll-history-navigation=0",
+            "--user-data-dir=/home/kammich/.config/chromium",
+            startUrl
+        ])
+
+        # 7. Tilpass tastaturet riktig (sentrert og rett over baren)
+        kb_w = int(new_width * 0.90)
+        kb_h = min(260, int(new_height * 0.40))
+        kb_x = int((new_width - kb_w) / 2)
+        kb_y = int(new_height - kb_h - bar_height - 10)
+
+        orientation = "portrait" if new_height > new_width else "landscape"
+
+        subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "width", str(kb_w)])
+        subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "height", str(kb_h)])
+        subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "x", str(kb_x)])
+        subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "y", str(kb_y)])
+
 subprocess.Popen(["onboard"])
 
 root = tk.Tk()
 root.overrideredirect(True)
 root.attributes("-topmost", True)
-
 root.focus_force()
 
 screen_width = root.winfo_screenwidth()
@@ -335,6 +417,11 @@ btn_kb = tk.Button(root, text=" ⌨  Tastatur ", **btn_config)
 btn_kb.bind("<ButtonPress-1>", lambda e: toggle_keyboard())
 btn_kb.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
+btn_rotate = tk.Button(root, text=" 🔄  Rotér ", **btn_config)
+btn_rotate.bind("<ButtonPress-1>", lambda e: rotate_screen())
+btn_rotate.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+# Start Chromium i ekte kiosk-modus ved oppstart
 chromium_proc = subprocess.Popen([
     "chromium",
     "--kiosk",
@@ -389,20 +476,26 @@ xset s off
 xset -dpms
 xset dpms 0 0 "$SCREENSAVER_TIMEOUT"
 
-
 gsettings set org.onboard theme 'Nightshade' 2>/dev/null
 
 screen_w=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f1)
 screen_h=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f2)
 if [ -n "$screen_w" ] && [ -n "$screen_h" ]; then
-    kb_w=$(( screen_w * 4 / 5 ))
-    kb_h=250
+    kb_w=$(( screen_w * 90 / 100 ))
+    kb_h=260
     kb_x=$(( (screen_w - kb_w) / 2 ))
-    kb_y=$(( screen_h - kb_h - 55 ))
-    gsettings set org.onboard.window.landscape x "$kb_x" 2>/dev/null
-    gsettings set org.onboard.window.landscape y "$kb_y" 2>/dev/null
-    gsettings set org.onboard.window.landscape width "$kb_w" 2>/dev/null
-    gsettings set org.onboard.window.landscape height "$kb_h" 2>/dev/null
+    kb_y=$(( screen_h - kb_h - 50 - 10 ))
+
+    if [ "$screen_h" -gt "$screen_w" ]; then
+        orient="portrait"
+    else
+        orient="landscape"
+    fi
+
+    gsettings set org.onboard.window.$orient x "$kb_x" 2>/dev/null
+    gsettings set org.onboard.window.$orient y "$kb_y" 2>/dev/null
+    gsettings set org.onboard.window.$orient width "$kb_w" 2>/dev/null
+    gsettings set org.onboard.window.$orient height "$kb_h" 2>/dev/null
 fi
 
 exec python3 /home/kammich/kiosk-manager.py
@@ -443,4 +536,4 @@ systemctl enable kammich-kiosk.service
 systemctl restart kammich-kiosk.service
 udevadm control --reload-rules && udevadm trigger
 
-echo "[+] Alt er klart! Kiosken og /var/lib/kammich er opprettet og klargjort."
+echo "[+] Alt er klart! Kiosken, rotasjonsknapp og /var/lib/kammich er opprettet."
