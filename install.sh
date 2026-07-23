@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# --- KONFIGURASJON AV SKJERMROTASJON ---
-# Velg mellom: normal (0), right (90), inverted (180), left (-90/270)
-ROTATION="right"
-
 # Sjekk root
 if [[ $EUID -ne 0 ]]; then
     echo "Dette scriptet må kjøres som root (sudo)"
@@ -267,7 +263,7 @@ echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-kammich-forwarding.conf
 sysctl -p /etc/sysctl.d/99-kammich-forwarding.conf
 
 ###############################################
-# 8. Kiosk Manager (Python / Tkinter med husket rotasjon og korrigert tastaturposisjon)
+# 8. Kiosk Manager (Python / Tkinter med husket rotasjon og persistent tilstand)
 ###############################################
 cat << 'EOF' > /home/kammich/kiosk-manager.py
 import tkinter as tk
@@ -275,7 +271,8 @@ import subprocess
 import os
 import time
 
-startUrl="http://192.168.2.20:5173"
+startUrl = "http://192.168.2.20:5173"
+ROTATION_FILE = "/var/lib/kammich/rotation.idx"
 
 # Rekkefølge: 0 (normal), 90 (right), 180 (inverted), 270 (left)
 rotations = [
@@ -284,7 +281,17 @@ rotations = [
     ("inverted", "-1 0 1 0 -1 1 0 0 1"),
     ("left", "0 -1 1 1 0 0 0 0 1")
 ]
+
+# Les inn lagret rotasjonsindeks hvis den finnes
 current_rot_idx = 0
+if os.path.exists(ROTATION_FILE):
+    try:
+        with open(ROTATION_FILE, "r") as f:
+            current_rot_idx = int(f.read().strip())
+            if current_rot_idx < 0 or current_rot_idx >= len(rotations):
+                current_rot_idx = 0
+    except:
+        current_rot_idx = 0
 
 def go_back():
     subprocess.run(["xdotool", "key", "Alt+Left"])
@@ -302,11 +309,9 @@ def toggle_keyboard():
     else:
         os.system("pkill onboard")
 
-def rotate_screen():
-    global current_rot_idx, chromium_proc
-    # Gå til neste i rekkefølgen: 0 -> 90 -> 180 -> 270 -> 0
-    current_rot_idx = (current_rot_idx + 1) % len(rotations)
-    rot_name, matrix = rotations[current_rot_idx]
+def apply_rotation(idx, initial=False):
+    global chromium_proc
+    rot_name, matrix = rotations[idx]
 
     res = subprocess.run("xrandr | grep ' connected' | awk '{print $1}'", shell=True, capture_output=True, text=True)
     output = res.stdout.strip()
@@ -339,8 +344,8 @@ def rotate_screen():
         # 5. Resize Tkinter-baren
         root.geometry(f"{new_width}x{bar_height}+0+{new_web_height}")
 
-        # 6. Drep gammel Chromium og start en ny i kiosk-modus med riktige mål
-        if chromium_proc:
+        # 6. Start eller restart Chromium med riktige mål
+        if not initial and chromium_proc:
             chromium_proc.terminate()
             try:
                 chromium_proc.wait(timeout=2)
@@ -367,7 +372,7 @@ def rotate_screen():
             startUrl
         ])
 
-        # 7. Tilpass tastaturet riktig (sentrert og rett over baren)
+        # 7. Tilpass tastaturet riktig
         kb_w = int(new_width * 0.90)
         kb_h = min(260, int(new_height * 0.40))
         kb_x = int((new_width - kb_w) / 2)
@@ -379,6 +384,19 @@ def rotate_screen():
         subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "height", str(kb_h)])
         subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "x", str(kb_x)])
         subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "y", str(kb_y)])
+
+def rotate_screen():
+    global current_rot_idx
+    current_rot_idx = (current_rot_idx + 1) % len(rotations)
+
+    # Lagre ny rotasjonsindeks til disk
+    try:
+        with open(ROTATION_FILE, "w") as f:
+            f.write(str(current_rot_idx))
+    except Exception as e:
+        print(f"Klarte ikke å lagre rotasjon: {e}")
+
+    apply_rotation(current_rot_idx, initial=False)
 
 subprocess.Popen(["onboard"])
 
@@ -421,27 +439,14 @@ btn_rotate = tk.Button(root, text=" 🔄  Rotér ", **btn_config)
 btn_rotate.bind("<ButtonPress-1>", lambda e: rotate_screen())
 btn_rotate.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-# Start Chromium i ekte kiosk-modus ved oppstart
-chromium_proc = subprocess.Popen([
-    "chromium",
-    "--kiosk",
-    f"--window-size={screen_width},{web_height}",
-    "--window-position=0,0",
-    "--no-first-run",
-    "--no-default-browser-check",
-    "--disable-infobars",
-    "--disable-session-crashed-bubble",
-    "--disable-dev-shm-usage",
-    "--password-store=basic",
-    "--touch-events=enabled",
-    "--no-cursor",
-    "--overscroll-history-navigation=0",
-    "--user-data-dir=/home/kammich/.config/chromium",
-    startUrl
-])
+# Global peker til chromium-prosess
+chromium_proc = None
+
+# Utfør rotasjon basert på det som var lagret (eller standard ved første kjøring)
+apply_rotation(current_rot_idx, initial=True)
 
 def monitor_chromium():
-    if chromium_proc.poll() is not None:
+    if chromium_proc and chromium_proc.poll() is not None:
         root.destroy()
     else:
         root.after(1000, monitor_chromium)
@@ -449,7 +454,8 @@ def monitor_chromium():
 root.after(1000, monitor_chromium)
 root.mainloop()
 
-chromium_proc.terminate()
+if chromium_proc:
+    chromium_proc.terminate()
 os.system("pkill onboard")
 EOF
 
@@ -477,26 +483,6 @@ xset -dpms
 xset dpms 0 0 "$SCREENSAVER_TIMEOUT"
 
 gsettings set org.onboard theme 'Nightshade' 2>/dev/null
-
-screen_w=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f1)
-screen_h=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f2)
-if [ -n "$screen_w" ] && [ -n "$screen_h" ]; then
-    kb_w=$(( screen_w * 90 / 100 ))
-    kb_h=260
-    kb_x=$(( (screen_w - kb_w) / 2 ))
-    kb_y=$(( screen_h - kb_h - 50 - 10 ))
-
-    if [ "$screen_h" -gt "$screen_w" ]; then
-        orient="portrait"
-    else
-        orient="landscape"
-    fi
-
-    gsettings set org.onboard.window.$orient x "$kb_x" 2>/dev/null
-    gsettings set org.onboard.window.$orient y "$kb_y" 2>/dev/null
-    gsettings set org.onboard.window.$orient width "$kb_w" 2>/dev/null
-    gsettings set org.onboard.window.$orient height "$kb_h" 2>/dev/null
-fi
 
 exec python3 /home/kammich/kiosk-manager.py
 EOF
@@ -536,4 +522,4 @@ systemctl enable kammich-kiosk.service
 systemctl restart kammich-kiosk.service
 udevadm control --reload-rules && udevadm trigger
 
-echo "[+] Alt er klart! Kiosken, rotasjonsknapp og /var/lib/kammich er opprettet."
+echo "[+] Alt er klart! Kiosken husker nå rotasjonen i /var/lib/kammich/rotation.idx."
