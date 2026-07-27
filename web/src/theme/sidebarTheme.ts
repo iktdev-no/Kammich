@@ -4,7 +4,6 @@ import { alpha } from "@mui/material/styles";
 export const sidebarStyles = (theme: Theme) => ({
   container: {
     backgroundColor: theme.palette.background.default,
-    borderRight: `1px solid ${theme.palette.grey[800]}`,
     paddingTop: theme.spacing(1),
     paddingBottom: theme.spacing(1),
 

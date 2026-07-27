@@ -2,6 +2,8 @@ import {
   Drawer,
   useTheme,
 } from "@mui/material";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import "overlayscrollbars/styles/overlayscrollbars.css";
 import SidebarMenu from "../components/sidebar/SidebarMenu";
 
 export interface SidebarMobileProps {
@@ -11,8 +13,7 @@ export interface SidebarMobileProps {
 
 export default function SidebarMobile({ visible, onClose }: SidebarMobileProps) {
   const theme = useTheme();
-  const headerHeight = theme.layout.headerMobile
-
+  const headerHeight = theme.layout.headerMobile;
 
   return (
     <Drawer
@@ -26,16 +27,33 @@ export default function SidebarMobile({ visible, onClose }: SidebarMobileProps) 
         paper: {
           sx: {
             position: "absolute",
-            top: `${headerHeight}px`,                    // FIX: under header
+            top: `${headerHeight}px`,
             height: `calc(100vh - ${headerHeight}px)`,
-            width: 240,
-            backgroundColor: "#111",
+            width: 251,
+            backgroundColor: theme.palette.background.default,
             borderRight: "1px solid #333",
+            overflow: "hidden", // Låser standard scroll og overlater rullingen til OverlayScrollbars
           },
         },
       }}
     >
-      <SidebarMenu width={240} />
+      <OverlayScrollbarsComponent
+        options={{
+          scrollbars: {
+            theme: "os-theme-light", // Juster til "os-theme-dark" om du foretrekker det basert på fargetema
+            visibility: "auto",
+            autoHide: "scroll",
+            autoHideDelay: 1300,
+          },
+        }}
+        style={{
+          height: "100%",
+          width: "100%",
+        }}
+        defer
+      >
+        <SidebarMenu width={250} />
+      </OverlayScrollbarsComponent>
     </Drawer>
   );
 }

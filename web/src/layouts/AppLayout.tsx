@@ -12,13 +12,13 @@ export default function AppLayout() {
   const [visible, setVisible] = useState(false); // only used for mobile drawer
 
   const headerHeight = isMobile
-  ? theme.layout.headerMobile
-  : theme.layout.headerDesktop;
+    ? theme.layout.headerMobile
+    : theme.layout.headerDesktop;
 
 
 
   return (
-    <Box sx={{ display: "flex", height: "100vh"}}>
+    <Box sx={{ display: "flex", height: "100vh" }}>
       <Header onToggleSidebar={() => setVisible(!visible)} />
 
       {isMobile ? (
