@@ -11,7 +11,7 @@ MOUNT_ROOT="/run/kammich/removable"
 STATE_ROOT="/run/kammich"
 APP_DATA_ROOT="/var/lib/kammich"
 
-echo "[+] Starter komplett og robust oppsett av Kammich Kiosk..."
+echo "[+] Starter komplett og robust oppsett av Kammich Kiosk (med pywebview & openbox)..."
 
 ###############################################
 # 0. Full opprydding av gamle feilede løsninger
@@ -28,7 +28,7 @@ cleanup_system() {
         done
     fi
 
-    apt-get purge -y lightdm openbox lxde-core lxde lxde-common touchegg 2>/dev/null
+    apt-get purge -y lightdm lxde-core lxde lxde-common touchegg matchbox-keyboard 2>/dev/null
     dpkg --remove --force-remove-reinstreq chromium chromium-browser chromium-browser-l10n chromium-codecs-ffmpeg-extra firefox firefox-locale-en thunderbird gnome-software 2>/dev/null
     apt-get purge -y snapd gnome-software-plugin-snap 2>/dev/null
     apt-get autoremove --purge -y 2>/dev/null
@@ -46,21 +46,11 @@ Pin-Priority: -1
 EOF
 
 ###############################################
-# 1. Sett opp Debian-repositorium for ren Chromium
+# 1. Sett opp Debian-repositorium (om nødvendig)
 ###############################################
-echo "[*] Konfigurerer Debian-repo for ren Chromium..."
+echo "[*] Konfigurerer system-repoer..."
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://ftp-master.debian.org/keys/archive-key-12.asc | gpg --yes --dearmor -o /etc/apt/keyrings/debian-archive-keyring.gpg
-
-cat << 'EOF' > /etc/apt/preferences.d/debian-chromium
-Package: chromium chromium-common chromium-sandbox
-Pin: release o=Debian
-Pin-Priority: 900
-EOF
-
-cat << 'EOF' > /etc/apt/sources.list.d/debian-chromium.list
-deb [signed-by=/etc/apt/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian bookworm main
-EOF
 
 ###############################################
 # 2. Opprett dedikert bruker og grupper
@@ -85,15 +75,52 @@ GROUP_ID=$(id -g "$TARGET_USER")
 systemctl daemon-reload
 
 ###############################################
-# 3. Installer avhengigheter (Inkl. xinput)
+# 3. Installer avhengigheter (Inkludert openbox)
 ###############################################
 echo "[*] Installerer systemavhengigheter..."
 apt-get update
 apt-get install -y \
     gphoto2 smartmontools hdparm openjdk-21-jdk rfkill jc network-manager iw \
-    xserver-xorg x11-xserver-utils xinit onboard python3-tk xdotool chromium chromium-common dbus-x11 unclutter xinput
+    xserver-xorg x11-xserver-utils xinit openbox onboard python3-tk xdotool dbus-x11 unclutter xinput \
+    python3-dev python3-venv python3-pip python3-gi python3-gi-cairo \
+    python3-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 
-chmod u+s /usr/lib/xorg/Xorg 2>/dev/null || chmod u+s /usr/bin/Xorg 2>/dev/null
+###############################################
+# 3.1 Sett opp Python Virtual Environment for pywebview
+###############################################
+echo "[*] Setter opp Python Virtual Environment (venv) for kammich..."
+VENV_DIR="/home/$TARGET_USER/kiosk-env"
+
+# Fjern gammel venv hvis den feilet tidligere
+rm -rf "$VENV_DIR"
+
+# Opprett venv med lenke til systemets Python-pakker (viktig for GTK/WebKit)
+sudo -u "$TARGET_USER" python3 -m venv --system-site-packages "$VENV_DIR"
+
+# Installer pywebview i venv
+sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install --upgrade pip
+sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install pywebview
+
+###############################################
+# 3.2 Sett opp Openbox konfigurasjon (Tving Onboard øverst)
+###############################################
+echo "[*] Konfigurerer Openbox regler for Onboard..."
+mkdir -p /home/$TARGET_USER/.config/openbox
+cat << 'EOF' > /home/$TARGET_USER/.config/openbox/rc.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://icculus.org/openbox/rdc" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <applications>
+    <application name="onboard" class="Onboard">
+      <layer>above</layer>
+      <skip_pager>yes</skip_pager>
+      <skip_taskbar>yes</skip_taskbar>
+      <focus>no</focus>
+      <decor>no</decor>
+    </application>
+  </applications>
+</openbox_config>
+EOF
+chown -R "$TARGET_USER:$TARGET_USER" /home/$TARGET_USER/.config
 
 ###############################################
 # 4. Deaktiver Hibernate / Sleep
@@ -114,7 +141,7 @@ systemctl mask NetworkManager-wait-online.service
 ###############################################
 # 5. Setup Base-struktur (USB Mount & /var/lib/kammich)
 ###############################################
-echo "[*] Oppretter persistert lagringsrot og setter fleksible rettigheter for $TARGET_USER og utvikler..."
+echo "[*] Oppretter persistert lagringsrot..."
 mkdir -p "$MOUNT_ROOT"
 mkdir -p "$APP_DATA_ROOT"
 
@@ -162,15 +189,10 @@ elif [ "\$ACTION" == "mount" ]; then
     TARGET="\$MOUNT_ROOT/\$MODEL/\$DEV"
 
     FSTYPE=\$(blkid -o value -s TYPE "/dev/\$DEV")
-    if [ -z "\$FSTYPE" ]; then
-        exit 0
-    fi
+    [ -z "\$FSTYPE" ] && exit 0
 
     mkdir -p "\$TARGET"
-
-    if grep -qs "\$TARGET" /proc/mounts; then
-        exit 0
-    fi
+    grep -qs "\$TARGET" /proc/mounts && exit 0
 
     case "\$FSTYPE" in
       ntfs|ntfs-3g)
@@ -240,7 +262,7 @@ chmod +x /usr/local/bin/kammich-eject
 ###############################################
 # 7. Sudoers & Network Forwarding
 ###############################################
-echo "[*] Konfigurerer sudoers og nettverk for både $TARGET_USER og $DEV_USER..."
+echo "[*] Konfigurerer sudoers..."
 
 cat << EOF > /etc/sudoers.d/kammich
 Cmnd_Alias KAMMICH_ADMIN = /usr/sbin/smartctl, /usr/local/bin/kammich-eject, /usr/bin/xrandr, /usr/bin/xinput
@@ -263,7 +285,7 @@ echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-kammich-forwarding.conf
 sysctl -p /etc/sysctl.d/99-kammich-forwarding.conf
 
 ###############################################
-# 8. Kiosk Manager (Python / Tkinter med husket rotasjon og persistent tilstand)
+# 8. Kiosk Manager (Ren pywebview)
 ###############################################
 cat << 'EOF' > /home/kammich/kiosk-manager.py
 import tkinter as tk
@@ -271,10 +293,14 @@ import subprocess
 import os
 import time
 
-startUrl = "http://192.168.2.20:5173"
+# ==========================================
+# KONFIGURASJON AV URL
+# ==========================================
+START_URL = "http://192.168.2.20:5173"
+# ==========================================
+
 ROTATION_FILE = "/var/lib/kammich/rotation.idx"
 
-# Rekkefølge: 0 (normal), 90 (right), 180 (inverted), 270 (left)
 rotations = [
     ("normal", "1 0 0 0 1 0 0 0 1"),
     ("right", "0 1 0 -1 0 1 0 0 1"),
@@ -282,7 +308,6 @@ rotations = [
     ("left", "0 -1 1 1 0 0 0 0 1")
 ]
 
-# Les inn lagret rotasjonsindeks hvis den finnes
 current_rot_idx = 0
 if os.path.exists(ROTATION_FILE):
     try:
@@ -293,26 +318,56 @@ if os.path.exists(ROTATION_FILE):
     except:
         current_rot_idx = 0
 
+browser_process = None
+
+def start_browser(w, h):
+    global browser_process
+    if browser_process:
+        try:
+            browser_process.terminate()
+            browser_process.wait(timeout=2)
+        except:
+            pass
+
+    cmd = [
+        "/home/kammich/kiosk-env/bin/python3", "-c",
+        f"""
+import webview
+
+webview.create_window(
+    'Kammich Kiosk',
+    '{START_URL}',
+    width={w},
+    height={h},
+    x=0,
+    y=0,
+    frameless=True,
+    easy_drag=False,
+    resizable=False,
+    background_color='#111111'
+)
+webview.start()
+        """
+    ]
+    browser_process = subprocess.Popen(cmd)
+
 def go_back():
     subprocess.run(["xdotool", "key", "Alt+Left"])
 
 def go_home():
-    subprocess.run(["xdotool", "key", "ctrl+l"])
-    time.sleep(0.1)
-    subprocess.run(["xdotool", "type", startUrl])
-    subprocess.run(["xdotool", "key", "Return"])
+    w = root.winfo_screenwidth()
+    h = root.winfo_screenheight() - bar_height
+    start_browser(w, h)
 
 def toggle_keyboard():
     res = subprocess.run(["pgrep", "onboard"], capture_output=True)
     if res.returncode != 0:
         subprocess.Popen(["onboard"])
     else:
-        os.system("pkill onboard")
+        subprocess.run(["pkill", "onboard"])
 
-def apply_rotation(idx, initial=False):
-    global chromium_proc
+def apply_rotation(idx):
     rot_name, matrix = rotations[idx]
-
     res = subprocess.run("xrandr | grep ' connected' | awk '{print $1}'", shell=True, capture_output=True, text=True)
     output = res.stdout.strip()
 
@@ -320,19 +375,15 @@ def apply_rotation(idx, initial=False):
         old_w = root.winfo_screenwidth()
         old_h = root.winfo_screenheight()
 
-        # 1. Roter skjermen
         subprocess.run(["sudo", "xrandr", "--output", output, "--rotate", rot_name])
 
-        # 2. Roter touch-matrisen
         xinput_res = subprocess.run(["xinput", "list", "--name-only"], capture_output=True, text=True)
         for dev in xinput_res.stdout.splitlines():
             if any(k in dev.lower() for k in ["touch", "digitizer", "pen", "stylus", "ctp"]):
                 subprocess.run(["sudo", "xinput", "set-prop", dev, "Coordinate Transformation Matrix"] + matrix.split())
 
-        # 3. Vent på X11
-        time.sleep(0.5)
+        time.sleep(0.6)
 
-        # 4. Beregn nye mål
         new_width = root.winfo_screenwidth()
         new_height = root.winfo_screenheight()
 
@@ -341,77 +392,37 @@ def apply_rotation(idx, initial=False):
 
         new_web_height = new_height - bar_height
 
-        # 5. Resize Tkinter-baren
         root.geometry(f"{new_width}x{bar_height}+0+{new_web_height}")
-
-        # 6. Start eller restart Chromium med riktige mål
-        if not initial and chromium_proc:
-            chromium_proc.terminate()
-            try:
-                chromium_proc.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                chromium_proc.kill()
-
-        os.system("pkill -f chromium")
-
-        chromium_proc = subprocess.Popen([
-            "chromium",
-            "--kiosk",
-            f"--window-size={new_width},{new_web_height}",
-            "--window-position=0,0",
-            "--no-first-run",
-            "--no-default-browser-check",
-            "--disable-infobars",
-            "--disable-session-crashed-bubble",
-            "--disable-dev-shm-usage",
-            "--password-store=basic",
-            "--touch-events=enabled",
-            "--no-cursor",
-            "--overscroll-history-navigation=0",
-            "--user-data-dir=/home/kammich/.config/chromium",
-            startUrl
-        ])
-
-        # 7. Tilpass tastaturet riktig
-        kb_w = int(new_width * 0.90)
-        kb_h = min(260, int(new_height * 0.40))
-        kb_x = int((new_width - kb_w) / 2)
-        kb_y = int(new_height - kb_h - bar_height - 10)
-
-        orientation = "portrait" if new_height > new_width else "landscape"
-
-        subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "width", str(kb_w)])
-        subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "height", str(kb_h)])
-        subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "x", str(kb_x)])
-        subprocess.run(["gsettings", "set", f"org.onboard.window.{orientation}", "y", str(kb_y)])
+        start_browser(new_width, new_web_height)
 
 def rotate_screen():
     global current_rot_idx
     current_rot_idx = (current_rot_idx + 1) % len(rotations)
 
-    # Lagre ny rotasjonsindeks til disk
     try:
         with open(ROTATION_FILE, "w") as f:
             f.write(str(current_rot_idx))
     except Exception as e:
         print(f"Klarte ikke å lagre rotasjon: {e}")
 
-    apply_rotation(current_rot_idx, initial=False)
+    apply_rotation(current_rot_idx)
 
+# Start tastatur ved oppstart
 subprocess.Popen(["onboard"])
 
+# Bygg Tkinter-bunnbaren
 root = tk.Tk()
 root.overrideredirect(True)
 root.attributes("-topmost", True)
 root.focus_force()
 
-screen_width = root.winfo_screenwidth()
-screen_height = root.winfo_screenheight()
-
 bar_height = 50
-web_height = screen_height - bar_height
 
-root.geometry(f"{screen_width}x{bar_height}+0+{web_height}")
+initial_w = root.winfo_screenwidth()
+initial_h = root.winfo_screenheight()
+initial_web_h = initial_h - bar_height
+
+root.geometry(f"{initial_w}x{bar_height}+0+{initial_web_h}")
 root.configure(bg="#111111")
 
 btn_config = {
@@ -439,23 +450,23 @@ btn_rotate = tk.Button(root, text=" 🔄  Rotér ", **btn_config)
 btn_rotate.bind("<ButtonPress-1>", lambda e: rotate_screen())
 btn_rotate.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-# Global peker til chromium-prosess
-chromium_proc = None
+# Start nettleseren med riktig rotasjon
+apply_rotation(current_rot_idx)
 
-# Utfør rotasjon basert på det som var lagret (eller standard ved første kjøring)
-apply_rotation(current_rot_idx, initial=True)
-
-def monitor_chromium():
-    if chromium_proc and chromium_proc.poll() is not None:
+def monitor_app():
+    if browser_process and browser_process.poll() is not None:
         root.destroy()
     else:
-        root.after(1000, monitor_chromium)
+        root.after(1000, monitor_app)
 
-root.after(1000, monitor_chromium)
+root.after(1000, monitor_app)
 root.mainloop()
 
-if chromium_proc:
-    chromium_proc.terminate()
+if browser_process:
+    try:
+        browser_process.terminate()
+    except:
+        pass
 os.system("pkill onboard")
 EOF
 
@@ -463,7 +474,7 @@ chown kammich:kammich /home/kammich/kiosk-manager.py
 chmod +x /home/kammich/kiosk-manager.py
 
 ###############################################
-# 9. X11 / xinit Oppstartsskript (med DPMS)
+# 9. X11 / xinit Oppstartsskript (Med Openbox)
 ###############################################
 cat << 'EOF' > /home/kammich/kiosk-start.sh
 #!/bin/bash
@@ -478,13 +489,19 @@ fi
 
 SCREENSAVER_TIMEOUT=300
 
+xset +dpms
 xset s off
-xset -dpms
-xset dpms 0 0 "$SCREENSAVER_TIMEOUT"
+xset dpms $SCREENSAVER_TIMEOUT $SCREENSAVER_TIMEOUT $SCREENSAVER_TIMEOUT
 
 gsettings set org.onboard theme 'Nightshade' 2>/dev/null
 
-exec python3 /home/kammich/kiosk-manager.py
+# Start Openbox vindushåndterer i bakgrunnen
+openbox-session &
+
+# Gi vindushåndtereren et øyeblikk til å sette opp lagene
+sleep 1
+
+exec /home/kammich/kiosk-env/bin/python3 /home/kammich/kiosk-manager.py
 EOF
 
 chown kammich:kammich /home/kammich/kiosk-start.sh
@@ -497,7 +514,7 @@ echo "[*] Oppretter systemd kiosk-tjeneste..."
 
 cat << 'EOF' > /etc/systemd/system/kammich-kiosk.service
 [Unit]
-Description=Kammich Python Kiosk Service
+Description=Kammich Python Kiosk Service (pywebview + openbox)
 After=network.target sound.target udev.service
 
 [Service]
@@ -522,4 +539,4 @@ systemctl enable kammich-kiosk.service
 systemctl restart kammich-kiosk.service
 udevadm control --reload-rules && udevadm trigger
 
-echo "[+] Alt er klart! Kiosken husker nå rotasjonen i /var/lib/kammich/rotation.idx."
+echo "[+] Alt er klart med Openbox og Onboard!"
