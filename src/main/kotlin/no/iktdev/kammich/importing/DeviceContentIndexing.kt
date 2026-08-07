@@ -16,11 +16,8 @@ import kotlin.plus
 @Component
 class DeviceContentIndexing(
     private val deviceManager: DeviceManagerService,
-    private val configService: ConfigService,
     private val fileRepository: FileRepository,
     private val providerFactory: StorageProviderFactory,
-    private val eventPublisher: ApplicationEventPublisher,
-    private val taskScheduler: TaskScheduler,
 ) {
     private val log = LoggerFactory.getLogger(DeviceContentIndexing::class.java)
 
@@ -75,5 +72,10 @@ class DeviceContentIndexing(
         log.info("Indexing summary: Found ${allPotentialFiles.size} total, ${toExclude.size} paths excluded, ${toImport.size} ready for import.")
 
         return toImport
+    }
+
+    fun getNewFilesToImport(device: RemovableDevice): List<KFile> {
+        val foundFiles = getFilesToImport(device)
+        return fileRepository.getFilesToImport(device.id, foundFiles)
     }
 }

@@ -1,43 +1,46 @@
 package no.iktdev.kammich.importing
 
+import kotlinx.coroutines.*
 import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.getDeviceId
-import no.iktdev.kammich.ensureWritable
-import no.iktdev.kammich.gphoto2.GPhoto2
+import no.iktdev.kammich.errorNotification
 import no.iktdev.kammich.infoNotification
 import no.iktdev.kammich.models.internal.DeviceReadyEvent
 import no.iktdev.kammich.models.internal.KFile
+import no.iktdev.kammich.models.internal.ImportFile
+import no.iktdev.kammich.models.internal.ImportState
 import no.iktdev.kammich.models.shared.device.RemovableDevice
 import no.iktdev.kammich.repository.FileRepository
+import no.iktdev.kammich.sse.SseManager
 import no.iktdev.kammich.storage.DeviceManagerService
-import no.iktdev.kammich.storage.provider.StorageProvider
+import no.iktdev.kammich.storage.provider.DeviceUnavailableException
 import no.iktdev.kammich.storage.provider.StorageProviderFactory
+import no.iktdev.kammich.toXxHash
 import no.iktdev.kammich.warningNotification
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
-import org.springframework.scheduling.TaskScheduler
 import org.springframework.stereotype.Service
-import java.io.File
-import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.cancellation.CancellationException
 
 @Service
 class ImportService(
+    private val sseManager: SseManager,
     private val deviceManager: DeviceManagerService,
     private val configService: ConfigService,
     private val fileRepository: FileRepository,
     private val providerFactory: StorageProviderFactory,
     private val eventPublisher: ApplicationEventPublisher,
-    private val taskScheduler: TaskScheduler,
     private val deviceContentIndexing: DeviceContentIndexing
 ) {
     private val log = LoggerFactory.getLogger(ImportService::class.java)
+    private val activeImportJobs = ConcurrentHashMap<String, Job>()
+
+    // Egen scope for import-tjenesten (eller du kan injisere en felles Dispatcher/Scope)
+    private val importScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @EventListener
     fun onDeviceReady(event: DeviceReadyEvent) {
@@ -53,45 +56,25 @@ class ImportService(
         deviceManager.getSettings(deviceId).autoImport == true
 
 
-
-
-
-
     fun indexDevice(device: RemovableDevice) {
         log.info("Starting indexing for device ${device.name}")
 
         // Bruk den nye logikken som kombinerer DCIM + Include + Exclude
-        val filesToImport = deviceContentIndexing.getFilesToImport(device)
+        val filesToImport = deviceContentIndexing.getNewFilesToImport(device)
 
-        // Nå sjekker vi kun mot DB for å se hva som faktisk er NYTT
-        val newFiles = fileRepository.getFilesToImport(device.id, filesToImport)
-
-        if (newFiles.isEmpty()) {
+        if (filesToImport.isEmpty()) {
             log.info("No new files to import for ${device.name}")
             eventPublisher.infoNotification("ImportService-NoFiles-${device.id}", "No files to import", "All files have already been imported for ${device.model ?: device.id}")
             return
         }
 
-        log.info("Found ${newFiles.size} new files to import")
+        log.info("Found ${filesToImport.size} new files to import")
         val config = configService.getConfig().deviceSettings[device.id]
         if (config?.autoImport != true) {
             log.error("Device ${device.id} has auto-import disabled")
             return
         }
-        startImportForDevice(device, newFiles)
-    }
-
-    fun getStorageLocationForImport(device: RemovableDevice): File? {
-        val mediaRoot = File(configService.getConfig().mediaPath).ensureWritable(
-            eventPublisher, "ImportService-mediaRoot"
-        ) ?: return null
-
-        return File(mediaRoot, device.id).ensureWritable(
-            eventPublisher, "ImportService-deviceFolder-${device.id}"
-        ) ?: run {
-            log.error("Device ${device.id} has no storage location")
-            null
-        }
+        startImportForDevice(device, filesToImport)
     }
 
     private fun getDeviceIdToImport(device: RemovableDevice): Int? {
@@ -104,80 +87,98 @@ class ImportService(
         }
     }
 
-    private val importQueues = ConcurrentHashMap<String, ConcurrentLinkedQueue<PendingFile>>()
-    private val importTotals = ConcurrentHashMap<String, Int>()
-    private val importedSuccessCount = ConcurrentHashMap<String, AtomicInteger>()
-    private val scheduledTasks = ConcurrentHashMap<String, ScheduledFuture<*>>()
+
+    private val importList = ConcurrentHashMap<String, List<ImportFile>>()
+    private fun updateFileState(deviceIdStr: String, fileId: String, newState: ImportState) {
+        // computeIfPresent låser oppdateringen trygt internt i map-en
+        importList.computeIfPresent(deviceIdStr) { _, currentList ->
+            currentList.map { importFile ->
+                if (importFile.file.id == fileId) {
+                    // Returner en ny instans med oppdatert state
+                    importFile.copy(state = newState)
+                } else {
+                    importFile
+                }
+            }
+        }
+    }
 
     fun startImportForDevice(device: RemovableDevice, files: List<KFile>) {
-        val storage = getStorageLocationForImport(device) ?: return
-        val deviceId = getDeviceIdToImport(device) ?: return
+        val storage = fileRepository.getStorageLocationForImport(device) ?: return
+        val dbId = getDeviceIdToImport(device) ?: return
         val provider = providerFactory.getProvider(device)
-        importTotals[device.id] = files.size
-        importedSuccessCount[device.id] = AtomicInteger(0)
-        // 1. Start en scheduler for denne enheten (hvis den ikke går)
-        startDatabaseFlusher(device.id, deviceId)
+        val deviceIdStr = device.id
 
-        // 2. Start selve kopieringen (bør kjøre i egen tråd/Coroutine)
-        Thread {
-            files.forEach { file ->
-                val imported = try {
-                    provider.copyFile(device, storage, file)
-                } catch (e: GPhoto2.CopyException) {
-                    log.error("Failed to copy file {}", file, e)
-                    null
-                } catch (e: Exception) {
-                    log.error("An unexpected error occurred while importing file {}", file, e)
-                    null
+        // Avbryt eventuell eksisterende import for denne enheten først
+        cancelImport(deviceIdStr)
+
+        // Initialiser listen med Pending
+        importList[deviceIdStr] = files.map { ImportFile(it, ImportState.Pending) }
+
+        val job = importScope.launch {
+            try {
+                files.forEach { file ->
+                    ensureActive() // Støtte for korutine-kansellering
+
+                    updateFileState(deviceIdStr, file.id, ImportState.InProgress)
+
+                    val imported = try {
+                        provider.copyFile(device, storage, file)
+                    } catch (e: DeviceUnavailableException) {
+                        updateFileState(deviceIdStr, file.id, ImportState.Failure)
+                        log.error("Kamera utilgjengelig under kopiering av fil {}. Avbryter hele importen.", file, e)
+                        throw e // Sender unntaket opp til hoved-try/catch som stopper loopen
+                    } catch (e: Exception) {
+                        log.error("Feil ved kopiering av fil {}, fortsetter med neste.", file, e)
+                        null
+                    }
+
+                    if (imported != null) {
+                        try {
+                            val hash = imported.toXxHash()
+                            fileRepository.saveFile(dbId, imported, ZonedDateTime.now(), hash)
+                            updateFileState(deviceIdStr, file.id, ImportState.Success)
+                        } catch (e: Exception) {
+                            log.error("Failed to save file {} to database", imported, e)
+                            updateFileState(deviceIdStr, file.id, ImportState.Failure)
+                        }
+                    } else {
+                        updateFileState(deviceIdStr, file.id, ImportState.Failure)
+                    }
                 }
-                if (imported != null) {
-                    // Legg rett i køen med en gang filen er på disk
-                    importQueues.getOrPut(device.id) { ConcurrentLinkedQueue() }
-                        .add(PendingFile(deviceId, imported, ZonedDateTime.now()))
-                }
+            } catch (e: DeviceUnavailableException) {
+                eventPublisher.errorNotification("ImportService-Disconnected-${device.id}", "${device.model} frakoblet", e.message ?: e.localizedMessage)
+                throw e
+            } catch (e: CancellationException) {
+                log.info("Import job ble avbrutt for enhet {}", deviceIdStr)
+                throw e
+            } catch (e: Exception) {
+                log.error("Uventet feil under import-loop for enhet {}", deviceIdStr, e)
+            } finally {
+                activeImportJobs.remove(deviceIdStr)
+                finishImport(deviceIdStr)
             }
-        }.start()
+        }
+
+        activeImportJobs[deviceIdStr] = job
     }
 
-    private fun startDatabaseFlusher(deviceIdStr: String, dbId: Int) {
-        taskScheduler.scheduleAtFixedRate({
-            val queue = importQueues[deviceIdStr] ?: return@scheduleAtFixedRate
-            val totalExpected = importTotals[deviceIdStr] ?: 0
-
-            val batch = mutableListOf<Pair<File, ZonedDateTime>>()
-            var failedInThisBatch = 0
-
-            while (queue.isNotEmpty()) {
-                val pending = queue.poll() ?: break
-                if (pending.file != null) {
-                    batch.add(pending.file to pending.timestamp)
-                    importedSuccessCount[deviceIdStr]?.incrementAndGet()
-                } else {
-                    failedInThisBatch++
-                }
-            }
-
-            if (batch.isNotEmpty()) {
-                fileRepository.saveFiles(dbId, batch)
-            }
-
-            // Sjekk om vi er ferdig (køen er tom, og vi har behandlet alle filer)
-            val currentCount = importedSuccessCount[deviceIdStr]?.get() ?: 0
-            if (currentCount + failedInThisBatch >= totalExpected) {
-                finishImport(deviceIdStr, currentCount, failedInThisBatch)
-            }
-        }, Duration.ofSeconds(5))
+    fun cancelImport(deviceIdStr: String) {
+        activeImportJobs[deviceIdStr]?.cancel()
+        activeImportJobs.remove(deviceIdStr)
+        importList.remove(deviceIdStr)
+        log.warn("Kansellerte import for enhet {}", deviceIdStr)
     }
 
-    private fun finishImport(deviceIdStr: String, successCount: Int, failCount: Int) {
-        // 1. Rydd opp i scheduleren slik at den slutter å kjøre hvert 5. sekund
-        scheduledTasks[deviceIdStr]?.cancel(false)
-        scheduledTasks.remove(deviceIdStr)
 
-        // 2. Rydd opp i map-ene (viktig for å unngå minnelekkasjer!)
-        importQueues.remove(deviceIdStr)
-        importTotals.remove(deviceIdStr)
-        importedSuccessCount.remove(deviceIdStr)
+
+    private fun finishImport(deviceIdStr: String) {
+        val finalFiles = importList[deviceIdStr] ?: emptyList()
+        val successCount = finalFiles.count { it.state == ImportState.Success }
+        val failedFiles = finalFiles.filter { it.state == ImportState.Failure }
+        val failCount = failedFiles.size
+
+        importList.remove(deviceIdStr)
 
         // 3. Send notifikasjon basert på resultatet
         if (successCount > 0) {
@@ -196,5 +197,4 @@ class ImportService(
         }
     }
 
-    data class PendingFile(val deviceId: Int, val file: File, val timestamp: ZonedDateTime)
 }

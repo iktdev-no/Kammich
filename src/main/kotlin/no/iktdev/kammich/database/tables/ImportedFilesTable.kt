@@ -9,6 +9,8 @@ object ImportedFilesTable : IntIdTable("IMPORTED_FILES") {
     val fileType = enumerationByName("FILE_TYPE", 50, FileType::class)
     val fileSize = long("FILE_SIZE")
     val extension = text("EXTENSION")
+    val checksum = varchar("CHECKSUM", 50)
+    val checksumType = varchar("CHECKSUM_TYPE", 12)
     val importedAt = text("IMPORTED_AT")
 }
 

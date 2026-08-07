@@ -1,11 +1,16 @@
 package no.iktdev.kammich.repository
 
+import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.database.withTransaction
+import no.iktdev.kammich.ensureWritable
 import no.iktdev.kammich.getFileType
+import no.iktdev.kammich.models.FileHash
 import no.iktdev.kammich.models.internal.KFile
+import no.iktdev.kammich.models.shared.device.RemovableDevice
+import no.iktdev.kammich.toXxHash
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -14,13 +19,31 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import java.io.File
 import java.time.ZonedDateTime
 
 @Component
-class FileRepository {
+class FileRepository(
+    private val configService: ConfigService,
+    private val eventPublisher: ApplicationEventPublisher,
+
+) {
     private val log = LoggerFactory.getLogger(FileRepository::class.java)
+
+    fun getStorageLocationForImport(device: RemovableDevice): File? {
+        val mediaRoot = File(configService.getConfig().mediaPath).ensureWritable(
+            eventPublisher, "FileRepository-mediaRoot"
+        ) ?: return null
+
+        return File(mediaRoot, device.id).ensureWritable(
+            eventPublisher, "FileRepository-deviceFolder-${device.id}"
+        ) ?: run {
+            log.error("Device ${device.id} has no storage location")
+            null
+        }
+    }
 
     fun getFilesToImport(deviceSN: String, files: List<KFile>): List<KFile> {
         val deviceId = DevicesTable.getDeviceId(deviceSN) ?: run {
@@ -65,13 +88,17 @@ class FileRepository {
         }.isSuccess
     }
 
-    fun saveFile(deviceId: Int, file: File, importedAt: String) {
+    fun saveFile(deviceId: Int, file: File, importedAt: ZonedDateTime, hash: FileHash) {
         withTransaction {
             ImportedFilesTable.insert {
                 it[this.deviceId] = deviceId // Her bruker du ID fra DB
                 it[this.fileName] = file.name
+                it[this.fileType] = file.getFileType()
                 it[this.fileSize] = file.length()
-                it[this.importedAt] = importedAt
+                it[this.extension] = file.extension
+                it[this.checksum] = hash.hash
+                it[this.checksumType] = hash.method.name
+                it[this.importedAt] = importedAt.toString()
             }
         }
     }

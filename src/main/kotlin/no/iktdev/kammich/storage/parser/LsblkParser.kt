@@ -1,7 +1,7 @@
 package no.iktdev.kammich.storage.parser
 
 import com.google.gson.Gson
-import no.iktdev.kammich.models.shared.Transport
+import no.iktdev.kammich.models.shared.storage.Transport
 import no.iktdev.kammich.models.shared.storage.LsblkBlockDevice
 import no.iktdev.kammich.models.LsblkResponse
 

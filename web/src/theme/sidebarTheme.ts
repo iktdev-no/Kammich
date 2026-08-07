@@ -45,7 +45,8 @@ export const sidebarStyles = (theme: Theme) => ({
   },
 
   icon: {
-    color: theme.palette.grey[400],
+    // Bruk text.secondary i stedet for fast grå, eller f.eks. grey[600] for mørkere variant
+    color: theme.palette.text.secondary,
   },
 
   iconActive: {
@@ -53,7 +54,8 @@ export const sidebarStyles = (theme: Theme) => ({
   },
 
   text: {
-    color: theme.palette.grey[400],
+    // text.secondary sikrer god kontrast i både lyst og mørkt tema
+    color: theme.palette.text.secondary,
     marginLeft: 3,
   },
 

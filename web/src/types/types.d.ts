@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-07-19T22:37:32.433081151Z
+// Time: 2026-08-07T00:18:44.654049475Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -109,6 +109,8 @@ export interface WirelessTethering {
   state: WirelessTetheringState;
 }
 
+export type WifiSecurityType = "NONE" | "WPA2" | "WPA3"
+
 export interface WifiNetworkInterface {
   name: string;
 }
@@ -139,8 +141,6 @@ export interface WirelessConnection {
 }
 
 export type WirelessOperatingState = "AP" | "STA" | "Idle"
-
-export type WifiSecurityType = "NONE" | "WPA2" | "WPA3"
 
 export interface WifiConnectionResult {
   message: string;

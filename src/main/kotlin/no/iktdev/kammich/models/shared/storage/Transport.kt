@@ -1,4 +1,4 @@
-package no.iktdev.kammich.models.shared
+package no.iktdev.kammich.models.shared.storage
 
 enum class Transport {
     USB, SATA, NVME, UNKNOWN;

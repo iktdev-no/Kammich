@@ -54,6 +54,12 @@ dependencies {
 	implementation("org.jetbrains.exposed:exposed-jdbc:${exposedVersion}")
 	implementation("org.jetbrains.exposed:exposed-java-time:${exposedVersion}")
 
+	// Hash
+	implementation("org.lz4:lz4-java:1.8.0")
+
+
+
+	implementation("net.coobird:thumbnailator:0.4.20")
 
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")

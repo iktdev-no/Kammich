@@ -1,8 +1,11 @@
 package no.iktdev.kammich
 
+import net.jpountz.xxhash.XXHashFactory
 import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceAbility
 import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceInfo
 import no.iktdev.kammich.gphoto2.parsers.GPhoto2AbilityParser
+import no.iktdev.kammich.models.FileHash
+import no.iktdev.kammich.models.FileHashType
 import no.iktdev.kammich.models.FileType
 import no.iktdev.kammich.models.FileType.IMAGE
 import no.iktdev.kammich.models.FileType.OTHER
@@ -98,6 +101,25 @@ fun ApplicationEventPublisher.warningNotification(
     )
 }
 
+fun ApplicationEventPublisher.errorNotification(
+    id: String,
+    title: String,
+    message: String,
+    type: NotificationType = NotificationType.Alert
+) {
+    this.publishEvent(
+        Notification(
+            id = id,
+            title = title,
+            message = message,
+            severity = Severity.Error,
+            dismissable = true,
+            type = type
+        )
+    )
+}
+
+
 fun GPhoto2DeviceAbility.toCaps(): List<Capability> {
     return listOfNotNull(
         Capability.CAPTURE.takeIf { this.captureChoices.isNotEmpty() },
@@ -105,5 +127,23 @@ fun GPhoto2DeviceAbility.toCaps(): List<Capability> {
         Capability.UPLOAD.takeIf { this.fileUploadSupport },
         Capability.PREVIEW.takeIf { this.filePreviewSupport },
         Capability.CONFIGURE.takeIf { this.configurationSupport }
+    )
+}
+
+fun File.toXxHash(): FileHash {
+    val factory = XXHashFactory.nativeInstance()
+    val streamHasher = factory.newStreamingHash64(0) // 0 som seed
+
+    this.inputStream().use { input ->
+        val buffer = ByteArray(1024 * 1024) // 1 MB buffer
+        var bytesRead: Int
+        while (input.read(buffer).also { bytesRead = it } != -1) {
+            streamHasher.update(buffer, 0, bytesRead)
+        }
+    }
+
+    return FileHash(
+        hash = java.lang.Long.toHexString(streamHasher.value),
+        method = FileHashType.XX64Hash
     )
 }

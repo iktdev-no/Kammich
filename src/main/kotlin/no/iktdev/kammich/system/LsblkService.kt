@@ -1,6 +1,6 @@
 package no.iktdev.kammich.system
 
-import no.iktdev.kammich.models.shared.Transport
+import no.iktdev.kammich.models.shared.storage.Transport
 import no.iktdev.kammich.models.shared.storage.LsblkBlockDevice
 import no.iktdev.kammich.storage.parser.LsblkParser
 import org.slf4j.LoggerFactory

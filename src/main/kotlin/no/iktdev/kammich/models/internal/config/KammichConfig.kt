@@ -5,6 +5,7 @@ import no.iktdev.kammich.models.shared.network.WifiTetherAP
 
 interface IKammichConfig {
     val mediaPath: String?
+    val cachePath: String?
     val apiAuth: ImmichAuth?
     val assignUnknownDeviceAsBlockDevice: Boolean?
     val autoImportCameraByDefault: Boolean?
@@ -15,6 +16,7 @@ interface IKammichConfig {
 
 data class RuntimeKammichConfig(
     override val mediaPath: String = "/var/lib/kammich/storage/media",
+    override val cachePath: String = "/var/lib/kammich/storage/cache",
     override val apiAuth: ImmichAuth? = null,
     override val assignUnknownDeviceAsBlockDevice: Boolean = false,
     override val autoImportCameraByDefault: Boolean = true,
@@ -28,6 +30,7 @@ data class RuntimeKammichConfig(
         fun fromStored(stored: StoredKammichConfig): RuntimeKammichConfig {
             return RuntimeKammichConfig(
                 mediaPath = stored.mediaPath ?: defaults.mediaPath,
+                cachePath = stored.cachePath ?: defaults.cachePath,
                 apiAuth = stored.apiAuth ?: defaults.apiAuth,
                 assignUnknownDeviceAsBlockDevice = stored.assignUnknownDeviceAsBlockDevice ?: defaults.assignUnknownDeviceAsBlockDevice,
                 autoImportCameraByDefault = stored.autoImportCameraByDefault ?: defaults.autoImportCameraByDefault,
@@ -42,6 +45,7 @@ data class RuntimeKammichConfig(
 
 data class StoredKammichConfig(
     override val mediaPath: String?,
+    override val cachePath: String?,
     override val apiAuth: ImmichAuth?,
     override val assignUnknownDeviceAsBlockDevice: Boolean?,
     override val autoImportCameraByDefault: Boolean?,

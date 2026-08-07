@@ -23,6 +23,7 @@ import { useEffect, useMemo } from "react";
 import TapAndPlayIcon from '@mui/icons-material/TapAndPlay';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PublicIcon from '@mui/icons-material/Public';
+import ImportIcon from '@mui/icons-material/SystemUpdateAlt';
 
 export interface SidebarMenuProps {
     width: number;
@@ -61,6 +62,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
                 to: `/camera/${d.id}`,
             })),
         },
+        { label: "Import", icon: ImportIcon, to: "/import" },
         { label: "Upload", icon: CloudUploadOutlinedIcon, to: "/upload" },
         {
             label: "Settings",

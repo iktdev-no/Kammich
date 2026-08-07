@@ -1,7 +1,5 @@
 package no.iktdev.kammich.models.shared.storage
 
-import no.iktdev.kammich.models.shared.Transport
-
 data class LsblkBlockDevice(
     val name: String,
     val path: String,       // f.eks. "/dev/sdb1"

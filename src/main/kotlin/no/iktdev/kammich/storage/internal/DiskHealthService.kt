@@ -1,7 +1,7 @@
 package no.iktdev.kammich.storage.internal
 
 import jakarta.annotation.PostConstruct
-import no.iktdev.kammich.models.shared.Transport
+import no.iktdev.kammich.models.shared.storage.Transport
 import no.iktdev.kammich.models.shared.storage.DiskHealth
 import no.iktdev.kammich.system.LsblkService
 import org.slf4j.LoggerFactory

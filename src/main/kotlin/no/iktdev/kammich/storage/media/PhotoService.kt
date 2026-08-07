@@ -1,11 +1,13 @@
 package no.iktdev.kammich.storage.media
 
+import net.coobird.thumbnailator.Thumbnails
 import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.models.FileType
 import no.iktdev.kammich.models.shared.RemoteFile
+import no.iktdev.kammich.storage.Thumbnail
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.andWhere
@@ -14,8 +16,11 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.FileSystemResource
 import org.springframework.stereotype.Service
+import java.awt.image.BufferedImage
 import java.io.File
 import java.io.FileNotFoundException
+import javax.imageio.ImageIO
+import javax.imageio.ImageReadParam
 
 @Service
 class PhotoService(
@@ -50,6 +55,33 @@ class PhotoService(
 
         // 4. Returner som Resource for Spring
         return FileSystemResource(file)
+    }
+
+    fun getThumbFile(deviceId: Int, filename: String): FileSystemResource {
+        // 1. Hent serialnummer fra DB
+        val serial = withTransaction {
+            DevicesTable.select(DevicesTable.serialNumber)
+                .where { (DevicesTable.id eq deviceId) }
+                .singleOrNull()?.get(DevicesTable.serialNumber)
+        }.getOrNull() ?: throw IllegalArgumentException("Enhet med ID $deviceId finnes ikke")
+
+        // 2. Konstruer stien til originalfilen
+        val cachePath = config.getConfig().cachePath
+        val originalFile = File(config.getConfig().mediaPath, "$serial/$filename")
+
+        // 3. Sikkerhetssjekk: Eksisterer originalfilen?
+        if (!originalFile.exists() || !originalFile.isFile) {
+            throw FileNotFoundException("Filen $filename ble ikke funnet på enhet $serial")
+        }
+
+        val thumb = Thumbnail(File(cachePath, "$serial/thumbs"))
+        return try {
+            thumb.getThumbnailOf(originalFile)
+        } catch (e: Exception) {
+            log.error("Failed to generate thumbnail", e)
+            log.warn("Prepare for large file!")
+            FileSystemResource(originalFile)
+        }
     }
 
     override fun getPagedFiles(page: Int, size: Int, serialNumber: String?): Pair<List<RemoteFile>, Long> {

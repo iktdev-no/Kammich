@@ -1,6 +1,6 @@
 package no.iktdev.kammich.storage.internal
 
-import no.iktdev.kammich.models.shared.Transport
+import no.iktdev.kammich.models.shared.storage.Transport
 import no.iktdev.kammich.models.shared.storage.LsblkBlockDevice
 import no.iktdev.kammich.models.shared.storage.StorageInfo
 import no.iktdev.kammich.sse.SseManager

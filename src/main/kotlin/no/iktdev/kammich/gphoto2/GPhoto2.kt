@@ -10,6 +10,8 @@ import no.iktdev.kammich.gphoto2.parsers.GPhoto2ConnectedDeviceParser
 import no.iktdev.kammich.gphoto2.parsers.GPhoto2FileListParser
 import no.iktdev.kammich.gphoto2.parsers.GPhoto2SummaryParser
 import no.iktdev.kammich.storage.DeviceManagerService
+import no.iktdev.kammich.storage.provider.DeviceUnavailableException
+import no.iktdev.kammich.storage.provider.ImportException
 import org.slf4j.LoggerFactory
 import java.io.File
 
@@ -72,8 +74,22 @@ class GPhoto2: IGPhoto2 {
         log.info("Waiting for copy of $fileName to $destination for completion")
         val exitCode = process.waitFor()
 
+        if (exitCode == 1) {
+            val cleanError = errorOutput.toString().replace(Regex("\\s+"), " ").trim()
+            val isDeviceUnavailable = (
+                    cleanError.contains("No camera found", ignoreCase = true) ||
+                            cleanError.contains("Could not claim the USB device", ignoreCase = true) ||
+                            cleanError.contains("I/O error", ignoreCase = true) ||
+                            cleanError.contains("Could not open port", ignoreCase = true)
+                    )
+
+            if (isDeviceUnavailable) {
+                throw DeviceUnavailableException("Kamera mistet eller utilgjengelig: $cleanError")
+            }
+        }
+
         if (exitCode != 0) {
-            throw CopyException("Feil ved nedlasting, exit kode: $exitCode. Detaljer: \n$errorOutput")
+            throw ImportException("Feil ved nedlasting, exit kode: $exitCode. Detaljer: \n$errorOutput")
         }
         return File(destination, fileName)
     }
@@ -156,7 +172,11 @@ class GPhoto2: IGPhoto2 {
             .start()
 
         if (process.waitFor() != 0) {
-            throw CopyException("Kunne ikke synkronisere thumbnails: ${process.inputStream.bufferedReader().readText()}")
+            throw ImportException(
+                "Kunne ikke synkronisere thumbnails: ${
+                    process.inputStream.bufferedReader().readText()
+                }"
+            )
         }
 
         // 3. Poenget: GPhoto2 har nå dumpet alle .jpg-filene i cacheDirectory.
@@ -179,6 +199,4 @@ class GPhoto2: IGPhoto2 {
         val builder = GPhoto2CommandBuilder().apply(block)
         return GPhoto2Command(builder.build()) { args -> execute(*args) }
     }
-
-    class CopyException(override val message: String?): Exception()
 }
