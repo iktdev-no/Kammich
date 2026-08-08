@@ -9,6 +9,7 @@ import WifiSettings from './routes/settings/WifiSettings';
 import WifiApSettings from './routes/settings/WifiApSettings';
 import Networking from './routes/settings/Networking';
 import { Import } from './routes/Import';
+import Device from './routes/devices/Device';
 
 const router = createBrowserRouter([
   {
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
       { index: true, element: <Photo /> },
       { path: "photo/:sn", element: <Photo /> },
       { path: 'camera/:sn/*', element: <Camera /> },
+      { path: 'devices/:sn/*', element: <Device /> },
       { path: 'devices', element: <Devices /> },
       { path: 'upload', element: <Upload /> },
       { path: 'import', element: <Import /> },

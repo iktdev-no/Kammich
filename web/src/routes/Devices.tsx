@@ -1,8 +1,6 @@
 import { Box, Typography, Card, CardContent, Grid, Chip, Stack } from "@mui/material";
 import CableIcon from '@mui/icons-material/Cable';
 import SdStorageOutlinedIcon from '@mui/icons-material/SdStorageOutlined';
-import DvrIcon from '@mui/icons-material/Dvr'; // For SATA/Disk
-import SpeedIcon from '@mui/icons-material/Speed'; // For NVMe
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
 import SmartphoneOutlinedIcon from '@mui/icons-material/SmartphoneOutlined';
 

@@ -12,24 +12,34 @@ data class DeviceImport(
     val files: List<ImportFile>
 )
 
+
+
+data class ImportFile(
+    val file: String,
+    val isNew: Boolean,
+    val state: FileImportState = FileImportState.Pending
+)
+
+data class DeviceImportSummary(
+    val deviceId: String,
+    val state: ImportState = ImportState.Started,
+    val started: String,
+    val completed: String,
+)
+
+enum class ImportState {
+    Started,
+    Importing,
+    Completed
+}
+
+
+
 data class ImportProgressEvent(
     val deviceId: String,
     val completedFiles: Int,
     val totalFiles: Int,
     val currentFile: String?,
-    val state: ImportState, // F.eks. InProgress, Completed, Failed
+    val state: FileImportState, // F.eks. InProgress, Completed, Failed
     val files: List<ImportFile> // Eller bare den filen som oppdaterte seg
 )
-
-data class ImportFile(
-    val file: String,
-    val isNew: Boolean,
-    val state: ImportState = ImportState.Pending
-)
-
-enum class ImportState {
-    Pending,
-    Imported,
-    Failed
-}
-

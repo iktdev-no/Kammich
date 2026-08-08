@@ -11,6 +11,7 @@ import no.iktdev.kammich.models.shared.device.GPhoto2Device
 import no.iktdev.kammich.models.shared.device.RemovableDevice
 import no.iktdev.kammich.repository.DeviceRepository
 import no.iktdev.kammich.sse.SseManager
+import no.iktdev.kammich.sse.events.SSERemovableDevices
 import no.iktdev.kammich.system.LsblkService
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
@@ -67,12 +68,9 @@ class DeviceManagerService(
         updateSSE()
     }
 
-    fun ssePayload(): Map<String, Any> {
-        return mapOf(
-            "type" to "removable-devices",
-            "payload" to activeDevices.values.toList()
-        )
-    }
+    fun ssePayload() = SSERemovableDevices(
+        activeDevices.values.toList()
+    )
 
     fun updateSSE() {
         val payload = ssePayload()

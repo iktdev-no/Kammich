@@ -9,6 +9,7 @@ import no.iktdev.kammich.models.shared.network.NetworkInterfaceMode
 import no.iktdev.kammich.models.shared.network.WifiNetwork
 import no.iktdev.kammich.models.shared.network.WifiNetworkScan
 import no.iktdev.kammich.sse.SseManager
+import no.iktdev.kammich.sse.events.SSEWifiScan
 import no.iktdev.kammich.system.network.NetworkInterfaceRegistry
 import no.iktdev.kammich.system.network.NetworkStateRepository
 import no.iktdev.kammich.system.network.wifi.strategy.scan.FallbackScanStrategy
@@ -131,7 +132,7 @@ class WifiScanner(
         return last.isBefore(ZonedDateTime.now().minusMinutes(5))
     }
 
-    fun getSSEPayload(): Map<String, Any> {
+    fun getSSEPayload(): SSEWifiScan {
         val wifiInterfaces = repository.getCurrentState().interfaces
             .filterValues { it is WifiInterfaceState } // Filtrer først
             .mapValues { it.value as WifiInterfaceState } // Cast til rett type
@@ -143,10 +144,7 @@ class WifiScanner(
                 )
             }
 
-        return mapOf(
-            "type" to "wifi-scan",
-            "payload" to wifiInterfaces
-        )
+        return SSEWifiScan(wifiInterfaces)
     }
 
     private fun updateSSE() {

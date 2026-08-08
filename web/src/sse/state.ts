@@ -1,4 +1,4 @@
-import type { RemovableDevice, MediaStats, Notification, StorageInfo, WifiNetworkTether, WifiNetworkConnection, WifiNetworkScan } from "../types/types";
+import type { RemovableDevice, MediaStats, Notification, StorageInfo, WifiNetworkTether, WifiNetworkConnection, WifiNetworkScan, ImportProgressEvent, DeviceImportSummary } from "../types/types";
 
 export interface SseState {
   lastPing?: number;
@@ -10,10 +10,14 @@ export interface SseState {
   internalMediaStats: MediaStats | undefined
   connectionStatus: "online" | "connecting" | "offline";
 
+
   wifiScans: Array<WifiNetworkScan>
   wifiConnections: Array<WifiNetworkConnection>
   wifiTether: WifiNetworkTether | undefined
   wifiTetherDevice: undefined | WifiNetworkTether
+
+  importDevices: Record<string, DeviceImportSummary>;
+  activeMediaImports: Record<string, ImportProgressEvent>;
 }
 
 export const initialSseState: SseState = {
@@ -28,4 +32,6 @@ export const initialSseState: SseState = {
   wifiConnections: [],
   wifiTether: undefined,
   wifiTetherDevice: undefined,
+  importDevices: {},
+  activeMediaImports: {}
 };

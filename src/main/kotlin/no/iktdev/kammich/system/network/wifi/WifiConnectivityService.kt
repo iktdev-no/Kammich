@@ -5,6 +5,7 @@ import no.iktdev.kammich.models.internal.network.setNetwork
 import no.iktdev.kammich.models.internal.network.setTethering
 import no.iktdev.kammich.models.shared.network.*
 import no.iktdev.kammich.sse.SseManager
+import no.iktdev.kammich.sse.events.SSEWifiConnectivity
 import no.iktdev.kammich.system.network.NetworkInterfaceRegistry
 import no.iktdev.kammich.system.network.NetworkStateRepository
 import no.iktdev.kammich.system.network.wifi.strategy.connection.WifiConnectionStrategy
@@ -122,7 +123,7 @@ class WifiConnectivityService(
         return true
     }
 
-    fun getSSEPayload(): Map<String, Any> {
+    fun getSSEPayload(): SSEWifiConnectivity {
         val wifiInterfaces = repository.getCurrentState().interfaces
             .filterValues { it is no.iktdev.kammich.models.internal.network.WifiInterfaceState } // Filtrer først
             .mapValues { it.value as no.iktdev.kammich.models.internal.network.WifiInterfaceState } // Cast til rett type
@@ -134,10 +135,7 @@ class WifiConnectivityService(
                 )
             }
 
-        return mapOf(
-            "type" to "wifi-connectivity",
-            "payload" to wifiInterfaces // Dette er nå en List<WifiInterfaceState>
-        )
+        return SSEWifiConnectivity(wifiInterfaces)
     }
 
     private fun updateSSE() {

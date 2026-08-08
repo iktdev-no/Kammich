@@ -1,3 +1,5 @@
 package no.iktdev.kammich.models.internal
 
-data class ImportFile(val file: KFile, val state: ImportState)
+import no.iktdev.kammich.models.shared.FileImportState
+
+data class ImportFile(val file: KFile, val state: FileImportState)

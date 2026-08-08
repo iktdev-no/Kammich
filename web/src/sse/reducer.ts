@@ -72,6 +72,24 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
         wifiTetherDevice: event.payload
       }
 
+    case "media-import-progress":
+      return {
+        ...state,
+        activeMediaImports: {
+          ...state.activeMediaImports,
+          ...event.payload,
+        },
+      };
+
+    case "import-device-state":
+      return {
+        ...state,
+        importDevices: {
+          ...state.importDevices,
+          ...event.states,
+        },
+      };
+
     default:
       console.log("Ingen tok seg av ", event)
       return state;

@@ -8,6 +8,7 @@ import no.iktdev.kammich.models.internal.network.setTethering
 import no.iktdev.kammich.models.shared.network.*
 import no.iktdev.kammich.models.shared.network.old.*
 import no.iktdev.kammich.sse.SseManager
+import no.iktdev.kammich.sse.events.SSEWifiTethering
 import no.iktdev.kammich.system.exceptions.TetherDeviceNotFoundException
 import no.iktdev.kammich.system.network.NetworkInterfaceRegistry
 import no.iktdev.kammich.system.network.NetworkStateRepository
@@ -151,7 +152,7 @@ class WifiTetherService(
 
 
     @OptIn(ExperimentalAtomicApi::class)
-    fun getSSETetheringPayload(): Map<String, Any?> {
+    fun getSSETetheringPayload(): SSEWifiTethering {
         // WifiNetworkTether
 
         val wifiInterfaces = repository.getCurrentState().interfaces
@@ -182,10 +183,7 @@ class WifiTetherService(
             }
         }
 
-        return mapOf(
-            "type" to "wifi-tethering",
-            "payload" to useTetherItem
-        )
+        return SSEWifiTethering(useTetherItem)
     }
 
     private fun updateSSE() {

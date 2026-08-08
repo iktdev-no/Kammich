@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-08-07T00:18:44.654049475Z
+// Time: 2026-08-08T00:21:21.669328441Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -9,10 +9,16 @@ export interface DeviceSettingsDto {
   includeFolders: string[] | null;
 }
 
-export type Transport = "USB" | "SATA" | "NVME" | "UNKNOWN"
+export interface ImportProgressEvent {
+  completedFiles: number;
+  currentFile: string | null;
+  deviceId: string;
+  files: ImportFile[];
+  state: FileImportState;
+  totalFiles: number;
+}
 
 export type NotificationType = "Alert"
-
 
 export interface Notification {
   createdAt: number;
@@ -78,9 +84,26 @@ export interface RemovableDevice {
   type: DeviceType;
 }
 
+export interface PhotoDevice {
+  manufacturer: string | null;
+  model: string | null;
+  name: string;
+  serialNumber: string;
+}
+
 export type Severity = "Info" | "Warning" | "Error"
 
+export interface ImportFile {
+  file: string;
+  isNew: boolean;
+  state: FileImportState;
+}
+
+export type FileImportState = "Pending" | "InProgress" | "Success" | "Failure"
+
 export type WFileType = "FILE" | "DIRECTORY"
+
+export type ImportState = "Started" | "Importing" | "Completed"
 
 export interface WirelessNetworkSearch {
   lastSearched: string;
@@ -218,9 +241,12 @@ export interface StorageInfo {
   stats: StorageStats;
 }
 
+export type Transport = "USB" | "SATA" | "NVME" | "UNKNOWN"
+
 export interface SataAttributes {
   table: SataAttribute[];
 }
+
 
 export interface SataRoot extends SmartCtlRoot {
   attrs: SataAttributes;
@@ -274,6 +300,13 @@ export interface RawValue {
   value: string;
 }
 
+export interface DeviceImportSummary {
+  completed: string;
+  deviceId: string;
+  started: string;
+  state: ImportState;
+}
+
 export interface PagedResponse<T> {
   currentPage: number;
   data: T[];
@@ -282,4 +315,14 @@ export interface PagedResponse<T> {
 }
 
 export type WFileStatus = "Included" | "Excluded" | "None"
+
+export interface DeviceImport {
+  completedFiles: number;
+  currentFileName: string | null;
+  deviceId: string;
+  deviceName: string;
+  files: ImportFile[];
+  started: string;
+  totalFiles: number;
+}
 

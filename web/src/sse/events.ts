@@ -1,4 +1,4 @@
-import type { StorageInfo, Notification, MediaStats, WifiNetworkScan, WifiNetworkConnection, WifiNetworkTether, } from "../types/types";
+import type { StorageInfo, Notification, MediaStats, WifiNetworkScan, WifiNetworkConnection, WifiNetworkTether, ImportProgressEvent, DeviceImportSummary, } from "../types/types";
 
 export type SseEvent =
   | { type: 'ping'; timestamp: number }
@@ -16,4 +16,6 @@ export type SseEvent =
   | { type: "wifi-connectivity"; payload: Array<WifiNetworkConnection> }
   | { type: "wifi-tethering"; payload: WifiNetworkTether }
   | { type: "wifi-tethering-selected-interface"; payload: WifiNetworkTether | undefined }
+  | { type: "media-import-progress"; payload: Record<string, ImportProgressEvent> }
+  | { type: "import-device-state"; states: Record<string, DeviceImportSummary> }
   ;

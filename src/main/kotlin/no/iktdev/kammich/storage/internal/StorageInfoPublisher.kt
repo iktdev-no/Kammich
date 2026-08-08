@@ -4,6 +4,7 @@ import no.iktdev.kammich.models.shared.storage.Transport
 import no.iktdev.kammich.models.shared.storage.LsblkBlockDevice
 import no.iktdev.kammich.models.shared.storage.StorageInfo
 import no.iktdev.kammich.sse.SseManager
+import no.iktdev.kammich.sse.events.SSEStorageInfoInternal
 import no.iktdev.kammich.system.LsblkService
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
@@ -43,12 +44,7 @@ class StorageInfoPublisher(
         return StorageInfo(stats, health.getOrThrow())
     }
 
-    fun getPayload(): Map<String, Any> {
-        return mapOf(
-            "type" to "storage-info-internal",
-            "payload" to storageInfo
-        )
-    }
+    fun getPayload() = SSEStorageInfoInternal(storageInfo)
 
     fun publish() {
         sseManager.send(getPayload())

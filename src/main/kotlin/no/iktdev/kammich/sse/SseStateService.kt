@@ -2,6 +2,7 @@ package no.iktdev.kammich.sse
 
 import no.iktdev.kammich.models.NotificationDismissed
 import no.iktdev.kammich.models.shared.Notification
+import no.iktdev.kammich.sse.events.SSENotifications
 import no.iktdev.kammich.storage.DeviceManagerService
 import no.iktdev.kammich.storage.internal.DiskStorageService
 import no.iktdev.kammich.storage.internal.StorageInfoPublisher
@@ -54,9 +55,8 @@ class SseStateService(
     }
 
 
-    fun notificationPayload() = mapOf(
-        "type" to "notifications",
-        "payload" to notifications.values.toList()
+    fun notificationPayload() = SSENotifications(
+        notifications.values.toList()
     )
 
 }

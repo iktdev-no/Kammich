@@ -2,6 +2,7 @@ package no.iktdev.kammich.controller
 
 import no.iktdev.kammich.models.shared.PagedResponse
 import no.iktdev.kammich.models.shared.RemoteFile
+import no.iktdev.kammich.models.shared.device.PhotoDevice
 import no.iktdev.kammich.storage.media.PhotoService
 import org.springframework.core.io.Resource
 import org.springframework.http.CacheControl
@@ -19,25 +20,11 @@ import java.time.Duration
 class PhotoController(
     private val photoService: PhotoService,
 ) {
-    @GetMapping
+    @GetMapping("", "/{deviceId}")
     fun getPhotos(
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "50") size: Int
-    ): PagedResponse<RemoteFile> {
-        val (files, total) = photoService.getPagedFiles(page, size, null)
-        return PagedResponse(
-            data = files,
-            currentPage = page,
-            totalPages = (total / size).toInt(),
-            hasMore = (page * size) + files.size < total
-        )
-    }
-
-    @GetMapping("/{deviceId}")
-    fun getPhotosForDevice(
-        @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "50") size: Int,
-        @PathVariable deviceId: String,
+        @PathVariable(required = false) deviceId: String?,
     ): PagedResponse<RemoteFile> {
         val (files, total) = photoService.getPagedFiles(page, size, deviceId)
         return PagedResponse(
@@ -99,4 +86,11 @@ class PhotoController(
             .contentLength(length)
             .body(fileResource)
     }
+
+    @GetMapping("/devices")
+    fun getPhotodevices(): List<PhotoDevice> {
+        return photoService.getPhotoDevices()
+    }
+
+
 }

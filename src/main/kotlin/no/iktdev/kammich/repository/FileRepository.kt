@@ -3,14 +3,17 @@ package no.iktdev.kammich.repository
 import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.ImportedFilesTable
+import no.iktdev.kammich.database.tables.ImportedFilesTable.toPersisted
 import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.ensureWritable
 import no.iktdev.kammich.getFileType
 import no.iktdev.kammich.models.FileHash
 import no.iktdev.kammich.models.internal.KFile
+import no.iktdev.kammich.models.shared.DeviceImport
+import no.iktdev.kammich.models.shared.ImportFile
+import no.iktdev.kammich.models.shared.FileImportState
 import no.iktdev.kammich.models.shared.device.RemovableDevice
-import no.iktdev.kammich.toXxHash
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -22,6 +25,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import java.io.File
+import java.time.Instant
 import java.time.ZonedDateTime
 
 @Component
@@ -101,5 +105,47 @@ class FileRepository(
                 it[this.importedAt] = importedAt.toString()
             }
         }
+    }
+
+
+
+    fun getImportHistory(): List<DeviceImport> {
+        // 1. Hent alle enheter slik at vi har navn, serialNumber osv.
+        val devices = DevicesTable.getDevices().associateBy { it.id }
+
+        return withTransaction {
+            // 2. Hent alle importerte filer og gruppér dem på deviceId
+            val filesByDevice = ImportedFilesTable.selectAll()
+                .map { it.toPersisted() }
+                .groupBy { it.deviceId }
+
+            // 3. Bygg opp DeviceImport for hver enhet som har filer i historikken
+            filesByDevice.mapNotNull { (dbDeviceId, persistedFiles) ->
+                val device = devices[dbDeviceId] ?: return@mapNotNull null
+
+                val sharedFiles = persistedFiles.map { file ->
+                    ImportFile(
+                        file = file.fileName,
+                        isNew = false, // Allerede importert (historikk)
+                        state = FileImportState.Success
+                    )
+                }
+
+                // Finn tidspunktet for den første importen (eller satt til nå hvis feiler)
+                val firstImportedAt = persistedFiles.minOfOrNull {
+                    runCatching { Instant.parse(it.importedAt) }.getOrNull() ?: Instant.now()
+                } ?: Instant.now()
+
+                DeviceImport(
+                    deviceId = device.serialNumber, // Bruker serialNumber som ID ut mot FE (slik du gjorde tidligere)
+                    deviceName = device.name.ifBlank { device.model ?: device.serialNumber },
+                    started = firstImportedAt,
+                    totalFiles = sharedFiles.size,
+                    completedFiles = sharedFiles.size,
+                    currentFileName = null,
+                    files = sharedFiles
+                )
+            }
+        }.getOrDefault(emptyList())
     }
 }

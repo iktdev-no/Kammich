@@ -19,11 +19,13 @@ import SdStorageOutlinedIcon from '@mui/icons-material/SdStorageOutlined';
 import CableIcon from '@mui/icons-material/Cable';
 import type { SidebarItem } from "./SidebarItemTypes";
 import { useSseSelector } from "../../sse/useSseSelector";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TapAndPlayIcon from '@mui/icons-material/TapAndPlay';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PublicIcon from '@mui/icons-material/Public';
 import ImportIcon from '@mui/icons-material/SystemUpdateAlt';
+import { getPhotoDevices } from "../../api/photo";
+import type { PhotoDevice } from "../../types/types";
 
 export interface SidebarMenuProps {
     width: number;
@@ -40,16 +42,25 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
     const isSettings = location.pathname.startsWith("/settings");
 
 
+    // State for enheter med lagrede bilder
+    const [photoDevices, setPhotoDevices] = useState<PhotoDevice[]>([]);
+
+    useEffect(() => {
+        getPhotoDevices()
+            .then(data => setPhotoDevices(data))
+            .catch(err => console.error("Klarte ikke å hente foto-enheter:", err));
+    }, []);
+
     // Bruk useMemo slik at menyen oppdateres kun når 'devices' endres
     const mainMenuItems: SidebarItem[] = useMemo(() => [
         {
             label: "Photos",
             icon: PhotoLibraryOutlinedIcon,
             to: "/",
-            children: devices.map(d => ({
+            children: photoDevices.map(d => ({
                 label: d.model ?? d.name,
-                icon: (d.type !== "BLOCK") ? CameraAltOutlinedIcon : SdStorageOutlinedIcon,
-                to: `/photo/${d.id}`,
+                icon: PhotoLibraryOutlinedIcon,
+                to: `/photo/${d.serialNumber}`,
             })),
         },
         {
@@ -59,7 +70,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             children: devices.map(d => ({
                 label: d.model ?? d.name,
                 icon: (d.type !== "BLOCK") ? CameraAltOutlinedIcon : SdStorageOutlinedIcon,
-                to: `/camera/${d.id}`,
+                to: `/devices/${d.id}`,
             })),
         },
         { label: "Import", icon: ImportIcon, to: "/import" },

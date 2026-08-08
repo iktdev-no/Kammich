@@ -329,6 +329,14 @@ def start_browser(w, h):
         except:
             pass
 
+    # Tving fram maskinvareakselerasjon og fjern webkit-flimmer
+    env = os.environ.copy()
+    env["WEBKIT_DISABLE_COMPOSITING_MODE"] = "0"
+    env["WEBKIT_USE_WAYLAND_IDS"] = "0" # Hvis X11 brukes
+
+    # Alternativt kan vi sende Chromium-flagg hvis pywebview bruker CEF/Qt,
+    # men for WebKitGTK er det disse miljøvariablene som teller:
+
     cmd = [
         "/home/kammich/kiosk-env/bin/python3", "-c",
         f"""
@@ -346,10 +354,10 @@ webview.create_window(
     resizable=False,
     background_color='#111111'
 )
-webview.start()
+webview.start(debug=False)
         """
     ]
-    browser_process = subprocess.Popen(cmd)
+    browser_process = subprocess.Popen(cmd, env=env)
 
 def go_back():
     subprocess.run(["xdotool", "key", "Alt+Left"])

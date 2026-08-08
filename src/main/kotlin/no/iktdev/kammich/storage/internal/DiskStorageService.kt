@@ -5,6 +5,7 @@ import no.iktdev.kammich.models.shared.storage.LsblkBlockDevice
 import no.iktdev.kammich.models.shared.storage.MediaStats
 import no.iktdev.kammich.models.shared.storage.StorageStats
 import no.iktdev.kammich.sse.SseManager
+import no.iktdev.kammich.sse.events.SSEStorageStatsMedia
 import no.iktdev.kammich.system.LsblkService
 import no.iktdev.kammich.utils.DiskUtils
 import org.springframework.scheduling.annotation.Scheduled
@@ -85,12 +86,9 @@ class DiskStorageService(
     }
 
 
-    fun getPayload(): Map<String, Any> {
-        return mapOf(
-            "type" to "storage-stats-media",
-            "payload" to mediaStorageStats
-        )
-    }
+    fun getPayload() = SSEStorageStatsMedia(
+    mediaStorageStats
+    )
 
     fun publish() {
         sse.send(getPayload())

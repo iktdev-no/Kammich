@@ -1,9 +1,11 @@
-import type { PagedResponse, RemoteFile } from "../types/types";
+import type { PagedResponse, PhotoDevice, RemoteFile } from "../types/types";
 import { apiGet } from "./client";
 
-export function getPhotos(page: number, size: number) {
-    return apiGet<PagedResponse<RemoteFile>>(`/v1/photo`, {
-        page, size
+export function getPhotos(page: number, size: number, sn?: string) {
+    const endpoint = sn ? `/v1/photo/${sn}` : `/v1/photo`;
+    return apiGet<PagedResponse<RemoteFile>>(endpoint, {
+        page,
+        size
     });
 }
 
@@ -45,4 +47,8 @@ export function getPhotoThumbUrl(
     }
 
     return url;
+}
+
+export function getPhotoDevices() {
+    return apiGet<Array<PhotoDevice>>(`/v1/photo/devices`)
 }
