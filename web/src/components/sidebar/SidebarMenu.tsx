@@ -25,7 +25,9 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PublicIcon from '@mui/icons-material/Public';
 import ImportIcon from '@mui/icons-material/SystemUpdateAlt';
 import { getPhotoDevices } from "../../api/photo";
-import type { PhotoDevice } from "../../types/types";
+import type { ImmichUserAccesses, PhotoDevice } from "../../types/types";
+import ImmichIcon from "../icons/ImmichIcon";
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
 
 export interface SidebarMenuProps {
     width: number;
@@ -37,6 +39,9 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
     const sx = sidebarStyles(theme);
     const navigate = useNavigate();
     const connectionStatus = useSseSelector(state => state.connectionStatus);
+    const immichAvailability = useSseSelector(state => state.immichAvailability);
+
+
     const devices = useSseSelector(state => state.devices);
     const location = useLocation();
     const isSettings = location.pathname.startsWith("/settings");
@@ -44,6 +49,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
 
     // State for enheter med lagrede bilder
     const [photoDevices, setPhotoDevices] = useState<PhotoDevice[]>([]);
+    const immichAccesses = useState<ImmichUserAccesses[]>([]);
 
     useEffect(() => {
         getPhotoDevices()
@@ -92,6 +98,19 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             to: "/",
         },
         {
+            label: "Immich",
+            icon: ImmichIcon,
+            to: "/settings/immich",
+            // Bruk en ternary eller short-circuit for å slå av/på barna
+            children: immichAccesses && immichAccesses.length > 0 ? [
+                {
+                    label: "Access",
+                    icon: VpnKeyIcon,
+                    to: `/settings/immich/access`,
+                }
+            ] : undefined // eller [] avhengig av hva Sidebar-komponenten din liker best
+        },
+        {
             label: "Network",
             icon: PublicIcon,
             to: "/settings/networking",
@@ -108,7 +127,8 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
                 }
             ]
         },
-    ], [])
+    ], [immichAccesses]);
+
 
     const activeItems = isSettings ? settingsMenuItems : mainMenuItems;
 
@@ -140,7 +160,10 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             >
                 <CacheIndicator />
                 <StatusIndicator label="Kammich" state={connectionStatus} />
-                <StatusIndicator label="Immich" state="offline" />
+                <StatusIndicator
+                    label="Immich"
+                    state={immichAvailability?.isAvailable ? "online" : "offline"}
+                />
             </Box>
         </Box>
     );

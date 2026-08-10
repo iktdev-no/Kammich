@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-08-08T00:21:21.669328441Z
+// Time: 2026-08-10T22:49:53.661705628Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -76,6 +76,7 @@ export interface DeviceStorageStats {
 
 export interface RemovableDevice {
   id: string;
+  isReady: boolean;
   manufacturer: string;
   model: string;
   name: string;
@@ -103,7 +104,7 @@ export type FileImportState = "Pending" | "InProgress" | "Success" | "Failure"
 
 export type WFileType = "FILE" | "DIRECTORY"
 
-export type ImportState = "Started" | "Importing" | "Completed"
+export type ImportState = "Indexing" | "Importing" | "Completed" | "Canceled"
 
 export interface WirelessNetworkSearch {
   lastSearched: string;
@@ -315,6 +316,106 @@ export interface PagedResponse<T> {
 }
 
 export type WFileStatus = "Included" | "Excluded" | "None"
+
+export interface ImmichAvailability {
+  error: string | null;
+  isAvailable: boolean;
+  serverUrl: string | null;
+  user: ImmichUserMe | null;
+}
+
+export interface ImmichLoginRequest {
+  address: string;
+  email: string;
+  password: string;
+}
+
+export interface ImmichApiKeysMe {
+  createdAt: string;
+  id: string;
+  name: string;
+  permissions: string[];
+  updatedAt: string;
+}
+
+export interface ImmichUserLicense {
+  activatedAt: string;
+  activationKey: string;
+  licenseKey: string;
+}
+
+
+export interface ImmichAuthenticationLogin {
+  email: string;
+  password: string;
+}
+
+export type ImmichUserStatus = "active" | "removing" | "deleted"
+
+export type UserAvatarColor = "primary" | "pink" | "red" | "yellow" | "blue" | "green" | "purple" | "orange" | "gray" | "amber"
+
+export interface ImmichUserMe {
+  avatarColor: UserAvatarColor;
+  createdAt: string;
+  deletedAt: string | null;
+  email: string;
+  id: string;
+  isAdmin: boolean;
+  license: ImmichUserLicense | null;
+  name: string;
+  oauthId: string | null;
+  profileChangedAt: string | null;
+  profileImagePath: string | null;
+  quotaSizeInBytes: number | null;
+  quotaUsageInBytes: number | null;
+  shouldChangePassword: boolean;
+  status: ImmichUserStatus | null;
+  storageLabel: string | null;
+  updatedAt: string | null;
+}
+
+export interface ImmichApiKeyPostResponse {
+  apiKey: ImmichApiKeyPostResponseDto;
+  secret: string;
+}
+
+export interface ImmichApiKeyPost {
+  name: string;
+  permissions: string[];
+}
+
+export interface ImmichApiKeyPostResponseDto {
+  createdAt: string;
+  id: string;
+  name: string;
+  permissions: string[];
+  updatedAt: string;
+}
+
+export interface ImmichAuthenticationLoginResponse {
+  accessToken: string;
+  isAdmin: boolean;
+  isOnboarded: boolean;
+  name: string;
+  profileImagePath: string;
+  shouldChangePassword: boolean;
+  userEmail: string;
+  userId: string;
+}
+
+export interface ImmichUserAccesses {
+  isActive: boolean;
+  servers: ImmichServerAccess[];
+  user: ImmichUserMe;
+}
+
+export interface ImmichServerAccess {
+  createdAt: string;
+  isActive: boolean;
+  keyId: string;
+  keyName: string;
+  serverUrl: string;
+}
 
 export interface DeviceImport {
   completedFiles: number;

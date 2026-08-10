@@ -1,12 +1,12 @@
 package no.iktdev.kammich.database.tables
 
+import no.iktdev.kammich.database.models.PersistedImportedFiles
 import no.iktdev.kammich.models.FileType
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import java.time.Instant
 
 object ImportedFilesTable : IntIdTable("IMPORTED_FILES") {
     val deviceId = reference("DEVICE_ID", DevicesTable) // Refererer til DevicesTable
@@ -25,30 +25,30 @@ object ImportedFilesTable : IntIdTable("IMPORTED_FILES") {
             .orderBy(ImportedFilesTable.id, SortOrder.DESC)
             .map {
                 PersistedImportedFiles(
-                    id = it[ImportedFilesTable.id].value.toLong(),
-                    deviceId = it[ImportedFilesTable.deviceId].value,
-                    fileName = it[ImportedFilesTable.fileName],
-                    fileType = it[ImportedFilesTable.fileType],
-                    fileSize = it[ImportedFilesTable.fileSize],
-                    extension = it[ImportedFilesTable.extension],
-                    checksum = it[ImportedFilesTable.checksum],
-                    checksumType = it[ImportedFilesTable.checksumType],
-                    importedAt = it[ImportedFilesTable.importedAt],
+                    id = it[id].value.toLong(),
+                    deviceId = it[deviceId].value,
+                    fileName = it[fileName],
+                    fileType = it[fileType],
+                    fileSize = it[fileSize],
+                    extension = it[extension],
+                    checksum = it[checksum],
+                    checksumType = it[checksumType],
+                    importedAt = it[importedAt],
                 )
             }
     }
 
     fun ResultRow.toPersisted(): PersistedImportedFiles {
         return PersistedImportedFiles(
-            id = this[ImportedFilesTable.id].value.toLong(),
-            deviceId = this[ImportedFilesTable.deviceId].value,
-            fileName = this[ImportedFilesTable.fileName],
-            fileType = this[ImportedFilesTable.fileType],
-            fileSize = this[ImportedFilesTable.fileSize],
-            extension = this[ImportedFilesTable.extension],
-            checksum = this[ImportedFilesTable.checksum],
-            checksumType = this[ImportedFilesTable.checksumType],
-            importedAt = this[ImportedFilesTable.importedAt]
+            id = this[id].value.toLong(),
+            deviceId = this[deviceId].value,
+            fileName = this[fileName],
+            fileType = this[fileType],
+            fileSize = this[fileSize],
+            extension = this[extension],
+            checksum = this[checksum],
+            checksumType = this[checksumType],
+            importedAt = this[importedAt]
         )
     }
 }

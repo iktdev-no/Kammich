@@ -17,7 +17,6 @@ export default function Photo() {
     const [hasMore, setHasMore] = useState(true);
     const [page, setPage] = useState(0);
 
-    // State for fullskjerm-visning av valgt bilde
     const [selectedPhoto, setSelectedPhoto] = useState<RemoteFile | null>(null);
 
     const theme = useTheme();
@@ -36,18 +35,52 @@ export default function Photo() {
 
     const observerRef = useRef<IntersectionObserver | null>(null);
 
+    // Bruk referanser for å unngå at lukkede funksjoner (closures) henger igjen på gammel state
+    const loadingRef = useRef(loading);
+    loadingRef.current = loading;
+
+    const hasMoreRef = useRef(hasMore);
+    hasMoreRef.current = hasMore;
+
+    const pageRef = useRef(page);
+    pageRef.current = page;
+
+    // Nullstill alt når 'sn' endrer seg
     useEffect(() => {
         setPhotos([]);
         setPage(0);
         setHasMore(true);
+
+        let isMounted = true;
+        setLoading(true);
+
+        getPhotos(0, 30, sn)
+            .then(res => {
+                if (!isMounted) return;
+                setPhotos(res.data);
+                setHasMore(res.hasMore);
+                setPage(1); // Klar for neste side
+            })
+            .catch(err => {
+                if (isMounted) console.error("Kunne ikke laste første side:", err);
+            })
+            .finally(() => {
+                if (isMounted) setLoading(false);
+            });
+
+        return () => {
+            isMounted = false;
+        };
     }, [sn]);
 
+    // Stabil loadMore som bruker refs og aldri går i spinn
     const loadMore = useCallback(async () => {
-        if (loading || !hasMore) return;
+        if (loadingRef.current || !hasMoreRef.current) return;
 
         setLoading(true);
         try {
-            const res = await getPhotos(page, 30, sn);
+            const currentPage = pageRef.current;
+            const res = await getPhotos(currentPage, 30, sn);
 
             setPhotos(prev => {
                 const existingIds = new Set(prev.map(p => p.id));
@@ -58,30 +91,24 @@ export default function Photo() {
             setHasMore(res.hasMore);
             setPage(p => p + 1);
         } catch (err) {
-            console.error("Kunne ikke laste bilder:", err);
+            console.error("Kunne ikke laste flere bilder:", err);
         } finally {
             setLoading(false);
         }
-    }, [page, hasMore, loading, sn]);
-
-    useEffect(() => {
-        if (page === 0 && photos.length === 0 && hasMore) {
-            loadMore();
-        }
-    }, [page, photos.length, hasMore, loadMore]);
+    }, [sn]);
 
     const lastElementRef = useCallback((node: HTMLDivElement | null) => {
-        if (loading) return;
+        if (loadingRef.current) return;
         if (observerRef.current) observerRef.current.disconnect();
 
         observerRef.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore) {
+            if (entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current) {
                 loadMore();
             }
         });
 
         if (node) observerRef.current.observe(node);
-    }, [loading, hasMore, loadMore]);
+    }, [loadMore]);
 
     const photoColumns = useMemo(() => {
         const cols: RemoteFile[][] = Array.from({ length: numCols }, () => []);
@@ -97,14 +124,13 @@ export default function Photo() {
                 {sn ? `Bibliotek (${sn})` : "Bibliotek"}
             </Typography>
 
-            {/* Kolonner med bilder */}
             <Box sx={{ display: 'flex', gap: { xs: '8px', sm: '12px' }, alignItems: 'flex-start' }}>
                 {photoColumns.map((colPhotos, colIndex) => (
                     <Box key={colIndex} sx={{ display: 'flex', flexDirection: 'column', gap: { xs: '8px', sm: '12px' }, flex: 1 }}>
                         {colPhotos.map((photo) => (
                             <Box
                                 key={photo.id}
-                                onClick={() => setSelectedPhoto(photo)} // Åpne i fullskjerm ved klikk
+                                onClick={() => setSelectedPhoto(photo)}
                                 sx={{
                                     borderRadius: 2,
                                     overflow: 'hidden',
@@ -144,10 +170,9 @@ export default function Photo() {
                 </Box>
             )}
 
-            {/* 🖥️ FULLSKJERM / LIGHTBOX MODAL */}
             {selectedPhoto && (
                 <Box
-                    onClick={() => setSelectedPhoto(null)} // Lukk hvis man klikker utenfor bildet
+                    onClick={() => setSelectedPhoto(null)}
                     sx={{
                         position: 'fixed',
                         top: 0,
@@ -163,7 +188,6 @@ export default function Photo() {
                         animation: `${fadeIn} 0.2s ease-out forwards`,
                     }}
                 >
-                    {/* Lukk-knapp øverst i høyre hjørne */}
                     <IconButton
                         onClick={() => setSelectedPhoto(null)}
                         sx={{
@@ -179,12 +203,11 @@ export default function Photo() {
                         <CloseIcon fontSize="large" />
                     </IconButton>
 
-                    {/* Fullskjerm-bilde med ekte high-res source */}
                     <Box
                         component="img"
                         src={getPhotoUrl(selectedPhoto, { auto: "format" })}
                         alt={selectedPhoto.fileName}
-                        onClick={(e) => e.stopPropagation()} // Hindre at klikk på selve bildet lukker modalen
+                        onClick={(e) => e.stopPropagation()}
                         sx={{
                             maxWidth: '100%',
                             maxHeight: '100%',

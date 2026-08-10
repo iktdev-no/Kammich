@@ -25,11 +25,13 @@ class GPhoto2: IGPhoto2 {
     }
 
     override fun execute(vararg args: String): String {
-        return ProcessBuilder("gphoto2", *args)
+        val result = ProcessBuilder("gphoto2", *args)
             .start()
             .inputStream
             .bufferedReader()
             .readText()
+        log.info("Gphoto2 raw:\n{}", result)
+        return result
     }
 
     override fun copyFile(
@@ -111,12 +113,13 @@ class GPhoto2: IGPhoto2 {
         return discover().map { dd ->
             val ability = getAbilities(dd)
             val summary = getSummary(dd)
-            GPhoto2DeviceInfo( ability, summary)
+            GPhoto2DeviceInfo( ability, summary, isReady = summary.storageDevices.isNotEmpty())
         }
     }
 
     override fun getDeviceInfo(port: String): GPhoto2DeviceInfo {
-        return GPhoto2DeviceInfo(getAbilities(port), getSummary(port))
+        val summary = getSummary(port)
+        return GPhoto2DeviceInfo(getAbilities(port), summary, isReady = summary.storageDevices.isNotEmpty())
     }
 
     override fun discover(): List<GPhoto2DiscoveredDevice> {

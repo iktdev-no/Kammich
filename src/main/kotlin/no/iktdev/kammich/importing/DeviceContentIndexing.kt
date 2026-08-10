@@ -46,7 +46,7 @@ class DeviceContentIndexing(
         val dcimContent = getDCIM(device, provider)
         val addContent = getDeclaredForImport(device.id).flatMap { provider.listAllFiles(device, it) }
         val allPotentialFiles = dcimContent + addContent
-
+        log.info("Found ${allPotentialFiles.size} Potential files")
         val toExclude = getDeclaredToExclude(device.id)
 
         // 2. Logg og filtrer ekskluderinger
@@ -56,6 +56,7 @@ class DeviceContentIndexing(
                 log.info("FILE [EXCLUDED] ${file.name} (matched path: $excludedPath)")
                 null // Fjernes
             } else {
+                log.info("FILE [Continue] ${file.name}]")
                 file // Beholdes for videre sjekk
             }
         }

@@ -1,5 +1,6 @@
 package no.iktdev.kammich
 
+import com.google.gson.GsonBuilder
 import net.jpountz.xxhash.XXHashFactory
 import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceAbility
 import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceInfo
@@ -17,6 +18,8 @@ import no.iktdev.kammich.models.shared.Severity
 import no.iktdev.kammich.models.shared.device.Capability
 import org.springframework.context.ApplicationEventPublisher
 import java.io.File
+import java.time.Instant
+import java.time.LocalDateTime
 
 fun String.toMD5(): String {
     return this.toByteArray().let {

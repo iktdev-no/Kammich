@@ -14,6 +14,7 @@ interface RemovableDevice {
     val sn: String
     val type: DeviceType
     val sysPath: String
+    val isReady: Boolean
 
     fun getRichInfo(gPhoto2: IGPhoto2, lsblkService: LsblkService, settings: DeviceSettingsDto?): DeviceInfo
 }
@@ -27,7 +28,8 @@ data class GPhoto2Device(
     val port: String,
     override val type: DeviceType,
     override val sysPath: String,
-    val storage: List<GPhoto2StorageDevice>
+    val storage: List<GPhoto2StorageDevice>,
+    override val isReady: Boolean,
 ): RemovableDevice {
     override fun getRichInfo(gPhoto2: IGPhoto2, lsblkService: LsblkService, settings: DeviceSettingsDto?): DeviceInfo {
         val gd = gPhoto2.getDeviceInfo(port)
@@ -61,7 +63,8 @@ data class BlockDevice(
     val mountPoint: String?,
     override val type: DeviceType = DeviceType.BLOCK,
     override val sysPath: String,
-    val devicePath: String
+    val devicePath: String,
+    override val isReady: Boolean
 ): RemovableDevice {
     override fun getRichInfo(gPhoto2: IGPhoto2, lsblkService: LsblkService, settings: DeviceSettingsDto?): DeviceInfo {
         // 1. Definer standard-objekt hvis disken ikke er montert

@@ -1,4 +1,4 @@
-import type { RemovableDevice, MediaStats, Notification, StorageInfo, WifiNetworkTether, WifiNetworkConnection, WifiNetworkScan, ImportProgressEvent, DeviceImportSummary } from "../types/types";
+import type { RemovableDevice, MediaStats, Notification, StorageInfo, WifiNetworkTether, WifiNetworkConnection, WifiNetworkScan, ImportProgressEvent, DeviceImportSummary, ImmichUserMe, ImmichApiKeyPostResponseDto, ImmichAvailability } from "../types/types";
 
 export interface SseState {
   lastPing?: number;
@@ -18,6 +18,10 @@ export interface SseState {
 
   importDevices: Record<string, DeviceImportSummary>;
   activeMediaImports: Record<string, ImportProgressEvent>;
+
+  immichUserMe: ImmichUserMe | undefined;
+  immichApiKeyInUse: ImmichApiKeyPostResponseDto | undefined;
+  immichAvailability: ImmichAvailability | undefined;
 }
 
 export const initialSseState: SseState = {
@@ -33,5 +37,9 @@ export const initialSseState: SseState = {
   wifiTether: undefined,
   wifiTetherDevice: undefined,
   importDevices: {},
-  activeMediaImports: {}
+  activeMediaImports: {},
+
+  immichUserMe: undefined,
+  immichApiKeyInUse: undefined,
+  immichAvailability: undefined
 };

@@ -72,12 +72,18 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
         wifiTetherDevice: event.payload
       }
 
-    case "media-import-progress":
+    case 'job-update':
+      return {
+        ...state,
+        jobs: { ...state.jobs, [event.jobId]: event.status },
+      };
+
+    case "import-media-progress":
       return {
         ...state,
         activeMediaImports: {
           ...state.activeMediaImports,
-          ...event.payload,
+          [event.payload.deviceId]: event.payload,
         },
       };
 
@@ -86,9 +92,29 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
         ...state,
         importDevices: {
           ...state.importDevices,
-          ...event.states,
+          ...Object.fromEntries(
+            event.states.map(device => [device.deviceId, device])
+          ),
         },
       };
+
+    case "immich-user-me":
+      return {
+        ...state,
+        immichUserMe: event.payload
+      }
+
+    case "immich-api-key-in-use":
+      return {
+        ...state,
+        immichApiKeyInUse: event.payload
+      }
+
+    case "immich-availability":
+      return {
+        ...state,
+        immichAvailability: event.payload
+      }
 
     default:
       console.log("Ingen tok seg av ", event)

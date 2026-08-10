@@ -23,6 +23,7 @@ class GPhoto2CommandBuilder {
         args.add("--no-recurse")
         args.add("--folder")
         args.add(path)
+        args.add("--parsable")
     }
 
     fun getThumbnail(destination: File, folderPath: String, recurse: Boolean) = apply {

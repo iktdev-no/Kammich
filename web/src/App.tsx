@@ -1,7 +1,6 @@
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import Settings from './routes/Settings';
 import AppLayout from './layouts/AppLayout';
-import Camera from './routes/Camera';
 import Upload from './routes/Upload';
 import Photo from './routes/Photo';
 import Devices from './routes/Devices';
@@ -10,6 +9,9 @@ import WifiApSettings from './routes/settings/WifiApSettings';
 import Networking from './routes/settings/Networking';
 import { Import } from './routes/Import';
 import Device from './routes/devices/Device';
+import Immich from './routes/Immich';
+import ImmichAccess from './routes/immich/ImmichAccess';
+import ImmichLogin from './components/immich/ImmichLogin';
 
 const router = createBrowserRouter([
   {
@@ -18,7 +20,6 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Photo /> },
       { path: "photo/:sn", element: <Photo /> },
-      { path: 'camera/:sn/*', element: <Camera /> },
       { path: 'devices/:sn/*', element: <Device /> },
       { path: 'devices', element: <Devices /> },
       { path: 'upload', element: <Upload /> },
@@ -27,6 +28,10 @@ const router = createBrowserRouter([
       { path: 'settings/networking', element: <Networking /> },
       { path: 'settings/wifi', element: <WifiSettings /> },
       { path: 'settings/ap', element: <WifiApSettings /> },
+      { path: 'settings/immich', element: <Immich /> },
+      { path: 'settings/immich/login', element: <ImmichLogin /> },
+      { path: 'settings/immich/access', element: <ImmichAccess /> },
+
     ],
   },
 ]);

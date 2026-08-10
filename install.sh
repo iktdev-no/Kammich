@@ -97,9 +97,9 @@ rm -rf "$VENV_DIR"
 # Opprett venv med lenke til systemets Python-pakker (viktig for GTK/WebKit)
 sudo -u "$TARGET_USER" python3 -m venv --system-site-packages "$VENV_DIR"
 
-# Installer pywebview i venv
+# Installer pywebview og Pillow i venv
 sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install --upgrade pip
-sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install pywebview
+sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install pywebview Pillow
 
 ###############################################
 # 3.2 Sett opp Openbox konfigurasjon (Tving Onboard øverst)
@@ -292,6 +292,8 @@ import tkinter as tk
 import subprocess
 import os
 import time
+import base64
+from PIL import Image, ImageTk
 
 # ==========================================
 # KONFIGURASJON AV URL
@@ -329,13 +331,8 @@ def start_browser(w, h):
         except:
             pass
 
-    # Tving fram maskinvareakselerasjon og fjern webkit-flimmer
     env = os.environ.copy()
     env["WEBKIT_DISABLE_COMPOSITING_MODE"] = "0"
-    env["WEBKIT_USE_WAYLAND_IDS"] = "0" # Hvis X11 brukes
-
-    # Alternativt kan vi sende Chromium-flagg hvis pywebview bruker CEF/Qt,
-    # men for WebKitGTK er det disse miljøvariablene som teller:
 
     cmd = [
         "/home/kammich/kiosk-env/bin/python3", "-c",
@@ -354,15 +351,12 @@ webview.create_window(
     resizable=False,
     background_color='#111111'
 )
-webview.start(debug=False)
+webview.start()
         """
     ]
     browser_process = subprocess.Popen(cmd, env=env)
 
-def go_back():
-    subprocess.run(["xdotool", "key", "Alt+Left"])
-
-def go_home():
+def reload_app():
     w = root.winfo_screenwidth()
     h = root.winfo_screenheight() - bar_height
     start_browser(w, h)
@@ -433,32 +427,42 @@ initial_web_h = initial_h - bar_height
 root.geometry(f"{initial_w}x{bar_height}+0+{initial_web_h}")
 root.configure(bg="#111111")
 
+# Base64-streng på én enkel linje uten linjeskift
+rotate_icon_bytes = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEsWlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNS41LjAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgeG1sbnM6ZXhpZj0iaHR0cDovL25zLmFkb2JlLmNvbS9leGlmLzEuMC8iCiAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyIKICAgIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIKICAgIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIKICAgIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIgogICAgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIKICAgZXhpZjpQaXhlbFhEaW1lbnNpb249IjMyIgogICBleGlmOlBpeGVsWURpbWVuc2lvbj0iMzIiCiAgIGV4aWY6Q29sb3JTcGFjZT0iMSIKICAgdGlmZjpJbWFnZVdpZHRoPSIzMiIKICAgdGlmZjpJbWFnZUxlbmd0aD0iMzIiCiAgIHRpZmY6UmVzb2x1dGlvblVuaXQ9IjIiCiAgIHRpZmY6WFJlc29sdXRpb249IjcyLzEiCiAgIHRpZmY6WVJlc29sdXRpb249IjcyLzEiCiAgIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiCiAgIHBob3Rvc2hvcDpJQ0NQcm9maWxlPSJzUkdCIElFQzYxOTY2LTIuMSIKICAgeG1wOk1vZGlmeURhdGU9IjIwMjYtMDgtMDhUMDM6NDU6MzArMDI6MDAiCiAgIHhtcDpNZXRhZGF0YURhdGU9IjIwMjYtMDgtMDhUMDM6NDU6MzArMDI6MDAiPgogICA8eG1wTU06SGlzdG9yeT4KICAgIDxyZGY6U2VxPgogICAgIDxyZGY6bGkKICAgICAgc3RFdnQ6YWN0aW9uPSJwcm9kdWNlZCIKICAgICAgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWZmaW5pdHkgUGhvdG8gMiAyLjYuNSIKICAgICAgc3RFdnQ6d2hlbj0iMjAyNi0wOC0wOFQwMzo0NTozMCswMjowMCIvPgogICAgPC9yZGY6U2VxPgogICA8L3htcE1NOkhpc3Rvcnk+CiAgPC9yZGY6RGVzY3JpcHRpb24+CiA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo8P3hwYWNrZXQgZW5kPSJyIj8+tfO9uQAAAYBpQ0NQc1JHQiBJRUM2MTk2Ni0yLjEAACiRdZHPK0RRFMc/ZogYUSQLi5eGFfKjJjYWI4bCYuYpvzYzz3szama83nuTJltlqyix8WvBX8BWWStFpGQtS2KDnvOMGsmc0733c7/3nNO954JPTWsZu7wbMlnHikbCyvTMrFL5RJV4GQGa4pptTsRGVEra241Eil11erVKx/1rNQu6rUFZlfCgZlqO8Kjw+LJjerwp3Kil4gvCx8IdllxQ+NrTEwV+9DhZ4A+PLTU6BL56YSX5ixO/WEtZGWF5OcFMOqf93Md7SUDPTsVkbZXRgk2UCGEUxhhmiBA9DMgcopNeumRHifzu7/xJliRXk9kkj8UiSVI4dIiak+q6rIbouniavNf/v321jb7eQvVAGCoeXPelDSo34HPddd/3XffzAPz3cJYt5i/tQf+r6OtFLbgLdatwcl7UEltwugbNd2bcin9Lfhk+w4DnI6idgYZLqJ4r9OznnMNbUFfkqy5gewfaJb5u/gsNFme9rCn+aQAAAAlwSFlzAAALEwAACxMBAJqcGAAAAXdJREFUWIXtlkFKw0AYRr8R607XatttRTyB4qJbD9ALeAFBcKU3kIKX0E2FVl24VMSCV9B2aXsBdxV8LpxiGJNxmk4jqB8EksnM/14mmTDSf3IE2ABWfgK8BtzxkVfgDFgqEj7ka7ozl0iBXwH9qBJAFWjYo+qBt4EFoBJVwoLHafjgiTHxJFyBFHgnCXckelNLOAJHIfCoEo5AMl54NIkMgYsQeKJGObeEZwbGac1CYi7w4YJjjBlIqkvq26YtSddZEvOJ82dJ557aD5NIAHVJx5JKtnlX0klojb8Tk9YI7EnatpcjSQfGmGFoUWBf0qanS9MYk/1KgUXgPvElPwKrEwi0vllRjXHf1FVgjHmRtCOpa5tqkm4mkYiSCDNRsj+zzBnII/EUIpECf8slkEfCwjuJ/gPgMLeAR6IcCK+Rst+ILmHhbRdu700v4JPwwe24Cp9bvkpugQyJHnCZBZ9JUiSKgzsSp8DIwm8Lgzsiy8B64eBfkXfrw9rdARZg2gAAAABJRU5ErkJggg==")
+keyboard_icon_bytes = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEsWlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNS41LjAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgeG1sbnM6ZXhpZj0iaHR0cDovL25zLmFkb2JlLmNvbS9leGlmLzEuMC8iCiAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyIKICAgIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIKICAgIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIKICAgIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIgogICAgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIKICAgZXhpZjpQaXhlbFhEaW1lbnNpb249IjMyIgogICBleGlmOlBpeGVsWURpbWVuc2lvbj0iMzIiCiAgIGV4aWY6Q29sb3JTcGFjZT0iMSIKICAgdGlmZjpJbWFnZVdpZHRoPSIzMiIKICAgdGlmZjpJbWFnZUxlbmd0aD0iMzIiCiAgIHRpZmY6UmVzb2x1dGlvblVuaXQ9IjIiCiAgIHRpZmY6WFJlc29sdXRpb249IjcyLzEiCiAgIHRpZmY6WVJlc29sdXRpb249IjcyLzEiCiAgIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiCiAgIHBob3Rvc2hvcDpJQ0NQcm9maWxlPSJzUkdCIElFQzYxOTY2LTIuMSIKICAgeG1wOk1vZGlmeURhdGU9IjIwMjYtMDgtMDhUMDM6NDQ6MjQrMDI6MDAiCiAgIHhtcDpNZXRhZGF0YURhdGU9IjIwMjYtMDgtMDhUMDM6NDQ6MjQrMDI6MDAiPgogICA8eG1wTU06SGlzdG9yeT4KICAgIDxyZGY6U2VxPgogICAgIDxyZGY6bGkKICAgICAgc3RFdnQ6YWN0aW9uPSJwcm9kdWNlZCIKICAgICAgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWZmaW5pdHkgUGhvdG8gMiAyLjYuNSIKICAgICAgc3RFdnQ6d2hlbj0iMjAyNi0wOC0wOFQwMzo0NDoyNCswMjowMCIvPgogICAgPC9yZGY6U2VxPgogICA8L3htcE1NOkhpc3Rvcnk+CiAgPC9yZGY6RGVzY3JpcHRpb24+CiA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo8P3hwYWNrZXQgZW5kPSJyIj8++IFw1gAAAYBpQ0NQc1JHQiBJRUM2MTk2Ni0yLjEAACiRdZHPK0RRFMc/ZogYUSQLi5eGFfKjJjYWI4bCYuYpvzYzz3szama83nuTJltlqyix8WvBX8BWWStFpGQtS2KDnvOMGsmc0733c7/3nNO954JPTWsZu7wbMlnHikbCyvTMrFL5RJV4GQGa4pptTsRGVEra241Eil11erVKx/1rNQu6rUFZlfCgZlqO8Kjw+LJjerwp3Kil4gvCx8IdllxQ+NrTEwV+9DhZ4A+PLTU6BL56YSX5ixO/WEtZGWF5OcFMOqf93Md7SUDPTsVkbZXRgk2UCGEUxhhmiBA9DMgcopNeumRHifzu7/xJliRXk9kkj8UiSVI4dIiak+q6rIbouniavNf/v321jb7eQvVAGCoeXPelDSo34HPddd/3XffzAPz3cJYt5i/tQf+r6OtFLbgLdatwcl7UEltwugbNd2bcin9Lfhk+w4DnI6idgYZLqJ4r9OznnMNbUFfkqy5gewfaJb5u/gsNFme9rCn+aQAAAAlwSFlzAAALEwAACxMBAJqcGAAAAPtJREFUWIXtlk1uwjAQRt+gikpFKgeAg7CuOALcor1BeyI4Auw5COq6SO2GzddFnWjkGgIEhwV+m2R+lM+ejDyGQuHesdghaQBMgf6VtfbA2sy+D2ZIepX0pXzsJL0lKyDpCfgEhlfeecwOGJnZD0DPBV46ECdoTCvjwQUeo8QtsAnvk/BsY4/dt+v+8guI2ZjZHEDSAqClPUuJ9FLOLjlWgUm1E0JJ29opfAX+nQldUHrg5j1QI2mW8QiOmVe6N2/Cc3pgaScCLHMsIAu+CfcNuWP/75pyG+K1lh/HA/7G8fOJIpeSHsfB8R4Scop/VOLQ/ZVs5cULhQLALyy4ULFojsCNAAAAAElFTkSuQmCC")
+restart_icon_bytes = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEsWlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNS41LjAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgeG1sbnM6ZXhpZj0iaHR0cDovL25zLmFkb2JlLmNvbS9leGlmLzEuMC8iCiAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyIKICAgIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIKICAgIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIKICAgIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIgogICAgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIKICAgZXhpZjpQaXhlbFhEaW1lbnNpb249IjMyIgogICBleGlmOlBpeGVsWURpbWVuc2lvbj0iMzIiCiAgIGV4aWY6Q29sb3JTcGFjZT0iMSIKICAgdGlmZjpJbWFnZVdpZHRoPSIzMiIKICAgdGlmZjpJbWFnZUxlbmd0aD0iMzIiCiAgIHRpZmY6UmVzb2x1dGlvblVuaXQ9IjIiCiAgIHRpZmY6WFJlc29sdXRpb249IjcyLzEiCiAgIHRpZmY6WVJlc29sdXRpb249IjcyLzEiCiAgIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiCiAgIHBob3Rvc2hvcDpJQ0NQcm9maWxlPSJzUkdCIElFQzYxOTY2LTIuMSIKICAgeG1wOk1vZGlmeURhdGU9IjIwMjYtMDgtMDhUMDM6NDU6MDMrMDI6MDAiCiAgIHhtcDpNZXRhZGF0YURhdGU9IjIwMjYtMDgtMDhUMDM6NDU6MDMrMDI6MDAiPgogICA8eG1wTU06SGlzdG9yeT4KICAgIDxyZGY6U2VxPgogICAgIDxyZGY6bGkKICAgICAgc3RFdnQ6YWN0aW9uPSJwcm9kdWNlZCIKICAgICAgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWZmaW5pdHkgUGhvdG8gMiAyLjYuNSIKICAgICAgc3RFdnQ6d2hlbj0iMjAyNi0wOC0wOFQwMzo0NTowMyswMjowMCIvPgogICAgPC9yZGY6U2VxPgogICA8L3htcE1NOkhpc3Rvcnk+CiAgPC9yZGY6RGVzY3JpcHRpb24+CiA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo8P3hwYWNrZXQgZW5kPSJyIj8+tGW9jAAAAYBpQ0NQc1JHQiBJRUM2MTk2Ni0yLjEAACiRdZHPK0RRFMc/ZogYUSQLi5eGFfKjJjYWI4bCYuYpvzYzz3szama83nuTJltlqyix8WvBX8BWWStFpGQtS2KDnvOMGsmc0733c7/3nNO954JPTWsZu7wbMlnHikbCyvTMrFL5RJV4GQGa4pptTsRGVEra241Eil11erVKx/1rNQu6rUFZlfCgZlqO8Kjw+LJjerwp3Kil4gvCx8IdllxQ+NrTEwV+9DhZ4A+PLTU6BL56YSX5ixO/WEtZGWF5OcFMOqf93Md7SUDPTsVkbZXRgk2UCGEUxhhmiBA9DMgcopNeumRHifzu7/xJliRXk9kkj8UiSVI4dIiak+q6rIbouniavNf/v321jb7eQvVAGCoeXPelDSo34HPddd/3XffzAPz3cJYt5i/tQf+r6OtFLbgLdatwcl7UEltwugbNd2bcin9Lfhk+w4DnI6idgYZLqJ4r9OznnMNbUFfkqy5gewfaJb5u/gsNFme9rCn+aQAAAAlwSFlzAAALEwAACxMBAJqcGAAAAapJREFUWIXtljEvQ1EYhr+r6aBNLAzahEVCVMJQInTzC3Qm4heY/QS2ktRQE2sHERMLgxCNwaIGiUoTo8HSoQmP5dzkc92rzr3SG0nf6UvPed/36T23JxXpKYKAgVjLgatYywFiLe86gLfcqACk4yp39Q7cAwfAUhwAWh/A3p89FaC/A8QGcAjUTbmrJ2AxankGaAALQRCe/QXgUUG8AsNRAE5M0Bsw5gfh40kB+wriOGz5ugq5BhKe9cCLCEgYj6u1MABNY24B4wF7Aq9iYMJ4AZq25RlFX7Zk1zllleP7LvQFeGfVfBMWQERqAZkdAfJqvo0AoL15vw1BACNqtju/r9LeURuABzVPRgDIqbluA3Cn5pkIANMBmT8LGFJv72nYduBM5Qzami+UeTlEeVH5z239AkwBbRPQALIW3izwbLxtINfZ5R+0rb7FC+D7W/Z45sxeV1uhyk1YGrhUYS2g5Adiikvq+sV4U6EBTHAS2OW7KmpPxWd9B0hGKveArHoebVWtVT1HtfLbXMcSwhGReREpigiO42yaz91zPhKRmuM43f+73tO/1SfCqbVMj9ut5AAAAABJRU5ErkJggg==")
+
+img_refresh = ImageTk.PhotoImage(data=restart_icon_bytes)
+img_keyboard = ImageTk.PhotoImage(data=keyboard_icon_bytes)
+img_rotate = ImageTk.PhotoImage(data=rotate_icon_bytes)
+
+btn_container = tk.Frame(root, bg="#111111")
+btn_container.pack(fill=tk.BOTH, expand=True, padx=0, pady=5)
+
 btn_config = {
     "bg": "#222222",
     "fg": "white",
-    "font": ("Arial", 16, "bold"),
+    "font": ("Arial", 14, "bold"),
     "bd": 0,
     "activebackground": "#444444",
-    "activeforeground": "white"
+    "activeforeground": "white",
+    "compound": tk.LEFT,
+    "padx": 10
 }
 
-btn_back = tk.Button(root, text=" ◀  Tilbake ", **btn_config)
-btn_back.bind("<ButtonPress-1>", lambda e: go_back())
-btn_back.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+btn_refresh = tk.Button(btn_container, image=img_refresh, **btn_config)
+btn_refresh.bind("<ButtonPress-1>", lambda e: reload_app())
+btn_refresh.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 1))
 
-btn_home = tk.Button(root, text=" 🏠  Hjem ", **btn_config)
-btn_home.bind("<ButtonPress-1>", lambda e: go_home())
-btn_home.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-btn_kb = tk.Button(root, text=" ⌨  Tastatur ", **btn_config)
+btn_kb = tk.Button(btn_container, image=img_keyboard, **btn_config)
 btn_kb.bind("<ButtonPress-1>", lambda e: toggle_keyboard())
-btn_kb.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+btn_kb.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(1, 1))
 
-btn_rotate = tk.Button(root, text=" 🔄  Rotér ", **btn_config)
+btn_rotate = tk.Button(btn_container, image=img_rotate, **btn_config)
 btn_rotate.bind("<ButtonPress-1>", lambda e: rotate_screen())
-btn_rotate.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+btn_rotate.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(1, 0))
 
-# Start nettleseren med riktig rotasjon
+
 apply_rotation(current_rot_idx)
 
 def monitor_app():
@@ -547,4 +551,4 @@ systemctl enable kammich-kiosk.service
 systemctl restart kammich-kiosk.service
 udevadm control --reload-rules && udevadm trigger
 
-echo "[+] Alt er klart med Openbox og Onboard!"
+echo "[+] Alt er klart med Openbox, Pillow og Onboard!"

@@ -24,13 +24,23 @@ class GPhoto2SummaryParser : GPhoto2Parser<GPhoto2Summary> {
     }
 
     private fun parseStorage(input: String): List<GPhoto2StorageDevice> {
-        // Regex finner alle blokker som starter med store_
-        val storageBlocks = Regex("store_([0-9a-fA-F]+):").findAll(input)
+        // Finn startposisjonen til Storage Devices Summary-seksjonen for å ha et tak
+        val storageSection = input.substringAfter("Storage Devices Summary:", "").substringBefore("Device Property Summary")
+
+        // Finner alle enheter som starter med store_
+        val storageBlocks = Regex("store_([0-9a-fA-F]+):").findAll(storageSection)
 
         return storageBlocks.map { match ->
             val id = match.groupValues[1]
-            // Vi henter ut hele tekstblokken tilhørende denne storage-IDen
-            val block = input.substringAfter("store_$id:").substringBefore("store_")
+            val blockStart = match.range.first
+
+            // Finn hvor neste enhet starter, eller bruk slutten av seksjonen
+            val nextMatch = Regex("store_[0-9a-fA-F]+:").find(storageSection, match.range.last + 1)
+            val block = if (nextMatch != null) {
+                storageSection.substring(blockStart, nextMatch.range.first)
+            } else {
+                storageSection.substring(blockStart)
+            }
 
             GPhoto2StorageDevice(
                 id = "store_$id",

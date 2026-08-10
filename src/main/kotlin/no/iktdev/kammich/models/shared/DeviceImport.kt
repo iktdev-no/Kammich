@@ -22,15 +22,16 @@ data class ImportFile(
 
 data class DeviceImportSummary(
     val deviceId: String,
-    val state: ImportState = ImportState.Started,
+    val state: ImportState = ImportState.Indexing,
     val started: String,
     val completed: String,
 )
 
 enum class ImportState {
-    Started,
+    Indexing,
     Importing,
-    Completed
+    Completed,
+    Canceled
 }
 
 

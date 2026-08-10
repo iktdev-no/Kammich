@@ -24,8 +24,9 @@ export function ImportIndicator() {
     const importDevices = useSseSelector(state => state.importDevices) || {};
 
     // Sjekk om det er noen enheter som IKKE er ferdige (f.eks. Started eller Importing)
+    // Sjekk om det er noen enheter som verken er ferdige eller avbrutt
     const activeImports = Object.values(importDevices).filter(
-        device => device.state !== "Completed"
+        device => device.state !== "Completed" && device.state !== "Canceled"
     );
 
     const isImporting = activeImports.length > 0;

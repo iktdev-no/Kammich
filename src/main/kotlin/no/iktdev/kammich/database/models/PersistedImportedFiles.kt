@@ -1,7 +1,6 @@
-package no.iktdev.kammich.database.tables
+package no.iktdev.kammich.database.models
 
 import no.iktdev.kammich.models.FileType
-import kotlin.time.Instant
 
 data class PersistedImportedFiles(
     val id: Long,

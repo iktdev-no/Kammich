@@ -1,49 +1,108 @@
 import { useEffect, useState } from "react";
 import {
     Box, Typography, Paper, LinearProgress, Stack,
-    Accordion, AccordionSummary, AccordionDetails, Collapse,
-    IconButton, Chip, TextField
+    Collapse, IconButton, Chip
 } from "@mui/material";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DownloadDoneIcon from '@mui/icons-material/DownloadDone';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import CircularProgress from '@mui/material/CircularProgress';
-import HistoryIcon from '@mui/icons-material/History';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import { useSseSelector } from "../sse/useSseSelector";
-import type { DeviceImport, ImportProgressEvent } from "../types/types";
+
+import type { DeviceImport, DeviceImportSummary, ImportProgressEvent, FileImportState } from "../types/types";
 import { toast } from "react-toastify";
 import { cancelImportFor, getHistoricalImports } from "../api/importer";
+import { ImportHistoryList } from "../components/importer/ImportHistory";
+import { useSseSelector } from "../sse/useSseSelector";
+import ImportFileStream from "../components/importer/ImportFileStream";
 
-// --- UNDERKOMPONENT 1: Aktive importer ---
-function ActiveImportsList({ activeImports, activeImportDevices, onCancel }: {
-    activeImports: Array<ImportProgressEvent>;
-    activeImportDevices: Record<string, any>;
+// --- DELKOMPONENT: Enhetskort ---
+function DeviceImportCard({ deviceId, summary, progressEvent, onCancel }: {
+    deviceId: string;
+    summary: DeviceImportSummary;
+    progressEvent?: ImportProgressEvent;
     onCancel: (deviceId: string) => void;
 }) {
-    const [recentCompleted, setRecentCompleted] = useState<Array<ImportProgressEvent>>([]);
+    const completedFiles = progressEvent?.completedFiles ?? 0;
+    const totalFiles = progressEvent?.totalFiles ?? 0;
+    const progress = totalFiles > 0 ? (completedFiles / totalFiles) * 100 : 0;
+    const currentFile = progressEvent?.currentFile || null;
+    const files = progressEvent?.files || [];
+    const hasProgress = Boolean(progressEvent);
+    const isCompleted = summary.state === "Completed";
+
+    return (
+        <Paper variant="outlined" sx={{ p: 2.5, position: "relative" }}>
+            {/* Header */}
+            <Stack sx={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
+                <Box sx={{ minWidth: 0, flex: 1, mr: 2 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                        {deviceId}
+                    </Typography>
+                </Box>
+                <Stack sx={{ flexDirection: "row", gap: 1.5, alignItems: "center", flexShrink: 0 }}>
+                    <Chip
+                        label={hasProgress ? `${completedFiles} av ${totalFiles} filer • ${summary.state}` : `Forbereder... • ${summary.state}`}
+                        size="small"
+                        color={isCompleted ? "success" : "primary"}
+                    />
+                    {!isCompleted && (
+                        <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => onCancel(deviceId)}
+                            title="Avbryt import for enhet"
+                            sx={{ border: "1px solid", borderColor: "error.light" }}
+                        >
+                            <CancelIcon />
+                        </IconButton>
+                    )}
+                </Stack>
+            </Stack>
+
+
+
+            {/* Progresjonsbar */}
+            <Box sx={{ mb: 2 }}>
+                <LinearProgress
+                    variant={hasProgress ? "determinate" : "indeterminate"}
+                    value={progress}
+                    sx={{ height: 8, borderRadius: 4 }}
+                    color={isCompleted ? "success" : "primary"}
+                />
+            </Box>
+
+            {/* Filliste */}
+            <ImportFileStream files={files} currentFile={currentFile} />
+        </Paper>
+    );
+}
+
+// --- HOVEDKOMPONENT ---
+export function ActiveImportsList({ activeDevices, activeImportsMap, onCancel }: {
+    activeDevices: Record<string, DeviceImportSummary>;
+    activeImportsMap: Record<string, ImportProgressEvent>;
+    onCancel: (deviceId: string) => void;
+}) {
+    const [recentCompleted, setRecentCompleted] = useState<Array<DeviceImportSummary & { totalFiles?: number }>>([]);
+
+    const deviceEntries = Object.entries(activeDevices);
 
     useEffect(() => {
-        activeImports.forEach(imp => {
-            const isFinished = imp.completedFiles >= imp.totalFiles || imp.state === "Success";
+        deviceEntries.forEach(([deviceId, summary]) => {
+            if (!summary) return;
+            const isFinished = summary.state === "Completed";
             if (isFinished) {
+                const progressEvent = activeImportsMap[deviceId];
                 setRecentCompleted(prev => {
-                    if (!prev.some(item => item.deviceId === imp.deviceId)) {
-                        setTimeout(() => {
-                            setRecentCompleted(curr => curr.filter(i => i.deviceId !== imp.deviceId));
-                        }, 4000);
-                        return [imp, ...prev].slice(0, 5);
+                    // Legger til i listen hvis den ikke finnes fra før, uten automatisk sletting (fjernet setTimeout)
+                    if (!prev.some(item => item?.deviceId === deviceId)) {
+                        return [{ ...summary, totalFiles: progressEvent?.totalFiles || 0 }, ...prev].slice(0, 5);
                     }
                     return prev;
                 });
             }
         });
-    }, [activeImports]);
+    }, [activeDevices, activeImportsMap]);
 
-    if (activeImports.length === 0 && recentCompleted.length === 0) {
+    if (deviceEntries.length === 0 && recentCompleted.length === 0) {
         return (
             <Paper sx={{ p: 3, textAlign: "center", color: "text.secondary", mb: 3 }}>
                 Ingen aktive importer for øyeblikket.
@@ -53,209 +112,26 @@ function ActiveImportsList({ activeImports, activeImportDevices, onCancel }: {
 
     return (
         <Stack sx={{ gap: 2, mb: 3 }}>
-            {activeImports.map(imp => {
-                const progress = imp.totalFiles > 0 ? (imp.completedFiles / imp.totalFiles) * 100 : 0;
-                const summary = activeImportDevices[imp.deviceId];
-
+            {deviceEntries.map(([deviceId, summary]) => {
+                if (!summary) return null;
                 return (
-                    <Paper key={imp.deviceId} variant="outlined" sx={{ p: 2, position: "relative" }}>
-                        <Stack sx={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                            <Box>
-                                <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-                                    Enhet: {imp.deviceId}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    Laster ned: {imp.currentFile || "Forbereder..."} {summary ? `• Status: ${summary.state}` : ""}
-                                </Typography>
-                            </Box>
-                            <Stack sx={{ flexDirection: "row", gap: 1, alignItems: "center" }}>
-                                <Chip label={`${imp.completedFiles} / ${imp.totalFiles} filer`} size="small" color="primary" />
-                                <IconButton size="small" color="error" onClick={() => onCancel(imp.deviceId)} title="Avbryt import">
-                                    <CancelIcon />
-                                </IconButton>
-                            </Stack>
-                        </Stack>
-
-                        <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4, mb: 2 }} />
-
-                        {imp.files && imp.files.length > 0 && (
-                            <Box sx={{ bgcolor: "background.default", p: 1.5, borderRadius: 1.5 }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1, fontWeight: "bold" }}>
-                                    AKTIV KØ / FIL-VINDU
-                                </Typography>
-                                <Stack sx={{ gap: 0.75 }}>
-                                    {imp.files.map((fileItem, idx) => {
-                                        const isDone = fileItem.state === "Success";
-                                        const isFailed = fileItem.state === "Failure";
-                                        const isActive = fileItem.file === imp.currentFile || fileItem.state === "InProgress";
-
-                                        return (
-                                            <Stack key={`${fileItem.file}-${idx}`} sx={{ flexDirection: "row", alignItems: "center", gap: 1.5, p: 0.5 }}>
-                                                {isDone ? (
-                                                    <CheckCircleIcon color="success" fontSize="small" />
-                                                ) : isFailed ? (
-                                                    <ErrorOutlineIcon color="error" fontSize="small" />
-                                                ) : isActive ? (
-                                                    <CircularProgress size={16} color="primary" />
-                                                ) : (
-                                                    <RadioButtonUncheckedIcon color="disabled" fontSize="small" />
-                                                )}
-                                                <Typography
-                                                    variant="body2"
-                                                    sx={{
-                                                        flexGrow: 1,
-                                                        fontWeight: isActive ? "bold" : "normal",
-                                                        color: isDone ? "text.secondary" : isFailed ? "error.main" : "text.primary",
-                                                        textDecoration: isDone ? "line-through" : "none"
-                                                    }}
-                                                    noWrap
-                                                >
-                                                    {fileItem.file}
-                                                </Typography>
-                                                {fileItem.isNew && (
-                                                    <Chip label="Ny" size="small" variant="outlined" sx={{ height: 18, fontSize: "0.6rem" }} />
-                                                )}
-                                            </Stack>
-                                        );
-                                    })}
-                                </Stack>
-                            </Box>
-                        )}
-                    </Paper>
+                    <DeviceImportCard
+                        key={deviceId}
+                        deviceId={deviceId}
+                        summary={summary}
+                        progressEvent={activeImportsMap[deviceId]}
+                        onCancel={onCancel}
+                    />
                 );
             })}
-
-            {recentCompleted.map(imp => (
-                <Collapse key={`recent-${imp.deviceId}`} in={true} timeout={600}>
-                    <Paper variant="outlined" sx={{ p: 2, bgcolor: "action.hover", borderColor: "success.main" }}>
-                        <Stack sx={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                            <Stack sx={{ flexDirection: "row", gap: 1.5, alignItems: "center" }}>
-                                <DownloadDoneIcon color="success" />
-                                <Box>
-                                    <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-                                        Enhet: {imp.deviceId} - Fullført!
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        Importerte {imp.totalFiles} filer vellykket.
-                                    </Typography>
-                                </Box>
-                            </Stack>
-                            <Chip label="Ferdig" color="success" size="small" />
-                        </Stack>
-                    </Paper>
-                </Collapse>
-            ))}
         </Stack>
-    );
-}
-
-// --- UNDERKOMPONENT 2: Historikk med filliste og søk ---
-function ImportHistoryList({ history, historyLoaded, onFetchHistory }: {
-    history: Array<DeviceImport>;
-    historyLoaded: boolean;
-    onFetchHistory: () => void;
-}) {
-    const [searchQuery, setSearchQuery] = useState("");
-    const [expandedItemIndex, setExpandedItemIndex] = useState<number | null>(null);
-
-    return (
-        <Accordion onChange={(_, expanded) => { if (expanded && !historyLoaded) onFetchHistory(); }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Stack sx={{ flexDirection: "row", gap: 1, alignItems: "center" }}>
-                    <HistoryIcon />
-                    <Typography variant="h6">Tidligere import-historikk</Typography>
-                </Stack>
-            </AccordionSummary>
-            <AccordionDetails>
-                <Box sx={{ mb: 2 }}>
-                    <TextField
-                        size="small"
-                        fullWidth
-                        placeholder="Søk i filnavn eller enhet..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </Box>
-
-                {history.length === 0 ? (
-                    <Typography color="text.secondary">Ingen historikk funnet.</Typography>
-                ) : (
-                    <Stack sx={{ gap: 1.5 }}>
-                        {history.map((item, index) => {
-                            // Filtrer filer hvis søk er aktivt
-                            const filteredFiles = item.files?.filter(f =>
-                                f.file.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                item.deviceId.toLowerCase().includes(searchQuery.toLowerCase())
-                            ) || [];
-
-                            // Hvis brukeren søker, og ingen filer matcher, kan vi hoppe over denne historikk-posten med mindre enhets-ID matcher
-                            const matchesSearch = searchQuery === "" ||
-                                item.deviceId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                filteredFiles.length > 0;
-
-                            if (!matchesSearch) return null;
-
-                            const isItemExpanded = expandedItemIndex === index;
-
-                            return (
-                                <Paper key={index} variant="outlined" sx={{ p: 2 }}>
-                                    <Stack sx={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                        <Box>
-                                            <Typography variant="subtitle2">Enhet: {item.deviceId}</Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                Startet: {new Date(item.started).toLocaleString()} • Filer: {item.completedFiles}/{item.totalFiles}
-                                            </Typography>
-                                        </Box>
-                                        <Stack sx={{ flexDirection: "row", gap: 1, alignItems: "center" }}>
-                                            <Chip
-                                                label={item.completedFiles >= item.totalFiles ? "Fullført" : "Avbrutt/Feilet"}
-                                                color={item.completedFiles >= item.totalFiles ? "success" : "warning"}
-                                                size="small"
-                                            />
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => setExpandedItemIndex(isItemExpanded ? null : index)}
-                                                title="Vis filer"
-                                            >
-                                                <ExpandMoreIcon sx={{ transform: isItemExpanded ? "rotate(180deg)" : "none", transition: "0.2s" }} />
-                                            </IconButton>
-                                        </Stack>
-                                    </Stack>
-
-                                    {/* Utvidet visning av filer for denne historikk-økten */}
-                                    <Collapse in={isItemExpanded}>
-                                        <Box sx={{ mt: 2, pt: 2, borderTop: "1px solid", borderColor: "divider", maxHeight: 200, overflowY: "auto" }}>
-                                            <Typography variant="caption" sx={{ fontWeight: "bold", color: "text.secondary", display: "block", mb: 1 }}>
-                                                FILER I DENNE ØKTEN ({item.files?.length || 0}):
-                                            </Typography>
-                                            <Stack sx={{ gap: 0.5 }}>
-                                                {item.files?.map((f, fIdx) => (
-                                                    <Stack key={fIdx} sx={{ flexDirection: "row", alignItems: "center", gap: 1, p: 0.5 }}>
-                                                        <InsertDriveFileIcon fontSize="small" color="action" />
-                                                        <Typography variant="body2" sx={{ flexGrow: 1 }} noWrap>
-                                                            {f.file}
-                                                        </Typography>
-                                                        <Chip label={f.state} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.6rem" }} />
-                                                    </Stack>
-                                                ))}
-                                            </Stack>
-                                        </Box>
-                                    </Collapse>
-                                </Paper>
-                            );
-                        })}
-                    </Stack>
-                )}
-            </AccordionDetails>
-        </Accordion>
     );
 }
 
 // --- HOVEDKOMPONENT ---
 export function Import() {
-    const activeImportDevices = useSseSelector(state => state.importDevices || {});
-    const activeImportsMap = useSseSelector(state => state.activeMediaImports || {});
-    const activeImports = Object.values(activeImportsMap) as Array<ImportProgressEvent>;
+    const activeImportDevices = useSseSelector(state => state.importDevices || {}) as Record<string, DeviceImportSummary>;
+    const activeImportsMap = useSseSelector(state => state.activeMediaImports || {}) as Record<string, ImportProgressEvent>;
 
     const [history, setHistory] = useState<Array<DeviceImport>>([]);
     const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -285,8 +161,8 @@ export function Import() {
 
             <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>Aktive pågående importer</Typography>
             <ActiveImportsList
-                activeImports={activeImports}
-                activeImportDevices={activeImportDevices}
+                activeDevices={activeImportDevices}
+                activeImportsMap={activeImportsMap}
                 onCancel={handleCancel}
             />
 

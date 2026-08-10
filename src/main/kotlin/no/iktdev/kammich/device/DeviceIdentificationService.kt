@@ -1,5 +1,10 @@
 package no.iktdev.kammich.device
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.gphoto2.IGPhoto2
 import no.iktdev.kammich.models.internal.DeviceReadyEvent
@@ -14,6 +19,7 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 
 @Service
 class DeviceIdentificationService(
@@ -24,27 +30,31 @@ class DeviceIdentificationService(
 ) {
     private val log = LoggerFactory.getLogger(DeviceIdentificationService::class.java)
 
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     @EventListener(SysPathReady::class)
     fun onSysPathReady(event: SysPathReady) {
-        log.info("Device interview started on $event")
-        val result = interview(event.path)
-        val device = when (result.getDeviceType()) {
-            DeviceType.MTP, DeviceType.PTP -> assembleGPhoto2Device(result)
-            DeviceType.BLOCK -> assembleBlockDevice(result)
-            else -> {
-                log.warn("Device type ${result.getDeviceType()} not supported. Raw info: manufacturer={}, product={}, config={}",
-                    result.manufacturer, result.productName, result.configuration)
-                if (configService.getConfig().assignUnknownDeviceAsBlockDevice) {
-                    log.warn("Unstable override - Assigning unknown device as BlockDevice")
-                    assembleBlockDevice(result)
-                } else {
-                    log.warn("Device type ${result.getDeviceType()} not supported. $result")
-                    null
+        serviceScope.launch {
+            log.info("Device interview started on $event")
+            val result = interview(event.path)
+            val device = when (result.getDeviceType()) {
+                DeviceType.MTP, DeviceType.PTP -> assembleGPhoto2Device(result)
+                DeviceType.BLOCK -> assembleBlockDevice(result)
+                else -> {
+                    log.warn("Device type ${result.getDeviceType()} not supported. Raw info: manufacturer={}, product={}, config={}",
+                        result.manufacturer, result.productName, result.configuration)
+                    if (configService.getConfig().assignUnknownDeviceAsBlockDevice) {
+                        log.warn("Unstable override - Assigning unknown device as BlockDevice")
+                        assembleBlockDevice(result)
+                    } else {
+                        log.warn("Device type ${result.getDeviceType()} not supported. $result")
+                        null
+                    }
                 }
             }
-        }
-        device?.let { d ->
-            eventPublisher.publishEvent(DeviceReadyEvent(d))
+            device?.let { d ->
+                eventPublisher.publishEvent(DeviceReadyEvent(d))
+            }
         }
     }
 
@@ -87,7 +97,8 @@ class DeviceIdentificationService(
             sysPath = i.sysPath,
 
             // De nye rike feltene
-            storage = info.summary.storageDevices
+            storage = info.summary.storageDevices,
+            isReady = info.summary.storageDevices.isNotEmpty()
         )
     }
 
@@ -122,7 +133,8 @@ class DeviceIdentificationService(
             sn = mountedSource?.serialNumber ?: i.sn ?: "UNKNOWN",
             mountPoint = cleanMountPoint,
             devicePath = physicalDiskPath,
-            sysPath = i.sysPath
+            sysPath = i.sysPath,
+            isReady = !cleanMountPoint.isNullOrBlank()
         )
     }
 
