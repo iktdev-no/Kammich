@@ -1,12 +1,11 @@
 import { Popover, Box, Typography, Button, IconButton, Badge, Tooltip, Divider, useTheme } from "@mui/material";
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
 import { useMemo, useState } from "react";
 import { useSseSelector } from "../sse/useSseSelector";
 import { formatNotificationTime } from "../utils/format";
 import type { Notification } from "../types/types";
-import { dismissNotification, dismissNotifications } from "../api/notifications";
+import { dismissNotification, dismissNotifications } from "../api/requests/notifications";
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CircleNotificationsIcon from '@mui/icons-material/CircleNotifications';
 
