@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Box, Paper, TextField, Button, Typography, Alert } from "@mui/material";
 import { ImmichBrandLogo } from "../../components/icons/ImmichBrand";
-import { immichLoginNormalFLow } from "../../api/immich";
+import { immichLoginNormalFLow } from "../../api/requests/immich";
 import type { ImmichUserMe } from "../../types/types";
 
 interface ImmichLoginProps {

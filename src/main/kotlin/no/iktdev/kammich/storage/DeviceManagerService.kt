@@ -2,7 +2,7 @@ package no.iktdev.kammich.storage
 
 import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.gphoto2.IGPhoto2
-import no.iktdev.kammich.models.internal.DeviceReadyEvent
+import no.iktdev.kammich.models.internal.events.DeviceReadyEvent
 import no.iktdev.kammich.models.internal.SysPathRemoved
 import no.iktdev.kammich.models.shared.DeviceSettingsDto
 import no.iktdev.kammich.models.internal.config.DeviceSettings
@@ -15,6 +15,7 @@ import no.iktdev.kammich.sse.events.SSERemovableDevices
 import no.iktdev.kammich.system.LsblkService
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
 
@@ -45,6 +46,7 @@ class DeviceManagerService(
         return activeDevices[sysPath]
     }
 
+    @Order(1)
     @EventListener(DeviceReadyEvent::class)
     fun onDeviceReady(event: DeviceReadyEvent) {
         val device = event.device

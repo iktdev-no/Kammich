@@ -1,6 +1,6 @@
 package no.iktdev.kammich.models.internal
 
-import no.iktdev.kammich.models.shared.device.DeviceType
+import no.iktdev.kammich.models.shared.device.DeviceInterfaceType
 import org.slf4j.LoggerFactory
 import java.io.File
 
@@ -57,17 +57,17 @@ data class UsbInterview(
         foundMatch
     }
 
-    fun getDeviceType(): DeviceType {
+    fun getDeviceType(): DeviceInterfaceType {
         val c = configuration.lowercase()
         val p = productName.lowercase()
 
         return when {
-            c.contains("mtp") || isMtp -> DeviceType.MTP
-            c.contains("ptp") || p.contains("ptp") -> DeviceType.PTP
-            c.contains("rndis") -> DeviceType.NETWORK
-            c.contains("midi") -> DeviceType.AUDIO
-            isMassStorage -> DeviceType.BLOCK
-            else -> DeviceType.UNKNOWN
+            c.contains("mtp") || isMtp -> DeviceInterfaceType.MTP
+            c.contains("ptp") || p.contains("ptp") -> DeviceInterfaceType.PTP
+            c.contains("rndis") -> DeviceInterfaceType.NETWORK
+            c.contains("midi") -> DeviceInterfaceType.AUDIO
+            isMassStorage -> DeviceInterfaceType.BLOCK
+            else -> DeviceInterfaceType.UNKNOWN
         }
     }
 }

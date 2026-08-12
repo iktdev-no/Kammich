@@ -3,7 +3,7 @@ import { Box, Typography, useTheme, keyframes } from "@mui/material";
 import SyncIcon from "../components/icons/SyncIcon";
 import CancelIcon from "@mui/icons-material/Clear";
 import { useSseSelector } from "../sse/useSseSelector";
-import { cancelImportForAll } from "../api/importer";
+import { cancelImportForAll } from "../api/requests/importer";
 // Tilpass importen av useSseSelector til din prosjektstruktur:
 // import { useSseSelector } from "../hooks/useSseSelector"; 
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Box, Typography, CircularProgress, Grid } from "@mui/material";
-import { getDeviceInfo, getFiles, updateDeviceSettings } from "../../api/camera";
+import { getDeviceInfo, getFiles, updateDeviceSettings } from "../../api/requests/camera";
 import type { DeviceInfo, DeviceSettingsDto, WFile, RemovableDevice } from "../../types/types";
 import { BreadcrumbPath } from "../../components/BreadcrumbPath";
 import { useSseSelector } from "../../sse/useSseSelector";

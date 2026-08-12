@@ -5,7 +5,7 @@ import no.iktdev.kammich.models.shared.immich.api.ImmichApiKeyPostResponseDto
 import no.iktdev.kammich.models.shared.immich.api.ImmichUserMe
 import no.iktdev.kammich.sse.ISSE
 
-data class SSEImmichUser(val payload: ImmichUserMe): ISSE {
+data class SSEImmichUser(val payload: ImmichUserMe?): ISSE {
     override val type = "immich-user-me"
 }
 

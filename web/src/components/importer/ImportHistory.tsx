@@ -1,22 +1,63 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-    Box, Typography, Paper, LinearProgress, Stack,
+    Box, Typography, Paper, Stack,
     Accordion, AccordionSummary, AccordionDetails, Collapse,
-    IconButton, Chip, TextField
+    IconButton, Chip, TextField, CircularProgress, Button
 } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HistoryIcon from '@mui/icons-material/History';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import type { DeviceImport, ImportProgressEvent } from "../../types/types";
-
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import type { DeviceImportJobSummary } from "../../types/types";
+import { getHistoricalImportFiles } from "../../api/requests/importer";
+import { claimImportJob } from "../../api/requests/claim";
 
 export function ImportHistoryList({ history, historyLoaded, onFetchHistory }: {
-    history: Array<DeviceImport>;
+    history: Array<DeviceImportJobSummary>;
     historyLoaded: boolean;
     onFetchHistory: () => void;
 }) {
     const [searchQuery, setSearchQuery] = useState("");
-    const [expandedItemIndex, setExpandedItemIndex] = useState<number | null>(null);
+    const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+
+    const [jobFilesMap, setJobFilesMap] = useState<Record<string, Array<string>>>({});
+    const [loadingJobId, setLoadingJobId] = useState<string | null>(null);
+    const [claimingJobId, setClaimingJobId] = useState<string | null>(null);
+
+    const handleToggleExpand = async (jobId: string) => {
+        if (expandedJobId === jobId) {
+            setExpandedJobId(null);
+            return;
+        }
+
+        setExpandedJobId(jobId);
+
+        if (!jobFilesMap[jobId]) {
+            try {
+                setLoadingJobId(jobId);
+                const files = await getHistoricalImportFiles(jobId);
+                setJobFilesMap(prev => ({ ...prev, [jobId]: files }));
+            } catch (err) {
+                console.error("Feil under henting av filer for jobb:", jobId, err);
+            } finally {
+                setLoadingJobId(null);
+            }
+        }
+    };
+
+    const handleClaim = async (jobId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Hindrer at accordion/ekspandering trigges unødvendig
+        try {
+            setClaimingJobId(jobId);
+            await claimImportJob(jobId);
+            // Hent historikken på nytt for å oppdatere eierskap/status i hele listen
+            onFetchHistory();
+        } catch (err) {
+            console.error("Feil under claiming av jobb:", jobId, err);
+        } finally {
+            setClaimingJobId(null);
+        }
+    };
 
     return (
         <Accordion onChange={(_, expanded) => { if (expanded && !historyLoaded) onFetchHistory(); }}>
@@ -31,7 +72,7 @@ export function ImportHistoryList({ history, historyLoaded, onFetchHistory }: {
                     <TextField
                         size="small"
                         fullWidth
-                        placeholder="Søk i filnavn eller enhet..."
+                        placeholder="Søk i enhet..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -41,67 +82,109 @@ export function ImportHistoryList({ history, historyLoaded, onFetchHistory }: {
                     <Typography color="text.secondary">Ingen historikk funnet.</Typography>
                 ) : (
                     <Stack sx={{ gap: 1.5 }}>
-                        {history.map((item, index) => {
-                            // Filtrer filer hvis søk er aktivt
-                            const filteredFiles = item.files?.filter(f =>
-                                f.file.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                item.deviceId.toLowerCase().includes(searchQuery.toLowerCase())
-                            ) || [];
+                        {history.map((deviceGroup, devIndex) => {
+                            const matchesDeviceSearch = searchQuery === "" ||
+                                deviceGroup.deviceId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                deviceGroup.deviceName.toLowerCase().includes(searchQuery.toLowerCase());
 
-                            // Hvis brukeren søker, og ingen filer matcher, kan vi hoppe over denne historikk-posten med mindre enhets-ID matcher
-                            const matchesSearch = searchQuery === "" ||
-                                item.deviceId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                filteredFiles.length > 0;
-
-                            if (!matchesSearch) return null;
-
-                            const isItemExpanded = expandedItemIndex === index;
+                            if (!matchesDeviceSearch) return null;
 
                             return (
-                                <Paper key={index} variant="outlined" sx={{ p: 2 }}>
-                                    <Stack sx={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                        <Box>
-                                            <Typography variant="subtitle2">Enhet: {item.deviceId}</Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                Startet: {new Date(item.started).toLocaleString()} • Filer: {item.completedFiles}/{item.totalFiles}
-                                            </Typography>
-                                        </Box>
-                                        <Stack sx={{ flexDirection: "row", gap: 1, alignItems: "center" }}>
-                                            <Chip
-                                                label={item.completedFiles >= item.totalFiles ? "Fullført" : "Avbrutt/Feilet"}
-                                                color={item.completedFiles >= item.totalFiles ? "success" : "warning"}
-                                                size="small"
-                                            />
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => setExpandedItemIndex(isItemExpanded ? null : index)}
-                                                title="Vis filer"
-                                            >
-                                                <ExpandMoreIcon sx={{ transform: isItemExpanded ? "rotate(180deg)" : "none", transition: "0.2s" }} />
-                                            </IconButton>
-                                        </Stack>
-                                    </Stack>
+                                <Box key={devIndex} sx={{ mb: 2 }}>
+                                    <Typography variant="subtitle1" sx={{ fontWeight: "bold", mb: 1 }}>
+                                        {deviceGroup.deviceName} <Typography component="span" variant="caption" color="text.secondary">({deviceGroup.deviceId})</Typography>
+                                    </Typography>
 
-                                    {/* Utvidet visning av filer for denne historikk-økten */}
-                                    <Collapse in={isItemExpanded}>
-                                        <Box sx={{ mt: 2, pt: 2, borderTop: "1px solid", borderColor: "divider", maxHeight: 200, overflowY: "auto" }}>
-                                            <Typography variant="caption" sx={{ fontWeight: "bold", color: "text.secondary", display: "block", mb: 1 }}>
-                                                FILER I DENNE ØKTEN ({item.files?.length || 0}):
-                                            </Typography>
-                                            <Stack sx={{ gap: 0.5 }}>
-                                                {item.files?.map((f, fIdx) => (
-                                                    <Stack key={fIdx} sx={{ flexDirection: "row", alignItems: "center", gap: 1, p: 0.5 }}>
-                                                        <InsertDriveFileIcon fontSize="small" color="action" />
-                                                        <Typography variant="body2" sx={{ flexGrow: 1 }} noWrap>
-                                                            {f.file}
-                                                        </Typography>
-                                                        <Chip label={f.state} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.6rem" }} />
+                                    <Stack sx={{ gap: 1 }}>
+                                        {deviceGroup.jobs.map((job) => {
+                                            const isExpanded = expandedJobId === job.jobId;
+                                            const files = jobFilesMap[job.jobId] || [];
+                                            const isLoadingFiles = loadingJobId === job.jobId;
+                                            const isClaiming = claimingJobId === job.jobId;
+
+                                            return (
+                                                <Paper key={job.jobId} variant="outlined" sx={{ p: 2 }}>
+                                                    <Stack sx={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                                        <Box>
+                                                            <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                                                                Jobb-ID: {job.jobId.substring(0, 8)}...
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                Filer: {job.completedFiles}/{job.totalFiles}
+                                                            </Typography>
+                                                        </Box>
+                                                        <Stack sx={{ flexDirection: "row", gap: 1, alignItems: "center" }}>
+                                                            {/* Vis Claime-knapp KUN hvis den faktisk er claimable */}
+                                                            {job.claimable ? (
+                                                                <Button
+                                                                    variant="contained"
+                                                                    size="small"
+                                                                    disabled={isClaiming}
+                                                                    onClick={(e) => handleClaim(job.jobId, e)}
+                                                                    sx={{ height: 24, fontSize: "0.75rem", textTransform: "none" }}
+                                                                >
+                                                                    {isClaiming ? <CircularProgress size={14} color="inherit" /> : "Claime"}
+                                                                </Button>
+                                                            ) : job.claimedBy ? (
+                                                                // Hvis den ikke er claimable fordi den allerede er tatt
+                                                                <Chip
+                                                                    icon={<CheckCircleIcon fontSize="small" />}
+                                                                    label="Claimet"
+                                                                    color="success"
+                                                                    size="small"
+                                                                    variant="outlined"
+                                                                />
+                                                            ) : (
+                                                                <></>
+                                                            )}
+
+                                                            <Chip
+                                                                label={job.completedFiles >= job.totalFiles ? "Fullført" : "Pågår/Feilet"}
+                                                                color={job.completedFiles >= job.totalFiles ? "success" : "warning"}
+                                                                size="small"
+                                                            />
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleToggleExpand(job.jobId)}
+                                                                title="Vis filer"
+                                                            >
+                                                                <ExpandMoreIcon sx={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "0.2s" }} />
+                                                            </IconButton>
+                                                        </Stack>
                                                     </Stack>
-                                                ))}
-                                            </Stack>
-                                        </Box>
-                                    </Collapse>
-                                </Paper>
+
+                                                    {/* Utvidet visning som henter filer on-demand */}
+                                                    <Collapse in={isExpanded}>
+                                                        <Box sx={{ mt: 2, pt: 2, borderTop: "1px solid", borderColor: "divider", maxHeight: 200, overflowY: "auto" }}>
+                                                            <Typography variant="caption" sx={{ fontWeight: "bold", color: "text.secondary", display: "block", mb: 1 }}>
+                                                                FILER I DENNE JOBBEN:
+                                                            </Typography>
+
+                                                            {isLoadingFiles ? (
+                                                                <Stack sx={{ alignItems: "center", py: 2 }}>
+                                                                    <CircularProgress size={24} />
+                                                                </Stack>
+                                                            ) : files.length === 0 ? (
+                                                                <Typography variant="body2" color="text.secondary">Ingen filer funnet for denne jobben.</Typography>
+                                                            ) : (
+                                                                <Stack sx={{ gap: 0.5 }}>
+                                                                    {files.map((fileName, fIdx) => (
+                                                                        <Stack key={fIdx} sx={{ flexDirection: "row", alignItems: "center", gap: 1, p: 0.5 }}>
+                                                                            <InsertDriveFileIcon fontSize="small" color="action" />
+                                                                            <Typography variant="body2" sx={{ flexGrow: 1 }} noWrap>
+                                                                                {fileName}
+                                                                            </Typography>
+                                                                        </Stack>
+                                                                    ))}
+                                                                </Stack>
+                                                            )}
+                                                        </Box>
+                                                    </Collapse>
+                                                </Paper>
+                                            );
+                                        })}
+                                    </Stack>
+                                </Box>
                             );
                         })}
                     </Stack>

@@ -6,9 +6,9 @@ import {
 import CancelIcon from '@mui/icons-material/Cancel';
 import DownloadDoneIcon from '@mui/icons-material/DownloadDone';
 
-import type { DeviceImport, DeviceImportSummary, ImportProgressEvent, FileImportState } from "../types/types";
+import type { DeviceImport, DeviceImportSummary, ImportProgressEvent, FileImportState, DeviceImportJobSummary } from "../types/types";
 import { toast } from "react-toastify";
-import { cancelImportFor, getHistoricalImports } from "../api/importer";
+import { cancelImportFor, getHistoricalImports } from "../api/requests/importer";
 import { ImportHistoryList } from "../components/importer/ImportHistory";
 import { useSseSelector } from "../sse/useSseSelector";
 import ImportFileStream from "../components/importer/ImportFileStream";
@@ -133,7 +133,7 @@ export function Import() {
     const activeImportDevices = useSseSelector(state => state.importDevices || {}) as Record<string, DeviceImportSummary>;
     const activeImportsMap = useSseSelector(state => state.activeMediaImports || {}) as Record<string, ImportProgressEvent>;
 
-    const [history, setHistory] = useState<Array<DeviceImport>>([]);
+    const [history, setHistory] = useState<Array<DeviceImportJobSummary>>([]);
     const [historyLoaded, setHistoryLoaded] = useState(false);
 
     const fetchHistory = async () => {

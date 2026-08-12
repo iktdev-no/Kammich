@@ -33,7 +33,7 @@ import { useSseSelector } from "../../sse/useSseSelector";
 
 import type { WifiNetworkTether, WifiSecurityType, WifiTetherAP, WirelessInterface } from "../../types/types";
 import { WifiTetheringOff } from "@mui/icons-material";
-import { addTetherDevice, getAp, getInterfaces, removeTetherDevice, setAp, startTethering, stopTethering } from "../../api/networking/tethering";
+import { addTetherDevice, getAp, getInterfaces, removeTetherDevice, setAp, startTethering, stopTethering } from "../../api/requests/networking/tethering";
 
 export default function WifiApSettings() {
     const theme = useTheme();

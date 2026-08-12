@@ -1,10 +1,12 @@
 package no.iktdev.kammich.database.models
 
 import no.iktdev.kammich.models.FileType
+import java.util.UUID
 
-data class PersistedImportedFiles(
+data class PersistedImportedFile(
     val id: Long,
-    val deviceId: Int,
+    val importJob: UUID,
+    val deviceId: Long,
     val fileName: String,
     val fileType: FileType,
     val fileSize: Long,

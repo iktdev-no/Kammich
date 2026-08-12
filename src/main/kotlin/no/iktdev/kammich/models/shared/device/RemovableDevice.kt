@@ -12,7 +12,8 @@ interface RemovableDevice {
     val model: String
     val manufacturer: String
     val sn: String
-    val type: DeviceType
+    val interfaceType: DeviceInterfaceType
+    val deviceType: DeviceType
     val sysPath: String
     val isReady: Boolean
 
@@ -26,7 +27,8 @@ data class GPhoto2Device(
     override val manufacturer: String,
     override val sn: String,
     val port: String,
-    override val type: DeviceType,
+    override val interfaceType: DeviceInterfaceType,
+    override val deviceType: DeviceType,
     override val sysPath: String,
     val storage: List<GPhoto2StorageDevice>,
     override val isReady: Boolean,
@@ -35,7 +37,7 @@ data class GPhoto2Device(
         val gd = gPhoto2.getDeviceInfo(port)
         return DeviceInfo(
             id = id,
-            type = type,
+            type = interfaceType,
             friendlyName = gd.summary.friendlyDeviceName ?: name,
             manufacturer = gd.summary.manufacturer ?: manufacturer,
             model = gd.summary.model ?: model,
@@ -61,7 +63,8 @@ data class BlockDevice(
     override val manufacturer: String,
     override val sn: String,
     val mountPoint: String?,
-    override val type: DeviceType = DeviceType.BLOCK,
+    override val interfaceType: DeviceInterfaceType = DeviceInterfaceType.BLOCK,
+    override val deviceType: DeviceType = DeviceType.PhysicalStorageDevice,
     override val sysPath: String,
     val devicePath: String,
     override val isReady: Boolean
@@ -103,7 +106,7 @@ data class BlockDevice(
 
         return DeviceInfo(
             id = id,
-            type = type,
+            type = interfaceType,
             friendlyName = name,
             manufacturer = manufacturer,
             model = model,
@@ -117,7 +120,7 @@ data class BlockDevice(
 
 data class DeviceInfo(
     val id: String,
-    val type: DeviceType,
+    val type: DeviceInterfaceType,
     val friendlyName: String?,
     val manufacturer: String?,
     val model: String?,

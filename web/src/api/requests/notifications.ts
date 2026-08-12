@@ -1,4 +1,4 @@
-import { apiDelete } from "./client";
+import { apiDelete } from "../client";
 
 export function dismissNotification(notificationId: string) {
     return apiDelete(`/v1/notification/${notificationId}`)

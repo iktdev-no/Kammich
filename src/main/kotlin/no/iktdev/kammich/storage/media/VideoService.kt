@@ -23,7 +23,7 @@ class VideoService(
     private val log = LoggerFactory.getLogger(VideoService::class.java)
 
     override fun getFile(
-        deviceId: Int,
+        deviceId: Long,
         filename: String
     ): FileSystemResource {
         val serial =  withTransaction {

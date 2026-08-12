@@ -10,6 +10,8 @@ export default function Immich() {
         {!immichUser && (
             <ImmichLogin />
         )}
+
+
         <Outlet />
     </>)
 }

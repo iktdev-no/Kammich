@@ -7,7 +7,7 @@ import CableIcon from '@mui/icons-material/Cable';
 import BatteryChargingFullIcon from "@mui/icons-material/BatteryChargingFull";
 import StorageIcon from "@mui/icons-material/Storage";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { updateDeviceSettings } from "../../api/camera";
+import { updateDeviceSettings } from "../../api/requests/camera";
 import type { DeviceInfo, DeviceSettingsDto } from "../../types/types";
 import { formatBytes } from "../../utils/format";
 

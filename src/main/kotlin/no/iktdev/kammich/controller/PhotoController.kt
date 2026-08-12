@@ -37,7 +37,7 @@ class PhotoController(
 
     @GetMapping("/{deviceId}/{fileName:.+}")
     fun getMediaStream(
-        @PathVariable deviceId: Int,
+        @PathVariable deviceId: Long,
         @PathVariable fileName: String,
         request: WebRequest
     ): ResponseEntity<Resource> {
@@ -63,7 +63,7 @@ class PhotoController(
 
     @GetMapping("/{deviceId}/thumb/{fileName:.+}")
     fun getThumbMediaStream(
-        @PathVariable deviceId: Int,
+        @PathVariable deviceId: Long,
         @PathVariable fileName: String,
         request: WebRequest
     ): ResponseEntity<Resource> {

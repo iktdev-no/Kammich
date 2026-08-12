@@ -21,7 +21,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import type { ImmichUserAccesses } from '../../types/types';
-import { immichAccessAll, immichDeleteApiKey } from '../../api/immich';
+import { immichAccessAll, immichDeleteApiKey } from '../../api/requests/immich';
 
 export default function ImmichAccess() {
     const [data, setData] = useState<ImmichUserAccesses[]>([]);

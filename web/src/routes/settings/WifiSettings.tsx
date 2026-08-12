@@ -4,48 +4,35 @@ import {
     Typography,
     Button,
     List,
-    ListItem,
-    ListItemText,
     CircularProgress,
-    TextField,
-    MenuItem,
-    Select,
-    FormControl,
-    InputLabel,
-    Accordion,
-    AccordionDetails,
-    AccordionSummary,
-    LinearProgress
+    Collapse,
+    useTheme,
+    IconButton,
+    Tooltip
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import RouterIcon from '@mui/icons-material/Router';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
-import FiveGIcon from '@mui/icons-material/FiveG';
 
 import { useSseSelector } from "../../sse/useSseSelector";
 import type { InterfaceActiveState, WifiNetwork, WifiNetworkConnection, WifiNetworkScan, WirelessInterface } from "../../types/types";
-import { WifiSignalIcon } from "../../components/wifi/WifiIcon";
-import { connectToWifi, disconnectFromWifi, getInterfaces, getNewNetworks } from "../../api/networking/connection";
+import { getInterfaces, getNewNetworks } from "../../api/requests/networking/connection";
+import WifiNetworkCard from "../../components/network/WifiNetwork";
+import { VisibilityIcon } from "../../components/icons/VisibilityIcon";
 
 export default function WifiSettings() {
+    const theme = useTheme();
     const [activeInterface, setActiveInterface] = useState<string>("");
     const [expandedInterface, setExpandedInterface] = useState<string | false>(false);
 
-    const handleAccordionChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-        setExpandedInterface(isExpanded ? panel : false);
-    };
+    // Holder styr på om skjulte nettverk vises per grensesnitt (interfaceName -> boolean)
+    const [showHiddenMap, setShowHiddenMap] = useState<Record<string, boolean>>({});
 
     // Data fra SSE
     const [interfaces, setInterfaces] = useState<WirelessInterface[]>([]);
     const [isLoadingInterfaces, setIsLoadingInterfaces] = useState(true);
 
-
     const wifiScans = useSseSelector(state => state.wifiScans) || [];
     const wifiConnections = useSseSelector(state => state.wifiConnections) || [];
-
-    const activeScan = wifiScans.find(s => s.name === activeInterface);
-    const activeConn = wifiConnections.find(c => c.name === activeInterface);
-
 
     useEffect(() => {
         async function loadInterfaces() {
@@ -53,10 +40,7 @@ export default function WifiSettings() {
                 const data = await getInterfaces();
                 setInterfaces(data);
                 if (data.length > 0) {
-                    // 1. Sett aktivt grensesnitt
                     setActiveInterface(data[0].name);
-
-                    // 2. Åpne accordeonen automatisk for det første grensesnittet
                     setExpandedInterface(data[0].name);
                 }
             } catch (error) {
@@ -68,6 +52,13 @@ export default function WifiSettings() {
         loadInterfaces();
     }, []);
 
+    const toggleShowHidden = (interfaceName: string) => {
+        setShowHiddenMap(prev => ({
+            ...prev,
+            [interfaceName]: !prev[interfaceName]
+        }));
+    };
+
     return (
         <Box sx={{ maxWidth: "800px", mx: "auto", p: 4, display: "flex", flexDirection: "column", gap: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 600 }}>Wi-Fi Settings</Typography>
@@ -75,30 +66,73 @@ export default function WifiSettings() {
             {interfaces.map((iface) => {
                 const scanData = wifiScans.find(s => s.name === iface.name);
                 const connData = wifiConnections.find(c => c.name === iface.name);
+                const isExpanded = expandedInterface === iface.name;
+                const showHidden = !!showHiddenMap[iface.name];
 
                 return (
-                    <Accordion
+                    <Box
                         key={iface.name}
-                        expanded={expandedInterface === iface.name}
-                        onChange={handleAccordionChange(iface.name)}
-                        sx={{ bgcolor: 'grey.950', border: 1, borderColor: 'grey.900' }}
+                        sx={{
+                            bgcolor: 'grey.900',
+                            border: 1,
+                            borderColor: 'grey.900',
+                            borderRadius: 2.5,
+                            overflow: 'hidden'
+                        }}
                     >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography sx={{ fontWeight: 600 }}>{iface.name}</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <WifiInterfaceContent
-                                scanData={scanData}
-                                connData={connData}
-                                interfaceName={iface.name}
-                                // Send med om denne er "aktiv" (åpen)
-                                isExpanded={expandedInterface === iface.name}
-                            />
-                        </AccordionDetails>
-                    </Accordion>
+                        {/* Grensesnitt-header med ekspandering og plass til knapper ved siden av */}
+                        <Box
+                            sx={{
+                                p: 2,
+                                display: "flex",
+                                alignItems: "center",
+                                borderBottom: isExpanded ? "1px solid rgba(255,255,255,0.05)" : "none"
+                            }}
+                        >
+                            <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
+                                <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>{iface.name}</Typography>
+
+                                <Tooltip title={showHidden ? "Skjul skjulte nettverk" : "Vis skjulte nettverk"} arrow>
+                                    <Box component="span" sx={{ display: 'inline-flex' }}>
+                                        <VisibilityIcon
+                                            visible={showHidden}
+                                            onChange={() => toggleShowHidden(iface.name)}
+                                            sx={{ ml: 1, mr: 1 }}
+                                        />
+                                    </Box>
+                                </Tooltip>
+
+                                <Tooltip title={isExpanded ? "Lukk" : "Åpne"} arrow>
+                                    <IconButton onClick={() => setExpandedInterface(prev => prev === iface.name ? false : iface.name)}>
+                                        <ExpandMoreIcon
+                                            sx={{
+                                                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                                                transition: "transform 0.2s ease-in-out",
+                                                color: "text.secondary"
+                                            }}
+                                        />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
+                        </Box>
+
+                        {/* Aninert innhold for grensesnittet */}
+                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                            <Box sx={{ p: 2 }}>
+                                <WifiInterfaceContent
+                                    scanData={scanData}
+                                    connData={connData}
+                                    interfaceName={iface.name}
+                                    isExpanded={isExpanded}
+                                    showHidden={showHidden}
+                                />
+                            </Box>
+                        </Collapse>
+                    </Box>
                 );
             })}
-            {interfaces.length === 0 && (
+
+            {interfaces.length === 0 && !isLoadingInterfaces && (
                 <Box sx={{
                     display: "flex",
                     flexDirection: 'column',
@@ -109,7 +143,6 @@ export default function WifiSettings() {
                         fontSize: 72
                     }} />
                     <Typography sx={{ mt: 5 }}>No interfaces found</Typography>
-
                 </Box>
             )}
         </Box>
@@ -121,10 +154,18 @@ interface WifiNetworkConnectionState {
     state: InterfaceActiveState
 }
 
-const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }: { scanData: WifiNetworkScan | undefined, connData: WifiNetworkConnection | undefined, interfaceName: string, isExpanded: boolean }) => {
+interface WifiInterfaceContentProps {
+    scanData: WifiNetworkScan | undefined;
+    connData: WifiNetworkConnection | undefined;
+    interfaceName: string;
+    isExpanded: boolean;
+    showHidden: boolean;
+}
+
+const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded, showHidden }: WifiInterfaceContentProps) => {
     const isScanning = scanData?.state === "Scanning";
-    const [showHidden, setShowHidden] = useState(false); // 1. Toggle for skjulte
-    const [connState, setConnState] = useState<WifiNetworkConnectionState | undefined>()
+    const [connState, setConnState] = useState<WifiNetworkConnectionState | undefined>();
+    const [expandedBssid, setExpandedBssid] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isExpanded) return;
@@ -137,166 +178,176 @@ const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded }:
     }, [interfaceName, scanData?.state, isExpanded]);
 
     useEffect(() => {
-        const activeNetwork = connData?.network
+        const activeNetwork = connData?.network;
         if (activeNetwork) {
             setConnState({
                 bssid: activeNetwork.bssid,
                 state: connData.state
-            })
+            });
         } else {
             setConnState(undefined);
         }
-    }, [connData, scanData])
+    }, [connData, scanData]);
 
+    const connectedNetwork = connData?.network;
+    const isConnected = connData?.state === "Connected" && connectedNetwork;
 
-    // 2. Logikk for filtrering
-    const visibleNetworks = (scanData?.networks || [])
+    const sortedNetworks = (scanData?.networks || [])
         .filter((net: WifiNetwork) => {
-            // Filtrer ut den vi er tilkoblet
-            if (net.ssid === connData?.network?.ssid) return false;
-            // Hvis showHidden er false, filtrer bort de skjulte
+            if (isConnected && net.bssid === connectedNetwork.bssid) return false;
             if (!showHidden && net.isHidden) return false;
             return true;
+        })
+        .sort((a, b) => {
+            if (expandedBssid) {
+                if (a.bssid === expandedBssid) return -1;
+                if (b.bssid === expandedBssid) return 1;
+            }
+            return b.signalPercent - a.signalPercent;
         });
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {connData?.state === "Connected" && connData.network && (
-                <Box sx={{ bgcolor: 'rgba(76, 175, 80, 0.1)', p: 2, borderRadius: 1, border: '1px solid rgba(76, 175, 80, 0.3)' }}>
-                    <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600, mb: 1, display: 'block' }}>
-                        ACTIVE CONNECTION
-                    </Typography>
-                    <NetworkListItem network={connData.network} isConnected={true} connState={connState} />
-                </Box>
-            )}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <ConnectedNetworkSection
+                connectedNetwork={connectedNetwork}
+                isConnected={!!isConnected}
+                connState={connState}
+                connData={connData}
+                expandedBssid={expandedBssid}
+                setExpandedBssid={setExpandedBssid}
+                allNetworks={scanData?.networks || []}
+            />
 
+            <AvailableNetworksSection
+                sortedNetworks={sortedNetworks}
+                isScanning={isScanning}
+                interfaceName={interfaceName}
+                connState={connState}
+                expandedBssid={expandedBssid}
+                setExpandedBssid={setExpandedBssid}
+                allNetworks={scanData?.networks || []}
+            />
+        </Box>
+    );
+};
+
+interface ConnectedNetworkSectionProps {
+    connectedNetwork: WifiNetwork | undefined | null;
+    isConnected: boolean;
+    connState: WifiNetworkConnectionState | undefined;
+    connData: WifiNetworkConnection | undefined;
+    expandedBssid: string | null;
+    setExpandedBssid: (bssid: string | null) => void;
+    allNetworks: WifiNetwork[];
+}
+
+const ConnectedNetworkSection = ({
+    connectedNetwork,
+    isConnected,
+    connState,
+    connData,
+    expandedBssid,
+    setExpandedBssid,
+    allNetworks
+}: ConnectedNetworkSectionProps) => {
+    const hasError = !!connData?.error;
+    const targetNetwork = connectedNetwork || connData?.network;
+
+    if ((!isConnected || !targetNetwork) && !hasError) return null;
+    if (!targetNetwork) return null;
+
+    const isConnectedCardExpanded = expandedBssid === targetNetwork.bssid;
+    const connectedOverlappingFreq = allNetworks.some(
+        otherNet => otherNet.ssid === targetNetwork.ssid && otherNet.frequencyMhz !== targetNetwork.frequencyMhz
+    );
+
+    return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant="overline" sx={{ color: 'text.secondary', px: 1 }}>
+                {hasError ? "Connection Failed" : "Connected Network"}
+            </Typography>
+            <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <WifiNetworkCard
+                    key={`connected-${targetNetwork.bssid}-${targetNetwork.ssid}`}
+                    wifi={targetNetwork}
+                    state={connState?.state || connData?.state || "Disconnected"}
+                    expanded={isConnectedCardExpanded}
+                    onToggle={() => setExpandedBssid(isConnectedCardExpanded ? null : targetNetwork.bssid)}
+                    overlappingSSIDFreq={connectedOverlappingFreq}
+                />
+
+                {hasError && (
+                    <Box sx={{ px: 1 }}>
+                        <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 500 }}>
+                            Feil passord. Vennligst prøv igjen.
+                        </Typography>
+                    </Box>
+                )}
+            </List>
+        </Box>
+    );
+};
+
+interface AvailableNetworksSectionProps {
+    sortedNetworks: WifiNetwork[];
+    isScanning: boolean;
+    interfaceName: string;
+    connState: WifiNetworkConnectionState | undefined;
+    expandedBssid: string | null;
+    setExpandedBssid: (bssid: string | null) => void;
+    allNetworks: WifiNetwork[];
+}
+
+const AvailableNetworksSection = ({
+    sortedNetworks,
+    isScanning,
+    interfaceName,
+    connState,
+    expandedBssid,
+    setExpandedBssid,
+    allNetworks
+}: AvailableNetworksSectionProps) => {
+    return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 1 }}>
                 <Typography variant="overline" sx={{ color: 'text.secondary' }}>Available Networks</Typography>
-                <Box>
-
-                    <Button
-                        size="small"
-                        onClick={() => getNewNetworks(interfaceName)}
-                        disabled={isScanning}
-                        startIcon={isScanning ? <CircularProgress size={14} color="inherit" /> : null}
-                    >
-                        {isScanning ? "Scanning..." : "Scan"}
-                    </Button>
-                </Box>
-
+                <Button
+                    size="small"
+                    onClick={() => getNewNetworks(interfaceName)}
+                    disabled={isScanning}
+                    startIcon={isScanning ? <CircularProgress size={14} color="inherit" /> : null}
+                >
+                    {isScanning ? "Scanning..." : "Scan"}
+                </Button>
             </Box>
 
-            <List disablePadding>
-
-                {/* 2. Tom-melding: Kun hvis vi IKKE scanner og listen er tom */}
-                {!isScanning && visibleNetworks.length === 0 && (
+            <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {!isScanning && sortedNetworks.length === 0 && (
                     <Box sx={{ textAlign: 'center', p: 3, color: 'text.secondary' }}>
-                        <Typography variant="body2">No networks found.</Typography>
-                        {connData?.state === "Connected" && (
-                            <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-                                Hint: Some systems restrict scanning while connected.
-                            </Typography>
-                        )}
+                        <Typography variant="body2">No other networks found.</Typography>
                     </Box>
                 )}
 
-                {/* 3. Selve listen - denne vises nå ALLTID, også under scanning */}
-                {visibleNetworks.map((net: WifiNetwork) => (
-                    <NetworkListItem key={`${net.bssid}-${net.ssid}`} network={net} isConnected={false} connState={connState} />
-                ))}
+                {sortedNetworks.map((net: WifiNetwork) => {
+                    const networkState = connState?.bssid === net.bssid ? connState.state : "Idle" as InterfaceActiveState;
+                    const isCardExpanded = expandedBssid === net.bssid;
+
+                    const overlappingSSIDFreq = allNetworks.some(
+                        otherNet => otherNet.ssid === net.ssid && otherNet.frequencyMhz !== net.frequencyMhz
+                    );
+
+                    return (
+                        <WifiNetworkCard
+                            key={`${net.bssid}-${net.ssid}`}
+                            wifi={net}
+                            state={networkState}
+                            expanded={isCardExpanded}
+                            onToggle={() => setExpandedBssid(isCardExpanded ? null : net.bssid)}
+                            overlappingSSIDFreq={overlappingSSIDFreq}
+                        />
+                    );
+                })}
             </List>
-            <Button size="small" onClick={() => setShowHidden(!showHidden)}>
-                {showHidden ? "Hide Hidden" : "Show Hidden"}
-            </Button>
         </Box>
     );
 };
-
-export const NetworkListItem = ({ network, isConnected = false, connState }: { network: WifiNetwork, isConnected: boolean, connState: WifiNetworkConnectionState | undefined }) => {
-    const [expanded, setExpanded] = useState(false);
-    const [password, setPassword] = useState<string | undefined>(undefined);
-
-    return (
-        <Box sx={{
-            borderBottom: isConnected ? "none" : "1px solid rgba(255,255,255,0.05)",
-            bgcolor: isConnected ? 'rgba(76, 175, 80, 0.05)' : (expanded ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.05)'),
-            borderRadius: 1,
-            mt: 1, mb: 1
-        }}>
-            <ListItem
-                onClick={() => setExpanded(!expanded)}
-                sx={{ cursor: 'pointer', py: 1.5 }}
-            >
-                <ListItemText
-                    primary={network.ssid}
-                    secondary={isConnected ? "Connected" : network.securityType}
-                    slotProps={{
-                        primary: { sx: { fontWeight: isConnected ? 600 : 500 } }
-                    }}
-                />
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{
-                        display: "flex",
-                    }}>
-                        {network.frequencyMhz > 5000 && (<FiveGIcon />)}
-                    </Box>
-                    <Box>
-                        {!isConnected && <Typography variant="caption" sx={{ color: 'text.secondary' }}>{network.signalPercent}%</Typography>}
-
-                    </Box>
-                    <WifiSignalIcon isSecure={network.isSecure} strength={network.signalPercent} />
-
-                </Box>
-            </ListItem>
-
-            {/* Expanderbar seksjon */}
-            {expanded && (
-                <Box sx={{ p: 2, display: 'flex', gap: 1, bgcolor: 'rgba(0,0,0,0.5)', borderRadius: 1, mr: 1, ml: 1, mb: 1 }}>
-                    {isConnected ? (
-                        <Button
-                            variant="outlined"
-                            color="error"
-                            size="small"
-                            fullWidth
-                            onClick={() => disconnectFromWifi(network.interfaceName)}
-                        >
-                            Disconnect
-                        </Button>
-                    ) : (
-                        <>
-                            {network.isSecure && (
-                                <TextField size="small" label="Password" type="password" fullWidth value={password} onChange={(e) => setPassword(e.target.value)} />
-                            )}
-                            <Button variant="contained" size="small" onClick={() => {
-                                connectToWifi(network.interfaceName, network.bssid, password)
-                            }} sx={{ textTransform: 'none', px: 3 }}>Connect</Button>
-                        </>
-                    )}
-                </Box>
-            )}
-            {(connState?.bssid === network.bssid && connState.state === 'Connecting') && (
-                <LinearProgress />
-            )}
-        </Box>
-    );
-};
-
-export const WifiInterfaceSelector = ({
-    interfaces, activeInterface, onChange, connStatus
-}: any) => (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: 2, bgcolor: "grey.900", borderRadius: 1, border: 1, borderColor: "grey.800" }}>
-        <RouterIcon sx={{ color: "text.secondary" }} />
-        <FormControl variant="standard" sx={{ flexGrow: 1 }}>
-            <InputLabel>Active Interface</InputLabel>
-            <Select value={activeInterface} onChange={(e) => onChange(e.target.value)}>
-                {interfaces.map((i: any) => (
-                    <MenuItem key={i.name} value={i.name}>{i.name} {i.supportsAp ? "(AP)" : ""}</MenuItem>
-                ))}
-            </Select>
-        </FormControl>
-        <Typography variant="caption" sx={{ color: connStatus === "CONNECTED" ? "success.main" : "text.secondary" }}>
-            {connStatus}
-        </Typography>
-    </Box>
-);

@@ -3,7 +3,7 @@ import { Box, Typography, Card, CardContent, Chip, Stack, Divider } from "@mui/m
 import EthernetIcon from '@mui/icons-material/SettingsEthernet';
 import WifiIcon from '@mui/icons-material/Wifi';
 import LanIcon from '@mui/icons-material/Lan'; // Litt finere for ethernet
-import { getNetworkInterfaces } from "../../api/networking/networking";
+import { getNetworkInterfaces } from "../../api/requests/networking/networking";
 import type { NetworkInterface, EthernetNetworkInterface, WirelessNetworkInterface } from "../../types/types";
 
 export default function Networking() {

@@ -1,11 +1,8 @@
-import type { WirelessInterface, WifiNetworkConnection, WifiNetwork } from "../../types/types"
-import { apiGet, apiPost } from "../client"
+import type { WirelessInterface, WifiNetwork } from "../../../types/types"
+import { apiGet, apiPost } from "../../client"
 
 const endpoint = "/v1/wifi/client"
 
-export function getState() {
-    return apiGet<Array<WifiNetworkConnection>>(`${endpoint}/state`)
-}
 
 export function getInterfaces() {
     return apiGet<Array<WirelessInterface>>(`${endpoint}/interfaces`)

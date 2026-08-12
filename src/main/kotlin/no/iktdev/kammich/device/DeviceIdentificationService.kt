@@ -3,14 +3,15 @@ package no.iktdev.kammich.device
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.gphoto2.IGPhoto2
-import no.iktdev.kammich.models.internal.DeviceReadyEvent
+import no.iktdev.kammich.models.internal.PersistedDevice
+import no.iktdev.kammich.models.internal.events.DeviceReadyEvent
 import no.iktdev.kammich.models.internal.SysPathReady
 import no.iktdev.kammich.models.internal.UsbInterview
 import no.iktdev.kammich.models.shared.device.BlockDevice
+import no.iktdev.kammich.models.shared.device.DeviceInterfaceType
 import no.iktdev.kammich.models.shared.device.DeviceType
 import no.iktdev.kammich.models.shared.device.GPhoto2Device
 import no.iktdev.kammich.system.LsblkService
@@ -19,7 +20,6 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
-import kotlin.time.Duration.Companion.milliseconds
 
 @Service
 class DeviceIdentificationService(
@@ -38,8 +38,8 @@ class DeviceIdentificationService(
             log.info("Device interview started on $event")
             val result = interview(event.path)
             val device = when (result.getDeviceType()) {
-                DeviceType.MTP, DeviceType.PTP -> assembleGPhoto2Device(result)
-                DeviceType.BLOCK -> assembleBlockDevice(result)
+                DeviceInterfaceType.MTP, DeviceInterfaceType.PTP -> assembleGPhoto2Device(result)
+                DeviceInterfaceType.BLOCK -> assembleBlockDevice(result)
                 else -> {
                     log.warn("Device type ${result.getDeviceType()} not supported. Raw info: manufacturer={}, product={}, config={}",
                         result.manufacturer, result.productName, result.configuration)
@@ -77,6 +77,10 @@ class DeviceIdentificationService(
         val port = gphoto2.getPort(i.sysPath)
         val info = gphoto2.getDeviceInfo(port) // Dette er din "gullgruve"
 
+        val deviceType = if (isPhone(info.summary.manufacturer, info.summary.model, i.productName)) {
+            DeviceType.Phone
+        } else DeviceType.Camera
+
         return GPhoto2Device(
             // Bruk SN fra GPhoto hvis mulig, ellers fall tilbake til USB-intervjuet
             id = info.summary.serialNumber ?: i.sn ?: "${i.idVendor}.${i.idProduct}",
@@ -91,9 +95,10 @@ class DeviceIdentificationService(
             manufacturer = info.summary.manufacturer ?: i.manufacturer,
 
             sn = info.summary.serialNumber ?: i.sn ?: "UNKNOWN",
+            deviceType = deviceType,
 
             port = port,
-            type = i.getDeviceType(), // Bruk din smarte metode fra USBInterview
+            interfaceType = i.getDeviceType(), // Bruk din smarte metode fra USBInterview
             sysPath = i.sysPath,
 
             // De nye rike feltene
@@ -146,5 +151,22 @@ class DeviceIdentificationService(
         } else {
             "UNKNOWN"
         }
+    }
+
+    fun isPhone(persistedDevice: PersistedDevice): Boolean {
+        return isPhone(persistedDevice.manufacturer, persistedDevice.model, persistedDevice.name)
+    }
+
+    fun isPhone(manufacturer: String?, model: String?, productName: String?): Boolean {
+        val textToCheck = "$manufacturer $model $productName".lowercase()
+
+        val phoneKeywords = listOf(
+            "iphone", "pixel", "galaxy", "xperia", "oneplus",
+            "xiaomi", "huawei", "oppo", "vivo", "redmi", "motorola",
+            "SM-", // Samsung modell-prefiks ofte synlig
+            "android"
+        )
+
+        return phoneKeywords.any { textToCheck.contains(it) }
     }
 }

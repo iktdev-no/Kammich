@@ -47,7 +47,7 @@ class VideoController(
 
     @GetMapping("/{deviceId}/{fileName:.+}")
     fun getMediaStream(
-        @PathVariable deviceId: Int,
+        @PathVariable deviceId: Long,
         @PathVariable fileName: String
     ): ResponseEntity<Resource> {
         // Her kan du nå enkelt hente ut selve bildet/filen

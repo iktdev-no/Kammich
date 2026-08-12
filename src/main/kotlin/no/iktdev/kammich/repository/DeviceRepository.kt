@@ -20,6 +20,7 @@ class DeviceRepository {
                 it[this.serialNumber] = device.id
                 it[this.deviceName] = device.name
                 it[this.model] = device.model
+                it[this.deviceType] = device.deviceType.name
                 it[this.lastSeen] = ZonedDateTime.now().toString()
                 it[this.manufacturer] = device.manufacturer
             }

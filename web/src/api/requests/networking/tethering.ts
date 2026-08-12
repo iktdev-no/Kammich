@@ -1,5 +1,5 @@
-import type { WifiNetworkTether, WifiTetherAP, WirelessInterface } from "../../types/types"
-import { apiDelete, apiGet, apiPost } from "../client"
+import type { WifiNetworkTether, WifiTetherAP, WirelessInterface } from "../../../types/types"
+import { apiDelete, apiGet, apiPost } from "../../client"
 
 
 const endpoint = "/v1/wifi/tethering"

@@ -1,4 +1,4 @@
-package no.iktdev.kammich.importing
+package no.iktdev.kammich.services.importing
 
 import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.models.internal.KFile

@@ -1,24 +1,30 @@
 package no.iktdev.kammich.repository
 
 import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.database.models.PersistedImportedFile
 import no.iktdev.kammich.database.tables.DevicesTable
+import no.iktdev.kammich.database.tables.ImportJobOwnerTable
+import no.iktdev.kammich.database.tables.ImportJobOwnerTable.toPersistedJobOwner
 import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.tables.ImportedFilesTable.toPersisted
 import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.ensureWritable
 import no.iktdev.kammich.getFileType
+import no.iktdev.kammich.immich.ImmichUserContext
 import no.iktdev.kammich.models.FileHash
 import no.iktdev.kammich.models.internal.KFile
 import no.iktdev.kammich.models.shared.DeviceImport
+import no.iktdev.kammich.models.shared.DeviceImportJobSummary
 import no.iktdev.kammich.models.shared.ImportFile
 import no.iktdev.kammich.models.shared.FileImportState
+import no.iktdev.kammich.models.shared.ImportJobSummary
 import no.iktdev.kammich.models.shared.device.RemovableDevice
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.batchInsert
-import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertIgnoreAndGetId
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.slf4j.LoggerFactory
@@ -27,12 +33,14 @@ import org.springframework.stereotype.Component
 import java.io.File
 import java.time.Instant
 import java.time.ZonedDateTime
+import java.util.UUID
+import kotlin.getOrDefault
 
 @Component
 class FileRepository(
     private val configService: ConfigService,
     private val eventPublisher: ApplicationEventPublisher,
-
+    private val immichUserContext: ImmichUserContext
 ) {
     private val log = LoggerFactory.getLogger(FileRepository::class.java)
 
@@ -67,7 +75,7 @@ class FileRepository(
         return files.filterNot { it.name in existing }
     }
 
-    fun isFileImported(deviceId: Int, fileName: String, fileSize: Long): Boolean {
+    fun isFileImported(deviceId: Long, fileName: String, fileSize: Long): Boolean {
         return withTransaction {
             ImportedFilesTable
                 .selectAll().where {
@@ -79,7 +87,7 @@ class FileRepository(
         }.getOrNull() ?: false
     }
 
-    fun saveFiles(deviceId: Int, files: List<Pair<File, ZonedDateTime>>): Boolean {
+    fun saveFiles(deviceId: Long, files: List<Pair<File, ZonedDateTime>>): Boolean {
         return withTransaction {
             ImportedFilesTable.batchInsert(files) {
                 this[ImportedFilesTable.deviceId] = deviceId
@@ -92,10 +100,11 @@ class FileRepository(
         }.isSuccess
     }
 
-    fun saveFile(deviceId: Int, file: File, importedAt: ZonedDateTime, hash: FileHash) {
-        withTransaction {
-            ImportedFilesTable.insert {
+    fun saveFile(deviceId: Long, file: File, importedAt: ZonedDateTime, hash: FileHash, importJob: UUID): PersistedImportedFile? {
+        return withTransaction {
+            val id = ImportedFilesTable.insertIgnoreAndGetId {
                 it[this.deviceId] = deviceId // Her bruker du ID fra DB
+                it[this.importJob] = importJob.toString()
                 it[this.fileName] = file.name
                 it[this.fileType] = file.getFileType()
                 it[this.fileSize] = file.length()
@@ -103,10 +112,78 @@ class FileRepository(
                 it[this.checksum] = hash.hash
                 it[this.checksumType] = hash.method.name
                 it[this.importedAt] = importedAt.toString()
-            }
-        }
+            }?.value ?: return@withTransaction null
+
+            PersistedImportedFile(
+                id = id,
+                deviceId = deviceId,
+                fileName = file.name,
+                fileType = file.getFileType(),
+                fileSize = file.length(),
+                extension = file.extension,
+                checksum = hash.hash,
+                checksumType = hash.method.name,
+                importedAt = importedAt.toString(),
+                importJob = importJob,
+            )
+        }.getOrNull()
     }
 
+
+    fun getImportHistorySummary(): List<DeviceImportJobSummary> {
+        // 1. Hent alle enheter slik at vi har navn, serialNumber osv.
+        val devices = DevicesTable.getDevices().associateBy { it.id }
+        val userId = immichUserContext.getCurrentUserId()
+
+        return withTransaction {
+            val files = ImportedFilesTable.selectAll().map { it.toPersisted() }
+
+            // Hent eiere for import-jobber for å slippe N+1
+            val jobOwners = ImportJobOwnerTable.selectAll()
+                .map { it.toPersistedJobOwner() }
+                .associate { it.jobId to it.immichUserId }
+
+            // 2. Gruppér filene først på deviceId
+            files.groupBy { it.deviceId }
+                .mapNotNull { (dbDeviceId, deviceFiles) ->
+                    val device = devices[dbDeviceId] ?: return@mapNotNull null
+
+                    // 3. Internt per enhet: Gruppér på importJob
+                    val jobSummaries = deviceFiles.groupBy { it.importJob }
+                        .mapNotNull { (jobId, jobFiles) ->
+                            ImportJobSummary(
+                                jobId = jobId.toString(),
+                                totalFiles = jobFiles.size,
+                                completedFiles = jobFiles.size, // Eller tilpass logikk basert på state
+                                claimable = userId != null && jobOwners[jobId] == null,
+                                claimedBy = jobOwners[jobId]?.toString()
+                            )
+                        }
+
+                    // Finn tidspunktet for den første filen på enheten
+                    val firstImportedAt = deviceFiles.minOfOrNull {
+                        runCatching { Instant.parse(it.importedAt) }.getOrNull() ?: Instant.now()
+                    } ?: Instant.now()
+
+                    DeviceImportJobSummary(
+                        deviceId = device.serialNumber,
+                        deviceName = device.name.ifBlank { device.model ?: device.serialNumber },
+                        started = firstImportedAt,
+                        jobs = jobSummaries
+                    )
+                }
+        }.getOrDefault(emptyList())
+    }
+
+    fun getImportJobFileHistory(importJobId: UUID): List<String> {
+        return withTransaction {
+            ImportedFilesTable.getWhere {
+                ImportedFilesTable.importJob eq importJobId.toString()
+            }.map {
+                it.fileName
+            }
+        }.getOrDefault(emptyList())
+    }
 
 
     fun getImportHistory(): List<DeviceImport> {
@@ -145,6 +222,24 @@ class FileRepository(
                     currentFileName = null,
                     files = sharedFiles
                 )
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun getFilesByJobId(jobId: String): List<PersistedImportedFile> {
+        return withTransaction {
+            ImportedFilesTable.getWhere {
+                ImportedFilesTable.importJob eq jobId
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun getFilesByDeviceSn(deviceSn: String): List<PersistedImportedFile> {
+        val deviceId = DevicesTable.getDeviceId(deviceSn) ?:
+            throw IllegalStateException("Could not find device with sn: $deviceSn")
+        return withTransaction {
+            ImportedFilesTable.getWhere {
+                ImportedFilesTable.deviceId eq deviceId
             }
         }.getOrDefault(emptyList())
     }

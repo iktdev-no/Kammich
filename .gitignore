@@ -38,3 +38,5 @@ out/
 
 ### Kotlin ###
 .kotlin
+/kammich.db
+/kammich.json

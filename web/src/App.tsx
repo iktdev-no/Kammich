@@ -12,6 +12,8 @@ import Device from './routes/devices/Device';
 import Immich from './routes/Immich';
 import ImmichAccess from './routes/immich/ImmichAccess';
 import ImmichLogin from './components/immich/ImmichLogin';
+import { Album } from './routes/Album';
+import ImportOwnership from './routes/ImportOwnership';
 
 const router = createBrowserRouter([
   {
@@ -22,9 +24,11 @@ const router = createBrowserRouter([
       { path: "photo/:sn", element: <Photo /> },
       { path: 'devices/:sn/*', element: <Device /> },
       { path: 'devices', element: <Devices /> },
+      { path: 'album', element: <Album /> },
       { path: 'upload', element: <Upload /> },
       { path: 'import', element: <Import /> },
       { path: 'settings', element: <Settings /> },
+      { path: 'ownership', element: <ImportOwnership /> },
       { path: 'settings/networking', element: <Networking /> },
       { path: 'settings/wifi', element: <WifiSettings /> },
       { path: 'settings/ap', element: <WifiApSettings /> },

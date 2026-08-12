@@ -3,7 +3,7 @@ package no.iktdev.kammich.system
 import jakarta.annotation.PostConstruct
 import no.iktdev.kammich.models.internal.SysPathReady
 import no.iktdev.kammich.models.internal.SysPathRemoved
-import no.iktdev.kammich.models.internal.UdevEvent
+import no.iktdev.kammich.models.internal.events.UdevEvent
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service

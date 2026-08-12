@@ -1,9 +1,7 @@
 package no.iktdev.kammich.controller
 
 import no.iktdev.kammich.models.shared.network.WifiNetwork
-import no.iktdev.kammich.models.shared.network.WifiNetworkConnection
 import no.iktdev.kammich.models.shared.network.WirelessInterface
-import no.iktdev.kammich.models.shared.network.old.WifiConnectionResult
 import no.iktdev.kammich.system.network.wifi.WifiConnectivityService
 import no.iktdev.kammich.system.network.wifi.WifiScanner
 import org.springframework.http.HttpStatus
@@ -16,11 +14,6 @@ class WifiClientController(
     private val wifiScanner: WifiScanner,
     private val wifiConnector: WifiConnectivityService,
 ) {
-    @GetMapping("/state")
-    fun getState(): List<WifiNetworkConnection> {
-        return wifiConnector.getCurrentState()
-    }
-
 
     @GetMapping("/interfaces")
     fun getInterfaces(): List<WirelessInterface> {

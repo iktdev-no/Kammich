@@ -3,7 +3,7 @@ import { Box, Typography, CircularProgress, keyframes, useTheme, useMediaQuery, 
 import CloseIcon from '@mui/icons-material/Close';
 import { useParams } from 'react-router-dom';
 import type { RemoteFile } from "../types/types";
-import { getPhotos, getPhotoThumbUrl, getPhotoUrl } from "../api/photo";
+import { getPhotos, getPhotoThumbUrl, getPhotoUrl } from "../api/requests/photo";
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(8px); }

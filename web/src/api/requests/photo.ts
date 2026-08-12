@@ -1,5 +1,5 @@
-import type { PagedResponse, PhotoDevice, RemoteFile } from "../types/types";
-import { apiGet } from "./client";
+import type { PagedResponse, PhotoDevice, RemoteFile } from "../../types/types";
+import { apiGet } from "../client";
 
 export function getPhotos(page: number, size: number, sn?: string) {
     const endpoint = sn ? `/v1/photo/${sn}` : `/v1/photo`;

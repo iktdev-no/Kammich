@@ -7,6 +7,7 @@ interface IKammichConfig {
     val mediaPath: String?
     val cachePath: String?
     val apiAuth: ImmichAuth?
+    val autoClaimImportsWhenSingleUser: Boolean?
     val assignUnknownDeviceAsBlockDevice: Boolean?
     val autoImportCameraByDefault: Boolean?
     val deviceSettings: MutableMap<String, DeviceSettings>?
@@ -18,6 +19,7 @@ data class RuntimeKammichConfig(
     override val mediaPath: String = "/var/lib/kammich/storage/media",
     override val cachePath: String = "/var/lib/kammich/storage/cache",
     override val apiAuth: ImmichAuth? = null,
+    override val autoClaimImportsWhenSingleUser: Boolean = true,
     override val assignUnknownDeviceAsBlockDevice: Boolean = false,
     override val autoImportCameraByDefault: Boolean = true,
     override val deviceSettings: MutableMap<String, DeviceSettings> = mutableMapOf(),
@@ -52,6 +54,7 @@ data class StoredKammichConfig(
     override val deviceSettings: MutableMap<String, DeviceSettings>?,
     override val tetherSetting: WifiTetherAP?,
     override val selectedWirelessTetherInterface: SelectedWirelessTetherInterface?,
+    override val autoClaimImportsWhenSingleUser: Boolean?,
 ):  IKammichConfig
 
 data class SelectedWirelessTetherInterface(

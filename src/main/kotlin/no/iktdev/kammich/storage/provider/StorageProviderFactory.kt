@@ -14,7 +14,7 @@ class StorageProviderFactory(
         return when (device) {
             is GPhoto2Device -> gPhoto2StorageProvider
             is BlockDevice -> blockStorageProvider
-            else -> throw IllegalArgumentException("Ingen provider for ${device.type}")
+            else -> throw IllegalArgumentException("Ingen provider for ${device.interfaceType}")
         }
     }
 }

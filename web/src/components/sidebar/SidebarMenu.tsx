@@ -15,6 +15,9 @@ import CameraIcon from '@mui/icons-material/Camera';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiTetheringIcon from '@mui/icons-material/WifiTethering';
 import CellTowerRoundedIcon from '@mui/icons-material/CellTowerRounded';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
+import PhotoAlbumIcon from '@mui/icons-material/PhotoAlbum';
 import SdStorageOutlinedIcon from '@mui/icons-material/SdStorageOutlined';
 import CableIcon from '@mui/icons-material/Cable';
 import type { SidebarItem } from "./SidebarItemTypes";
@@ -24,10 +27,11 @@ import TapAndPlayIcon from '@mui/icons-material/TapAndPlay';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PublicIcon from '@mui/icons-material/Public';
 import ImportIcon from '@mui/icons-material/SystemUpdateAlt';
-import { getPhotoDevices } from "../../api/photo";
+import { getPhotoDevices } from "../../api/requests/photo";
 import type { ImmichUserAccesses, PhotoDevice } from "../../types/types";
 import ImmichIcon from "../icons/ImmichIcon";
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
 
 export interface SidebarMenuProps {
     width: number;
@@ -61,13 +65,18 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
     const mainMenuItems: SidebarItem[] = useMemo(() => [
         {
             label: "Photos",
-            icon: PhotoLibraryOutlinedIcon,
+            icon: PhotoLibraryIcon,
             to: "/",
             children: photoDevices.map(d => ({
                 label: d.model ?? d.name,
-                icon: PhotoLibraryOutlinedIcon,
+                icon: PhotoLibraryIcon,
                 to: `/photo/${d.serialNumber}`,
             })),
+        },
+        {
+            label: "Album",
+            icon: PhotoAlbumIcon,
+            to: "/album"
         },
         {
             label: "Devices",
@@ -75,12 +84,24 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             to: "/devices",
             children: devices.map(d => ({
                 label: d.model ?? d.name,
-                icon: (d.type !== "BLOCK") ? CameraAltOutlinedIcon : SdStorageOutlinedIcon,
+                icon: (d.interfaceType !== "BLOCK") ? PhotoCameraIcon : SdStorageOutlinedIcon,
                 to: `/devices/${d.id}`,
             })),
         },
-        { label: "Import", icon: ImportIcon, to: "/import" },
+        {
+            label: "Import",
+            icon: ImportIcon,
+            to: "/import",
+            children: [
+                {
+                    label: "Ownership",
+                    icon: SupervisedUserCircleIcon,
+                    to: "/ownership"
+                }
+            ]
+        },
         { label: "Upload", icon: CloudUploadOutlinedIcon, to: "/upload" },
+
         {
             label: "Settings",
             icon: SettingsIcon,

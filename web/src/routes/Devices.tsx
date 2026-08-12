@@ -11,18 +11,18 @@ export default function Devices() {
     const devices = useSseSelector(state => state.devices);
 
     const getPath = (d: RemovableDevice) => {
-        if (d.type === "BLOCK") {
+        if (d.interfaceType === "BLOCK") {
             // TypeScript vet nå at 'd' har mountPoint/devicePath
             return (d as BlockDevice).mountPoint || "Not mounted";
         }
-        if (d.type === "MTP" || d.type === "PTP") {
+        if (d.interfaceType === "MTP" || d.interfaceType === "PTP") {
             return (d as GPhoto2Device).port;
         }
         return "Unknown path";
     };
 
     const getDeviceDetails = (d: RemovableDevice) => {
-        switch (d.type) {
+        switch (d.interfaceType) {
             case "BLOCK":
                 return { icon: <SdStorageOutlinedIcon />, label: "Disk", color: "secondary" as const };
             case "MTP":
@@ -57,8 +57,8 @@ export default function Devices() {
                                     </Stack>
                                     <Box sx={{ mt: 2 }}>
                                         <Chip
-                                            label={d.type === "BLOCK" && !(d as BlockDevice).mountPoint ? "Unmounted" : "Ready"}
-                                            color={d.type === "BLOCK" && !(d as BlockDevice).mountPoint ? "default" : "success"}
+                                            label={d.interfaceType === "BLOCK" && !(d as BlockDevice).mountPoint ? "Unmounted" : "Ready"}
+                                            color={d.interfaceType === "BLOCK" && !(d as BlockDevice).mountPoint ? "default" : "success"}
                                             size="small"
                                         />
                                         <Chip

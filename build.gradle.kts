@@ -46,6 +46,7 @@ dependencies {
 	implementation("org.xerial:sqlite-jdbc:3.45.1.0")
 	implementation("com.zaxxer:HikariCP:7.0.2")
 
+	implementation("com.drewnoakes:metadata-extractor:2.19.0")
 	// SLF4J for logging (Exposed og Flyway trenger en logger)
 
 	// Exposed

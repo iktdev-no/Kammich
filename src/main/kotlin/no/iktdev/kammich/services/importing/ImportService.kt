@@ -1,4 +1,4 @@
-package no.iktdev.kammich.importing
+package no.iktdev.kammich.services.importing
 
 import kotlinx.coroutines.*
 import no.iktdev.kammich.ConfigService
@@ -6,8 +6,9 @@ import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.errorNotification
 import no.iktdev.kammich.infoNotification
-import no.iktdev.kammich.models.internal.DeviceReadyEvent
+import no.iktdev.kammich.models.internal.events.DeviceReadyEvent
 import no.iktdev.kammich.models.internal.KFile
+import no.iktdev.kammich.models.internal.events.ImportJobCompletedEvent
 import no.iktdev.kammich.models.shared.DeviceImport
 import no.iktdev.kammich.models.shared.DeviceImportSummary
 import no.iktdev.kammich.models.internal.ImportFile as InternalImportFile
@@ -28,13 +29,14 @@ import no.iktdev.kammich.warningNotification
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Service
 import java.nio.file.Path
 import java.time.Instant
 import java.time.ZonedDateTime
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration.Companion.milliseconds
 
 
 @Service
@@ -55,6 +57,7 @@ class ImportService(
     private val importDeviceNameMap = ConcurrentHashMap<String, String>()
     private val importList = ConcurrentHashMap<String, List<InternalImportFile>>()
 
+    @Order(999)
     @EventListener
     fun onDeviceReady(event: DeviceReadyEvent) {
         val device = event.device
@@ -70,7 +73,14 @@ class ImportService(
             log.debug("Device {} not allowed to import {}", device.id, device.sysPath)
             return
         }
-        indexDevice(device)
+
+        // Start coroutinen og lagre jobben umiddelbart i activeImportJobs
+        // slik at kansellering fungerer under hele prosessen (inkludert indeks-fasen).
+        val job = importScope.launch {
+            indexDevice(device)
+        }
+
+        activeImportJobs[device.id] = job
     }
 
     fun getAllActiveImports(): List<DeviceImport> {
@@ -105,7 +115,7 @@ class ImportService(
     fun isAllowedToImport(deviceId: String) =
         deviceManager.getSettings(deviceId).autoImport == true
 
-    fun indexDevice(device: RemovableDevice) {
+    suspend fun indexDevice(device: RemovableDevice) {
         val deviceIdStr = device.id
         log.info("Starting indexing for device ${device.name}")
 
@@ -141,7 +151,7 @@ class ImportService(
         startImportForDevice(device, filesToImport)
     }
 
-    private fun getDeviceIdToImport(device: RemovableDevice): Int? {
+    private fun getDeviceIdToImport(device: RemovableDevice): Long? {
         return DevicesTable.getDeviceId(device.id) ?: run {
             eventPublisher.warningNotification("ImportService-Device-not-present-${device.id}",
                 "Device ${device.id} missing",
@@ -231,7 +241,8 @@ class ImportService(
         sseManager.send(SSEImportState(summaries))
     }
 
-    fun startImportForDevice(device: RemovableDevice, files: List<KFile>) {
+    suspend fun startImportForDevice(device: RemovableDevice, files: List<KFile>) {
+        val importJobId = UUID.randomUUID()
         val storage = fileRepository.getStorageLocationForImport(device) ?: return
         val dbId = getDeviceIdToImport(device) ?: return
         val provider = providerFactory.getProvider(device)
@@ -242,52 +253,54 @@ class ImportService(
         // Går over fra Indexing til Importing her ved å kalle uten parameter (isIndexing blir false)
         broadcastDeviceState()
 
-        val job = importScope.launch {
-            try {
-                files.forEach { file ->
-                    ensureActive()
 
-                    updateFileState(deviceIdStr, file.id, FileImportState.InProgress)
 
-                    val imported = try {
-                        provider.copyFile(device, storage, file)
-                    } catch (e: DeviceUnavailableException) {
-                        updateFileState(deviceIdStr, file.id, FileImportState.Failure)
-                        log.error("Kamera utilgjengelig under kopiering av fil {}. Avbryter hele importen.", file, e)
-                        throw e
-                    } catch (e: Exception) {
-                        log.error("Feil ved kopiering av fil {}, fortsetter med neste.", file, e)
-                        null
-                    }
+        try {
+            files.forEach { file ->
+                currentCoroutineContext().ensureActive()
 
-                    if (imported != null) {
-                        try {
-                            val hash = imported.toXxHash()
-                            fileRepository.saveFile(dbId, imported, ZonedDateTime.now(), hash)
+                updateFileState(deviceIdStr, file.id, FileImportState.InProgress)
+
+                val imported = try {
+                    provider.copyFile(device, storage, file)
+                } catch (e: DeviceUnavailableException) {
+                    updateFileState(deviceIdStr, file.id, FileImportState.Failure)
+                    log.error("Kamera utilgjengelig under kopiering av fil {}. Avbryter hele importen.", file, e)
+                    throw e
+                } catch (e: Exception) {
+                    log.error("Feil ved kopiering av fil {}, fortsetter med neste.", file, e)
+                    null
+                }
+
+                if (imported != null) {
+                    try {
+                        val hash = imported.toXxHash()
+                        val persistedFile = fileRepository.saveFile(dbId, imported, ZonedDateTime.now(), hash, importJobId)
+                        if (persistedFile != null) {
                             updateFileState(deviceIdStr, file.id, FileImportState.Success)
-                        } catch (e: Exception) {
-                            log.error("Failed to save file {} to database", imported, e)
+                        } else {
                             updateFileState(deviceIdStr, file.id, FileImportState.Failure)
                         }
-                    } else {
+                    } catch (e: Exception) {
+                        log.error("Failed to save file {} to database", imported, e)
                         updateFileState(deviceIdStr, file.id, FileImportState.Failure)
                     }
+                } else {
+                    updateFileState(deviceIdStr, file.id, FileImportState.Failure)
                 }
-            } catch (e: DeviceUnavailableException) {
-                eventPublisher.errorNotification("ImportService-Disconnected-${device.id}", "${device.model} frakoblet", e.message ?: e.localizedMessage)
-                throw e
-            } catch (e: CancellationException) {
-                log.info("Import job ble avbrutt for enhet {}", deviceIdStr)
-                throw e
-            } catch (e: Exception) {
-                log.error("Uventet feil under import-loop for enhet {}", deviceIdStr, e)
-            } finally {
-                activeImportJobs.remove(deviceIdStr)
-                finishImport(deviceIdStr)
             }
+        } catch (e: DeviceUnavailableException) {
+            eventPublisher.errorNotification("ImportService-Disconnected-${device.id}", "${device.model} frakoblet", e.message ?: e.localizedMessage)
+            throw e
+        } catch (e: CancellationException) {
+            log.info("Import job ble avbrutt for enhet {}", deviceIdStr)
+            throw e
+        } catch (e: Exception) {
+            log.error("Uventet feil under import-loop for enhet {}", deviceIdStr, e)
+        } finally {
+            activeImportJobs.remove(deviceIdStr)
+            finishImport(deviceIdStr, importJobId)
         }
-
-        activeImportJobs[deviceIdStr] = job
     }
 
     fun cancelAllImports() {
@@ -312,7 +325,7 @@ class ImportService(
         log.warn("Kansellerte import for enhet {}", deviceIdStr)
     }
 
-    private fun finishImport(deviceIdStr: String) {
+    private fun finishImport(deviceIdStr: String, importJobId: UUID? = null) {
         val finalFiles = importList[deviceIdStr] ?: emptyList()
         val successCount = finalFiles.count { it.state == FileImportState.Success }
         val failedFiles = finalFiles.filter { it.state == FileImportState.Failure }
@@ -320,11 +333,9 @@ class ImportService(
 
         broadcastDeviceState(ImportState.Completed)
 
-
         importList.remove(deviceIdStr)
         importStartedMap.remove(deviceIdStr)
         importDeviceNameMap.remove(deviceIdStr)
-
 
         if (successCount > 0) {
             eventPublisher.infoNotification(
@@ -333,6 +344,9 @@ class ImportService(
                 "Importerte $successCount filer fra enhet $deviceIdStr. ${if (failCount > 0) "($failCount feilet)" else ""}"
             )
             log.info("Import fullført for $deviceIdStr: $successCount suksesser, $failCount feil.")
+            importJobId?.let { jobId ->
+                eventPublisher.publishEvent(ImportJobCompletedEvent(jobId, deviceIdStr))
+            }
         } else if (finalFiles.isNotEmpty()) {
             eventPublisher.warningNotification(
                 "ImportService-Failed-$deviceIdStr",
@@ -340,5 +354,8 @@ class ImportService(
                 "Ingen filer ble importert. $failCount feilet."
             )
         }
+
+
+
     }
 }

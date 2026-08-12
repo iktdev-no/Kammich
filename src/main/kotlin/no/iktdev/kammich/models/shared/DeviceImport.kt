@@ -12,6 +12,23 @@ data class DeviceImport(
     val files: List<ImportFile>
 )
 
+data class ImportJobSummary(
+    val jobId: String,
+    val totalFiles: Int,
+    val completedFiles: Int,
+    val claimable: Boolean = false,
+    val claimedBy: String? = null // Evt. boolean isClaimed
+)
+
+data class DeviceImportJobSummary(
+    val deviceId: String,       // Serienummer eller ID
+    val deviceName: String,
+    val started: Instant,
+    val jobs: List<ImportJobSummary>,
+    val claimable: Boolean = false,
+    val claimedBy: String? = null // Evt. boolean isClaimed
+)
+
 
 
 data class ImportFile(

@@ -1,5 +1,5 @@
-import type { DeviceInfo, DeviceSettingsDto, WFile } from "../types/types";
-import { apiGet, apiPatch } from "./client";
+import type { DeviceInfo, DeviceSettingsDto, WFile } from "../../types/types";
+import { apiGet, apiPatch } from "../client";
 
 export function getFiles(port: string, path: string) {
     return apiGet<WFile[]>(`/v1/camera/${port}/files/${path}`);

@@ -36,6 +36,7 @@ import javax.management.Query.and
 class ImmichService(
     private val immichClientFactory: ImmichClientFactory,
     private val immichVerificationService: ImmichVerificationService,
+    private val immichUserContext: ImmichUserContext,
     private val sseManager: SseManager
 ) {
 
@@ -75,7 +76,7 @@ class ImmichService(
                 storeUserAndApiKey(loginResult.userId, url, apiKeyResponse, immichClient)
 
                 val me = immichClient.meByApiKey(apiKeyResponse.secret)
-                sseManager.send(SSEImmichUser(me))
+                immichUserContext.setCurrentUser(me)
                 sseManager.send(SSEImmichApiKeyInUse(apiKeyResponse.apiKey))
                 return me
 
@@ -170,6 +171,13 @@ class ImmichService(
                         servers = servers
                     )
                 }
+        }.getOrDefault(emptyList())
+    }
+
+    fun getAllUsers(): List<ImmichUserMe> {
+        return withTransaction {
+            ImmichUsersTable.selectAll().map { it.toPersistedImmichUser() }
+                .map { gson.fromJson(it.data, ImmichUserMe::class.java) }
         }.getOrDefault(emptyList())
     }
 

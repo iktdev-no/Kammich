@@ -42,7 +42,7 @@ class PhotoService(
 
     }
 
-    override fun getFile(deviceId: Int, filename: String): FileSystemResource {
+    override fun getFile(deviceId: Long, filename: String): FileSystemResource {
         // 1. Hent serialnummer fra DB
         val serial =  withTransaction {
             DevicesTable.select(DevicesTable.serialNumber)
@@ -63,7 +63,7 @@ class PhotoService(
         return FileSystemResource(file)
     }
 
-    fun getThumbFile(deviceId: Int, filename: String): FileSystemResource {
+    fun getThumbFile(deviceId: Long, filename: String): FileSystemResource {
         // 1. Hent serialnummer fra DB
         val serial = withTransaction {
             DevicesTable.select(DevicesTable.serialNumber)

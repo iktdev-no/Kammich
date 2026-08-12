@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-08-10T22:49:53.661705628Z
+// Time: 2026-08-12T21:55:14.416081151Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -16,6 +16,23 @@ export interface ImportProgressEvent {
   files: ImportFile[];
   state: FileImportState;
   totalFiles: number;
+}
+
+export interface DeviceImportJobSummary {
+  claimable: boolean;
+  claimedBy: string | null;
+  deviceId: string;
+  deviceName: string;
+  jobs: ImportJobSummary[];
+  started: string;
+}
+
+export interface AlbumUpdateRequest {
+  albumName: string | null;
+  description: string | null;
+  endDate: string | null;
+  startDate: string | null;
+  use: boolean | null;
 }
 
 export type NotificationType = "Alert"
@@ -41,9 +58,21 @@ export interface WFile {
   uploaded: boolean;
 }
 
-export type DeviceType = "BLOCK" | "PTP" | "MTP" | "NETWORK" | "AUDIO" | "UNKNOWN"
+export type DeviceType = "PhysicalStorageDevice" | "Camera" | "Phone" | "Unknown"
 
 export type Capability = "CAPTURE" | "DELETE" | "UPLOAD" | "PREVIEW" | "CONFIGURE"
+
+
+export type DeviceInterfaceType = "BLOCK" | "PTP" | "MTP" | "NETWORK" | "AUDIO" | "UNKNOWN"
+
+export interface StoredDeviceInfo {
+  deviceName: string;
+  deviceType: DeviceType;
+  lastSeen: string;
+  manufacturer: string | null;
+  model: string | null;
+  serialNumber: string;
+}
 
 export interface BlockDevice extends RemovableDevice {
   devicePath: string;
@@ -59,12 +88,22 @@ export interface DeviceInfo {
   manufacturer: string | null;
   model: string | null;
   storage: DeviceStorageStats[];
-  type: DeviceType;
+  type: DeviceInterfaceType;
 }
 
 export interface GPhoto2Device extends RemovableDevice {
   port: string;
   storage: GPhoto2StorageDevice[];
+}
+
+export interface DeviceOwnershipSummary {
+  claimable: boolean;
+  claimedBy: string | null;
+  deviceId: string;
+  deviceType: DeviceType;
+  manufacturer: string | null;
+  model: string | null;
+  name: string;
 }
 
 export interface DeviceStorageStats {
@@ -75,14 +114,15 @@ export interface DeviceStorageStats {
 }
 
 export interface RemovableDevice {
+  deviceType: DeviceType;
   id: string;
+  interfaceType: DeviceInterfaceType;
   isReady: boolean;
   manufacturer: string;
   model: string;
   name: string;
   sn: string;
   sysPath: string;
-  type: DeviceType;
 }
 
 export interface PhotoDevice {
@@ -90,6 +130,14 @@ export interface PhotoDevice {
   model: string | null;
   name: string;
   serialNumber: string;
+}
+
+export interface ImportJobOwnershipSummary {
+  claimable: boolean;
+  claimedBy: string | null;
+  deviceId: string;
+  jobId: string;
+  totalFiles: number;
 }
 
 export type Severity = "Info" | "Warning" | "Error"
@@ -100,11 +148,26 @@ export interface ImportFile {
   state: FileImportState;
 }
 
+export interface ImportJobSummary {
+  claimable: boolean;
+  claimedBy: string | null;
+  completedFiles: number;
+  jobId: string;
+  totalFiles: number;
+}
+
 export type FileImportState = "Pending" | "InProgress" | "Success" | "Failure"
 
 export type WFileType = "FILE" | "DIRECTORY"
 
 export type ImportState = "Indexing" | "Importing" | "Completed" | "Canceled"
+
+export interface AlbumCreateRequest {
+  albumName: string;
+  description: string | null;
+  endDate: string | null;
+  startDate: string | null;
+}
 
 export interface WirelessNetworkSearch {
   lastSearched: string;
@@ -119,6 +182,8 @@ export interface NetworkInterface {
 }
 
 export type NetworkInterfaceType = "Ethernet" | "Wifi"
+
+export type WifiNetworkConnectionError = "WrongPassword"
 
 export interface WifiTetherAP {
   password: string;
@@ -140,6 +205,7 @@ export interface WifiNetworkInterface {
 }
 
 export interface WifiNetworkConnection extends WifiNetworkInterface {
+  error: WifiNetworkConnectionError | null;
   network: WifiNetwork | null;
   state: InterfaceActiveState;
 }
@@ -211,6 +277,18 @@ export interface RemoteFile {
   fileName: string;
   id: number;
   uploaded: boolean;
+}
+
+export interface Album {
+  createdAt: string;
+  description: string | null;
+  endDate: string | null;
+  id: number;
+  sampleFile: RemoteFile | null;
+  startDate: string | null;
+  title: string;
+  totalFiles: number;
+  use: boolean;
 }
 
 export interface DiskHealth {
@@ -415,6 +493,11 @@ export interface ImmichServerAccess {
   keyId: string;
   keyName: string;
   serverUrl: string;
+}
+
+export interface DeviceClaim {
+  claimedByUserId: string;
+  deviceSN: string;
 }
 
 export interface DeviceImport {

@@ -1,5 +1,5 @@
-import type { ImmichLoginRequest, ImmichUserAccesses, ImmichUserMe } from "../types/types";
-import { apiDelete, apiGet, apiPost } from "./client";
+import type { ImmichLoginRequest, ImmichUserAccesses, ImmichUserMe } from "../../types/types";
+import { apiDelete, apiGet, apiPost } from "../client";
 
 export function immichLoginNormalFLow(loginRequest: ImmichLoginRequest) {
     return apiPost<ImmichLoginRequest, ImmichUserMe>(`/v1/immich/login`, loginRequest)
