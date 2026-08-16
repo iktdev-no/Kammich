@@ -31,7 +31,7 @@ function NetworkCard({ iface }: { iface: NetworkInterface }) {
     return (
         <Card sx={{ borderRadius: 3, boxShadow: 2, transition: '0.3s', '&:hover': { boxShadow: 6 } }}>
             <CardContent>
-                <Stack direction="row" alignItems="center" spacing={2}>
+                <Stack direction="row" sx={{ alignItems: "center" }} spacing={2}>
                     <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: isWifi ? '#e3f2fd' : '#f5f5f5' }}>
                         {isWifi ? <WifiIcon color="primary" /> : <EthernetIcon color="action" />}
                     </Box>
@@ -47,7 +47,7 @@ function NetworkCard({ iface }: { iface: NetworkInterface }) {
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                             Kapasiteter:
                         </Typography>
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
+                        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
                             {(iface as WirelessNetworkInterface).caps?.map(cap => (
                                 <Chip key={cap} label={cap} size="small" color="primary" sx={{ mb: 0.5 }} />
                             ))}

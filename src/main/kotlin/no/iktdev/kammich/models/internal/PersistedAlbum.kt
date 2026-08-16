@@ -13,6 +13,7 @@ data class PersistedAlbum(
     val startDate: Instant? = null,
     val endDate: Instant? = null,
     val use: Boolean = false,
+    val immichAlbumId: UUID? = null,
     val createdAt: Instant,
 ) {
     fun toAlbum(fileCount: Long, sampleFile: RemoteFile? = null): Album {

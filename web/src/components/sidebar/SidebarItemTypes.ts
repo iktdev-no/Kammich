@@ -7,4 +7,7 @@ export interface SidebarItem {
   action?: () => void;
   children?: SidebarItem[];
   sx?: SxProps<Theme>;
+  color?: string;
+  activeColor?: "primary" | "secondary";
+
 }

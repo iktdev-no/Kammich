@@ -1,4 +1,20 @@
-import type { RemovableDevice, MediaStats, Notification, StorageInfo, WifiNetworkTether, WifiNetworkConnection, WifiNetworkScan, ImportProgressEvent, DeviceImportSummary, ImmichUserMe, ImmichApiKeyPostResponseDto, ImmichAvailability } from "../types/types";
+import type {
+  RemovableDevice,
+  MediaStats,
+  Notification,
+  StorageInfo,
+  ImportProgressEvent,
+  DeviceImportSummary,
+  ImmichUserMe,
+  ImmichApiKeyPostResponseDto,
+  ImmichAvailability,
+  WifiScanStatus,
+  WifiScanResult,
+  WifiConnection,
+  WifiInterfaceClient,
+  WifiTether,
+  WifiInterfaceTether,
+} from "../types/types";
 
 export interface SseState {
   lastPing?: number;
@@ -7,14 +23,16 @@ export interface SseState {
   syncRunning: boolean;
   devices: Array<RemovableDevice>;
   internalStorageInfo: Array<StorageInfo>;
-  internalMediaStats: MediaStats | undefined
+  internalMediaStats: MediaStats | undefined;
   connectionStatus: "online" | "connecting" | "offline";
 
-
-  wifiScans: Array<WifiNetworkScan>
-  wifiConnections: Array<WifiNetworkConnection>
-  wifiTether: WifiNetworkTether | undefined
-  wifiTetherDevice: undefined | WifiNetworkTether
+  // WiFi strukturert per interface (Record<ifName, data>)
+  wifiScanStatuses: Record<string, WifiScanStatus>;
+  wifiScanResults: Record<string, WifiScanResult>;
+  wifiConnection: Record<string, WifiConnection>;
+  wifiConnectionInterfaces: Array<WifiInterfaceClient>;
+  wifiTether: Record<string, WifiTether>;
+  wifiTetherInterfaces: Array<WifiInterfaceTether>;
 
   importDevices: Record<string, DeviceImportSummary>;
   activeMediaImports: Record<string, ImportProgressEvent>;
@@ -32,10 +50,14 @@ export const initialSseState: SseState = {
   connectionStatus: "connecting",
   internalStorageInfo: [],
   internalMediaStats: undefined,
-  wifiScans: [],
-  wifiConnections: [],
-  wifiTether: undefined,
-  wifiTetherDevice: undefined,
+  wifiScanStatuses: {},
+  wifiScanResults: {},
+
+  wifiConnection: {},
+  wifiConnectionInterfaces: [],
+  wifiTether: {},
+  wifiTetherInterfaces: [],
+
   importDevices: {},
   activeMediaImports: {},
 

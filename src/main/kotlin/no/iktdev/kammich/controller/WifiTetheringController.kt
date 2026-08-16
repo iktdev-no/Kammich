@@ -1,9 +1,8 @@
 package no.iktdev.kammich.controller
 
-import no.iktdev.kammich.models.shared.network.WifiNetworkTether
-import no.iktdev.kammich.models.shared.network.WirelessInterface
+import no.iktdev.kammich.models.shared.network.WifiInterfaceTether
 import no.iktdev.kammich.models.shared.network.WifiTetherAP
-import no.iktdev.kammich.system.network.wifi.WifiTetherService
+import no.iktdev.kammich.system.network.WifiTetherServiceV2
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -15,38 +14,32 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1/wifi/tethering")
 class WifiTetheringController(
-    private val wifiTethering: WifiTetherService,
+    private val wifiTethering: WifiTetherServiceV2,
 ) {
 
-    @GetMapping("/state")
-    fun getState(): List<WifiNetworkTether> {
+    @GetMapping("", "/")
+    fun getState(): List<WifiInterfaceTether> {
         return wifiTethering.getCurrentState()
     }
 
-    @GetMapping("/interfaces")
-    fun getInterfaces(): List<WirelessInterface> {
-        return wifiTethering.getWifiTetheringInterfaces()
-    }
-
-
     @PostMapping("/start/{interfaceName}")
     fun startTethering(@PathVariable interfaceName: String) {
-        return wifiTethering.startTethering(interfaceName)
+        return wifiTethering.startTetheringAsync(interfaceName)
     }
 
     @PostMapping("/stop/{interfaceName}")
     fun stopTethering(@PathVariable interfaceName: String) {
-        return wifiTethering.stopTethering(interfaceName)
+        wifiTethering.stopTethering(interfaceName)
     }
 
-    @DeleteMapping("/remove")
-    fun removeTethering(@RequestBody interfaceName: String) {
-        return wifiTethering.removeTetherDevice(interfaceName)
+    @DeleteMapping("/release")
+    fun releaseTetheringDevice(@RequestBody interfaceName: String): Boolean {
+        return wifiTethering.releaseTetherDevice(interfaceName)
     }
 
-    @PostMapping("/add")
-    fun addTethering(@RequestBody interfaceName: String) {
-        return wifiTethering.saveTetherDevice(interfaceName)
+    @PostMapping("/use")
+    fun useTetherDevice(@RequestBody interfaceName: String): Boolean {
+        return wifiTethering.acquireTetherDevice(interfaceName)
     }
 
     @PostMapping("/ap")

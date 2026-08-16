@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { InterfaceActiveState, WifiNetwork } from "../../types/types";
+import type { WifiConnectionStateType, WifiNetwork } from "../../types/types";
 import { Box, Button, CircularProgress, Collapse, Divider, TextField, Tooltip, Typography, useTheme } from "@mui/material";
 import { WifiSignalIcon } from "../icons/WifiIcon";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -8,7 +8,7 @@ import { connectToWifi, disconnectFromWifi } from "../../api/requests/networking
 export interface WifiNetworkProps {
     wifi: WifiNetwork
     overlappingSSIDFreq?: boolean
-    state: InterfaceActiveState
+    state: WifiConnectionStateType
     expanded: boolean
     onToggle: () => void
 }
@@ -29,12 +29,11 @@ export default function WifiNetworkCard({ wifi, state, overlappingSSIDFreq, expa
         <Box sx={{
             bgcolor: theme.palette.background.paper,
             borderRadius: 2.5,
-            overflow: "hidden", // Viktig for at animasjonen ikke lekker utfor hjørnene
+            overflow: "hidden",
             borderWidth: 1,
             borderStyle: "solid",
             borderColor: (expanded ? theme.palette.primary.main : theme.palette.divider)
         }}>
-            {/* Header-delen som kan klikkes */}
             <Box
                 onClick={onToggle}
                 sx={{
@@ -61,7 +60,6 @@ export default function WifiNetworkCard({ wifi, state, overlappingSSIDFreq, expa
                         <WifiSignalIcon isSecure={wifi.isSecure} strength={wifi.signalPercent} />
                     </WifiTooltip>
 
-                    {/* Valgfritt: Pil som roterer når kortet er åpent */}
                     <ExpandMoreIcon
                         sx={{
                             transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
@@ -72,7 +70,6 @@ export default function WifiNetworkCard({ wifi, state, overlappingSSIDFreq, expa
                 </Box>
             </Box>
 
-            {/* Aninert innhold via Collapse */}
             <Collapse in={expanded} timeout="auto" unmountOnExit>
                 <WifiNetworkActionsCard
                     isConnected={state === "Connected"}
@@ -132,12 +129,12 @@ function WifiNetworkActionsCard({ isConnected, wifi }: WifiNetworkActionsCardPro
 }
 
 interface WifiStateTooltipProps {
-    state: InterfaceActiveState;
-    children?: React.ReactNode; // Tar inn ikonet (eller et annet element) som child
+    state: WifiConnectionStateType;
+    children?: React.ReactNode;
 }
 
 const WifiStateTooltip = ({ state, children }: WifiStateTooltipProps) => {
-    const visibleStates: Array<InterfaceActiveState> = [
+    const visibleStates: Array<WifiConnectionStateType> = [
         "Connecting",
     ]
 
@@ -162,16 +159,44 @@ const WifiStateTooltip = ({ state, children }: WifiStateTooltipProps) => {
 
 interface WifiTooltipProps {
     wifi: WifiNetwork;
-    children?: React.ReactNode; // Tar inn ikonet (eller et annet element) som child
+    children?: React.ReactNode;
 }
 
 export const WifiTooltip = ({ wifi, children }: WifiTooltipProps) => {
+    // Funksjon for å utlede band basert på frekvens i MHz
+    const getBandLabel = (mhz?: number) => {
+        if (!mhz) return null;
+        if (mhz >= 2400 && mhz < 2500) return "2.4 GHz";
+        if (mhz >= 5150 && mhz <= 5850) return "5 GHz";
+        if (mhz > 5850) return "6 GHz";
+        return `${mhz} MHz`;
+    };
+
+    const band = getBandLabel(wifi.frequencyMhz);
+
     return (
         <Tooltip
             arrow
             title={
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 0.5 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 600 }}>{wifi.ssid}</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 600 }}>{wifi.ssid}</Typography>
+                        {band && (
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    fontWeight: 700,
+                                    fontSize: '0.65rem',
+                                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                                    px: 0.5,
+                                    py: 0.2,
+                                    borderRadius: 0.5
+                                }}
+                            >
+                                {band}
+                            </Typography>
+                        )}
+                    </Box>
                     <Typography variant="caption">BSSID: {wifi.bssid}</Typography>
                     <Typography variant="caption">Kanal: {wifi.channel ?? "Ukjent"} ({wifi.frequencyMhz} MHz)</Typography>
                     <Typography variant="caption">Sikkerhet: {wifi.securityType}</Typography>
@@ -179,7 +204,6 @@ export const WifiTooltip = ({ wifi, children }: WifiTooltipProps) => {
                 </Box>
             }
         >
-            {/* Box sikrer at tooltipen hekter seg skikkelig på uavhengig av hva child-elementet er */}
             <Box sx={{ display: 'inline-flex', alignItems: 'center', cursor: 'default' }}>
                 {children}
             </Box>

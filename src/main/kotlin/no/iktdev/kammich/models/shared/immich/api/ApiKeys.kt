@@ -26,7 +26,8 @@ val defaultPermissions = listOf(
     "albumAsset.create",
     "albumAsset.delete",
     "user.read",
-    "userProfileImage.read"
+    "userProfileImage.read",
+    "server.storage"
 )
 
 data class ImmichApiKeyPostResponse(

@@ -30,7 +30,7 @@ class GPhoto2: IGPhoto2 {
             .inputStream
             .bufferedReader()
             .readText()
-        log.info("Gphoto2 raw:\n{}", result)
+        //log.info("Gphoto2 raw:\n{}", result)
         return result
     }
 

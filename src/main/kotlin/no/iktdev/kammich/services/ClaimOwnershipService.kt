@@ -13,7 +13,7 @@ import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.tables.getDeviceSerialNumber
 import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.device.DeviceIdentificationService
-import no.iktdev.kammich.immich.ImmichUserContext
+import no.iktdev.kammich.immich.context.ImmichUserContext
 import no.iktdev.kammich.models.shared.device.DeviceOwnershipSummary
 import no.iktdev.kammich.models.shared.device.DeviceType
 import no.iktdev.kammich.models.shared.device.ImportJobOwnershipSummary
@@ -70,8 +70,9 @@ class ClaimOwnershipService(
     fun getImportJobs(): List<ImportJobOwnershipSummary> {
         val userId = immichUserContext.getCurrentUserId()
 
+        // Bruk associateBy for å tvinge riktige typer (UUID til UUID)
         val jobOwners = getImportJobOwners()
-            .associate { it.jobId to it.immichUserId }
+            .associateBy({ it.jobId }, { it.immichUserId })
 
         val jobStats = withTransaction {
             val countColumn = ImportedFilesTable.id.count()
@@ -79,7 +80,7 @@ class ClaimOwnershipService(
                 .select(ImportedFilesTable.importJob, ImportedFilesTable.deviceId, countColumn)
                 .groupBy(ImportedFilesTable.importJob, ImportedFilesTable.deviceId)
                 .associate { row ->
-                    val jobId = row[ImportedFilesTable.importJob]
+                    val jobId = UUID.fromString(row[ImportedFilesTable.importJob])
                     val deviceIdVal = row[ImportedFilesTable.deviceId]
                     val deviceId = DevicesTable.getDeviceSerialNumber(deviceIdVal.value)!!
                     val count = row[countColumn].toInt()
@@ -87,14 +88,11 @@ class ClaimOwnershipService(
                 }
         }.getOrDefault(emptyMap())
 
-        val allJobIds = (jobOwners.keys + jobStats.keys).toList().toSet()
-
         val users = withTransaction {
             ImmichUsersTable.selectAll().map { it.toPersistedImmichUser() }
         }.getOrDefault(emptyList())
 
-
-        return allJobIds.map { jobId ->
+        return jobStats.keys.map { jobId ->
             val ownerId = jobOwners[jobId]
             val stats = jobStats[jobId]
             val deviceId = stats?.first ?: ""

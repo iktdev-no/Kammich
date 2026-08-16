@@ -1,7 +1,7 @@
 package no.iktdev.kammich.controller
 
 
-import no.iktdev.kammich.immich.ImmichUserContext
+import no.iktdev.kammich.immich.context.ImmichUserContext
 import no.iktdev.kammich.models.shared.device.DeviceOwnershipSummary
 import no.iktdev.kammich.models.shared.device.ImportJobOwnershipSummary
 import no.iktdev.kammich.services.ClaimOwnershipService

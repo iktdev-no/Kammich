@@ -63,7 +63,7 @@ class SysCommand {
             }
 
             if (process.exitValue() != 0) {
-                log.error("Could not run command successfully (${process.exitValue()}): ${command.joinToString(" ")}\nOutput:\n${output}\nError:\n${errorOutput}")
+                log.error("Could not run command successfully (Exit Code: ${process.exitValue()}): ${command.joinToString(" ")}\nOutput:\n${output}\nError:\n${errorOutput}")
                 Result.Failure(output, errorOutput.trim(), process.exitValue())
             } else {
                 Result.Success(output)

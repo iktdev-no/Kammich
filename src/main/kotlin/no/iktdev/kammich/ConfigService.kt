@@ -3,7 +3,6 @@ package no.iktdev.kammich
 import com.google.gson.GsonBuilder
 import no.iktdev.kammich.models.internal.config.RuntimeKammichConfig
 import no.iktdev.kammich.models.internal.config.StoredKammichConfig
-import no.iktdev.kammich.system.network.wifi.WifiTetherService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.io.File
@@ -39,7 +38,7 @@ class ConfigService {
     fun saveConfig(newConfig: RuntimeKammichConfig) {
         configFile.parentFile.mkdirs()
         val nc = gson.toJson(newConfig)
-        log.info("Saving config: $nc")
+        log.debug("Saving config: $nc")
         configFile.writeText(nc)
         _config = newConfig
     }

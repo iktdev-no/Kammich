@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Box,
     Typography,
@@ -6,41 +6,40 @@ import {
     List,
     CircularProgress,
     Collapse,
-    useTheme,
     IconButton,
     Tooltip
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import WifiOffIcon from '@mui/icons-material/WifiOff';
+import WifiTetheringIcon from '@mui/icons-material/WifiTethering';
 
 import { useSseSelector } from "../../sse/useSseSelector";
-import type { InterfaceActiveState, WifiNetwork, WifiNetworkConnection, WifiNetworkScan, WirelessInterface } from "../../types/types";
-import { getInterfaces, getNewNetworks } from "../../api/requests/networking/connection";
+import type { NetworkInterfaceMode, WifiConnectionStateType, WifiInterfaceClient, WifiNetwork, WifiConnection } from "../../types/types";
+import { getInterfaces, getNetworks, startNetworkScan, stopNetworkScan } from "../../api/requests/networking/connection";
 import WifiNetworkCard from "../../components/network/WifiNetwork";
 import { VisibilityIcon } from "../../components/icons/VisibilityIcon";
 
 export default function WifiSettings() {
-    const theme = useTheme();
-    const [activeInterface, setActiveInterface] = useState<string>("");
     const [expandedInterface, setExpandedInterface] = useState<string | false>(false);
-
-    // Holder styr på om skjulte nettverk vises per grensesnitt (interfaceName -> boolean)
     const [showHiddenMap, setShowHiddenMap] = useState<Record<string, boolean>>({});
 
-    // Data fra SSE
-    const [interfaces, setInterfaces] = useState<WirelessInterface[]>([]);
     const [isLoadingInterfaces, setIsLoadingInterfaces] = useState(true);
 
-    const wifiScans = useSseSelector(state => state.wifiScans) || [];
-    const wifiConnections = useSseSelector(state => state.wifiConnections) || [];
+    // Henter lister og tilstander fra SSE basert på den nye Record/Array-strukturen
+    const interfacesFromSse = useSseSelector(state => state.wifiConnectionInterfaces);
+    const [localInterfaces, setLocalInterfaces] = useState<WifiInterfaceClient[]>([]);
 
+    const wifiScanStatuses = useSseSelector(state => state.wifiScanStatuses) || {};
+    const wifiScanResults = useSseSelector(state => state.wifiScanResults) || {};
+    const wifiConnections = useSseSelector(state => state.wifiConnection) || {};
+
+    // Initial load / fallback via API hvis SSE ikke har dumpet noe ennå
     useEffect(() => {
         async function loadInterfaces() {
             try {
                 const data = await getInterfaces();
-                setInterfaces(data);
+                setLocalInterfaces(data);
                 if (data.length > 0) {
-                    setActiveInterface(data[0].name);
                     setExpandedInterface(data[0].name);
                 }
             } catch (error) {
@@ -51,6 +50,17 @@ export default function WifiSettings() {
         }
         loadInterfaces();
     }, []);
+
+    // Oppdater lokal state så fort SSE dumper en ny liste (`wifi-interface-client`)
+    useEffect(() => {
+        if (interfacesFromSse && interfacesFromSse.length > 0) {
+            setLocalInterfaces(interfacesFromSse);
+            setIsLoadingInterfaces(false);
+
+            // Sett første som ekspandert som standard om ingen er valgt
+            setExpandedInterface(prev => prev === false && interfacesFromSse.length > 0 ? interfacesFromSse[0].name : prev);
+        }
+    }, [interfacesFromSse]);
 
     const toggleShowHidden = (interfaceName: string) => {
         setShowHiddenMap(prev => ({
@@ -63,15 +73,18 @@ export default function WifiSettings() {
         <Box sx={{ maxWidth: "800px", mx: "auto", p: 4, display: "flex", flexDirection: "column", gap: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 600 }}>Wi-Fi Settings</Typography>
 
-            {interfaces.map((iface) => {
-                const scanData = wifiScans.find(s => s.name === iface.name);
-                const connData = wifiConnections.find(c => c.name === iface.name);
-                const isExpanded = expandedInterface === iface.name;
-                const showHidden = !!showHiddenMap[iface.name];
+            {localInterfaces.map((iface) => {
+                const name = iface.name;
+                const scanStatus = wifiScanStatuses[name];
+                const scanResult = wifiScanResults[name];
+                const wifiConn = wifiConnections[name]; // Henter WifiConnection-objektet for dette interfacet
+
+                const isExpanded = expandedInterface === name;
+                const showHidden = !!showHiddenMap[name];
 
                 return (
                     <Box
-                        key={iface.name}
+                        key={name}
                         sx={{
                             bgcolor: 'grey.900',
                             border: 1,
@@ -80,7 +93,6 @@ export default function WifiSettings() {
                             overflow: 'hidden'
                         }}
                     >
-                        {/* Grensesnitt-header med ekspandering og plass til knapper ved siden av */}
                         <Box
                             sx={{
                                 p: 2,
@@ -90,20 +102,29 @@ export default function WifiSettings() {
                             }}
                         >
                             <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
-                                <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>{iface.name}</Typography>
+                                <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>
+                                    {name}
+                                    {!iface.isUsable && (
+                                        <Typography component="span" variant="caption" sx={{ ml: 2, color: 'text.secondary' }}>
+                                            (In use: {iface.operatingMode})
+                                        </Typography>
+                                    )}
+                                </Typography>
 
-                                <Tooltip title={showHidden ? "Skjul skjulte nettverk" : "Vis skjulte nettverk"} arrow>
-                                    <Box component="span" sx={{ display: 'inline-flex' }}>
-                                        <VisibilityIcon
-                                            visible={showHidden}
-                                            onChange={() => toggleShowHidden(iface.name)}
-                                            sx={{ ml: 1, mr: 1 }}
-                                        />
-                                    </Box>
-                                </Tooltip>
+                                {iface.isUsable && (
+                                    <Tooltip title={showHidden ? "Skjul skjulte nettverk" : "Vis skjulte nettverk"} arrow>
+                                        <Box component="span" sx={{ display: 'inline-flex' }}>
+                                            <VisibilityIcon
+                                                visible={showHidden}
+                                                onChange={() => toggleShowHidden(name)}
+                                                sx={{ ml: 1, mr: 1 }}
+                                            />
+                                        </Box>
+                                    </Tooltip>
+                                )}
 
                                 <Tooltip title={isExpanded ? "Lukk" : "Åpne"} arrow>
-                                    <IconButton onClick={() => setExpandedInterface(prev => prev === iface.name ? false : iface.name)}>
+                                    <IconButton onClick={() => setExpandedInterface(prev => prev === name ? false : name)}>
                                         <ExpandMoreIcon
                                             sx={{
                                                 transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
@@ -116,13 +137,15 @@ export default function WifiSettings() {
                             </Box>
                         </Box>
 
-                        {/* Aninert innhold for grensesnittet */}
                         <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                             <Box sx={{ p: 2 }}>
                                 <WifiInterfaceContent
-                                    scanData={scanData}
-                                    connData={connData}
-                                    interfaceName={iface.name}
+                                    isUsable={iface.isUsable}
+                                    operatingMode={iface.operatingMode}
+                                    scanStatus={scanStatus}
+                                    scanResult={scanResult}
+                                    wifiConn={wifiConn}
+                                    interfaceName={name}
                                     isExpanded={isExpanded}
                                     showHidden={showHidden}
                                 />
@@ -132,7 +155,7 @@ export default function WifiSettings() {
                 );
             })}
 
-            {interfaces.length === 0 && !isLoadingInterfaces && (
+            {localInterfaces.length === 0 && !isLoadingInterfaces && (
                 <Box sx={{
                     display: "flex",
                     flexDirection: 'column',
@@ -149,83 +172,90 @@ export default function WifiSettings() {
     );
 }
 
-interface WifiNetworkConnectionState {
-    bssid: string,
-    state: InterfaceActiveState
-}
-
 interface WifiInterfaceContentProps {
-    scanData: WifiNetworkScan | undefined;
-    connData: WifiNetworkConnection | undefined;
+    isUsable: boolean;
+    operatingMode: NetworkInterfaceMode;
+    scanStatus?: { isScanning: boolean };
+    scanResult?: { networks: WifiNetwork[] };
+    wifiConn?: WifiConnection;
     interfaceName: string;
     isExpanded: boolean;
     showHidden: boolean;
 }
 
-const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded, showHidden }: WifiInterfaceContentProps) => {
-    const isScanning = scanData?.state === "Scanning";
-    const [connState, setConnState] = useState<WifiNetworkConnectionState | undefined>();
+const WifiInterfaceContent = ({
+    isUsable,
+    operatingMode,
+    scanStatus,
+    scanResult,
+    wifiConn,
+    interfaceName,
+    isExpanded,
+    showHidden
+}: WifiInterfaceContentProps) => {
+    const isScanning = !!scanStatus?.isScanning;
     const [expandedBssid, setExpandedBssid] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (!isExpanded) return;
-        const interval = setInterval(() => {
-            if (scanData?.state !== "Scanning") {
-                getNewNetworks(interfaceName);
-            }
-        }, 30000);
-        return () => clearInterval(interval);
-    }, [interfaceName, scanData?.state, isExpanded]);
+    const [displayedNetworks, setDisplayedNetworks] = useState<WifiNetwork[]>([]);
 
     useEffect(() => {
-        const activeNetwork = connData?.network;
-        if (activeNetwork) {
-            setConnState({
-                bssid: activeNetwork.bssid,
-                state: connData.state
-            });
-        } else {
-            setConnState(undefined);
+        if (expandedBssid === null && scanResult?.networks) {
+            setDisplayedNetworks(scanResult.networks);
         }
-    }, [connData, scanData]);
+    }, [scanResult, expandedBssid]);
 
-    const connectedNetwork = connData?.network;
-    const isConnected = connData?.state === "Connected" && connectedNetwork;
+    // Starter periodisk skanning ved mount / ekspandering, og stopper ved unmount / lukking
+    useEffect(() => {
+        if (!isExpanded || !isUsable) return;
 
-    const sortedNetworks = (scanData?.networks || [])
+        startNetworkScan(interfaceName);
+
+        return () => {
+            stopNetworkScan(interfaceName);
+        };
+    }, [interfaceName, isExpanded, isUsable]);
+
+    if (!isUsable) {
+        return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3, gap: 1.5, color: 'text.secondary' }}>
+                <WifiTetheringIcon sx={{ fontSize: 40 }} />
+                <Typography variant="body2" sx={{ textAlign: 'center' }}>
+                    Interface is currently unavailable because it is operating in <strong>{operatingMode}</strong> mode.
+                </Typography>
+            </Box>
+        );
+    }
+
+    const connectedNetwork = wifiConn?.network;
+    const isConnected = wifiConn?.state === "Connected" && connectedNetwork;
+
+    const sortedNetworks = displayedNetworks
         .filter((net: WifiNetwork) => {
-            if (isConnected && net.bssid === connectedNetwork.bssid) return false;
+            if (isConnected && connectedNetwork && net.bssid === connectedNetwork.bssid) return false;
             if (!showHidden && net.isHidden) return false;
             return true;
         })
-        .sort((a, b) => {
-            if (expandedBssid) {
-                if (a.bssid === expandedBssid) return -1;
-                if (b.bssid === expandedBssid) return 1;
-            }
-            return b.signalPercent - a.signalPercent;
-        });
+        .sort((a, b) => b.signalPercent - a.signalPercent);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <ConnectedNetworkSection
                 connectedNetwork={connectedNetwork}
                 isConnected={!!isConnected}
-                connState={connState}
-                connData={connData}
+                wifiConn={wifiConn}
                 expandedBssid={expandedBssid}
                 setExpandedBssid={setExpandedBssid}
-                allNetworks={scanData?.networks || []}
+                allNetworks={displayedNetworks}
             />
 
             <AvailableNetworksSection
                 sortedNetworks={sortedNetworks}
                 isScanning={isScanning}
                 interfaceName={interfaceName}
-                connState={connState}
+                wifiConn={wifiConn}
                 expandedBssid={expandedBssid}
                 setExpandedBssid={setExpandedBssid}
-                allNetworks={scanData?.networks || []}
+                allNetworks={displayedNetworks}
             />
         </Box>
     );
@@ -234,8 +264,7 @@ const WifiInterfaceContent = ({ scanData, connData, interfaceName, isExpanded, s
 interface ConnectedNetworkSectionProps {
     connectedNetwork: WifiNetwork | undefined | null;
     isConnected: boolean;
-    connState: WifiNetworkConnectionState | undefined;
-    connData: WifiNetworkConnection | undefined;
+    wifiConn?: WifiConnection;
     expandedBssid: string | null;
     setExpandedBssid: (bssid: string | null) => void;
     allNetworks: WifiNetwork[];
@@ -244,14 +273,13 @@ interface ConnectedNetworkSectionProps {
 const ConnectedNetworkSection = ({
     connectedNetwork,
     isConnected,
-    connState,
-    connData,
+    wifiConn,
     expandedBssid,
     setExpandedBssid,
     allNetworks
 }: ConnectedNetworkSectionProps) => {
-    const hasError = !!connData?.error;
-    const targetNetwork = connectedNetwork || connData?.network;
+    const hasError = !!wifiConn?.error;
+    const targetNetwork = connectedNetwork || wifiConn?.network;
 
     if ((!isConnected || !targetNetwork) && !hasError) return null;
     if (!targetNetwork) return null;
@@ -270,7 +298,7 @@ const ConnectedNetworkSection = ({
                 <WifiNetworkCard
                     key={`connected-${targetNetwork.bssid}-${targetNetwork.ssid}`}
                     wifi={targetNetwork}
-                    state={connState?.state || connData?.state || "Disconnected"}
+                    state={wifiConn?.state || "Disconnected"}
                     expanded={isConnectedCardExpanded}
                     onToggle={() => setExpandedBssid(isConnectedCardExpanded ? null : targetNetwork.bssid)}
                     overlappingSSIDFreq={connectedOverlappingFreq}
@@ -279,7 +307,7 @@ const ConnectedNetworkSection = ({
                 {hasError && (
                     <Box sx={{ px: 1 }}>
                         <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 500 }}>
-                            Feil passord. Vennligst prøv igjen.
+                            {wifiConn?.error}
                         </Typography>
                     </Box>
                 )}
@@ -292,7 +320,7 @@ interface AvailableNetworksSectionProps {
     sortedNetworks: WifiNetwork[];
     isScanning: boolean;
     interfaceName: string;
-    connState: WifiNetworkConnectionState | undefined;
+    wifiConn?: WifiConnection;
     expandedBssid: string | null;
     setExpandedBssid: (bssid: string | null) => void;
     allNetworks: WifiNetwork[];
@@ -302,7 +330,7 @@ const AvailableNetworksSection = ({
     sortedNetworks,
     isScanning,
     interfaceName,
-    connState,
+    wifiConn,
     expandedBssid,
     setExpandedBssid,
     allNetworks
@@ -313,7 +341,7 @@ const AvailableNetworksSection = ({
                 <Typography variant="overline" sx={{ color: 'text.secondary' }}>Available Networks</Typography>
                 <Button
                     size="small"
-                    onClick={() => getNewNetworks(interfaceName)}
+                    onClick={() => getNetworks(interfaceName)}
                     disabled={isScanning}
                     startIcon={isScanning ? <CircularProgress size={14} color="inherit" /> : null}
                 >
@@ -329,7 +357,7 @@ const AvailableNetworksSection = ({
                 )}
 
                 {sortedNetworks.map((net: WifiNetwork) => {
-                    const networkState = connState?.bssid === net.bssid ? connState.state : "Idle" as InterfaceActiveState;
+                    const networkState = (wifiConn?.network?.bssid === net.bssid ? wifiConn.state : "Idle") as WifiConnectionStateType;
                     const isCardExpanded = expandedBssid === net.bssid;
 
                     const overlappingSSIDFreq = allNetworks.some(

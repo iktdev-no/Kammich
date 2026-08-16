@@ -21,7 +21,7 @@ cleanup() {
 trap cleanup SIGINT
 
 echo ">>> Bygger første versjon..."
-./gradlew clean bootJar -x test || exit 1
+./gradlew bootJar -x test || exit 1
 
 echo ">>> Stopper remote kammich.jar..."
 ssh "$REMOTE_USER@$REMOTE_HOST" "$KILL_CMD"
@@ -43,7 +43,7 @@ while true; do
 
     echo ">>> Endring oppdaget! Re-bygger..."
 
-    if ./gradlew clean bootJar -x test; then
+    if ./gradlew bootJar -x test; then
         echo ">>> Stopper remote jar..."
         ssh "$REMOTE_USER@$REMOTE_HOST" "$KILL_CMD"
 

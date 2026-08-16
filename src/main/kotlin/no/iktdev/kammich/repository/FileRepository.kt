@@ -11,7 +11,7 @@ import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.ensureWritable
 import no.iktdev.kammich.getFileType
-import no.iktdev.kammich.immich.ImmichUserContext
+import no.iktdev.kammich.immich.context.ImmichUserContext
 import no.iktdev.kammich.models.FileHash
 import no.iktdev.kammich.models.internal.KFile
 import no.iktdev.kammich.models.shared.DeviceImport

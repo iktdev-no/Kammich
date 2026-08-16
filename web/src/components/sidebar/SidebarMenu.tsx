@@ -15,6 +15,8 @@ import CameraIcon from '@mui/icons-material/Camera';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiTetheringIcon from '@mui/icons-material/WifiTethering';
 import CellTowerRoundedIcon from '@mui/icons-material/CellTowerRounded';
+import PersonIcon from '@mui/icons-material/Person';
+import PeopleIcon from '@mui/icons-material/People';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import PhotoAlbumIcon from '@mui/icons-material/PhotoAlbum';
@@ -125,10 +127,24 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             // Bruk en ternary eller short-circuit for å slå av/på barna
             children: immichAccesses && immichAccesses.length > 0 ? [
                 {
+                    label: "Me",
+                    icon: PersonIcon,
+                    to: "/settings/immich/me",
+                    activeColor: "secondary"
+                },
+                {
+                    label: "Users",
+                    icon: PeopleIcon,
+                    to: "/settings/immich/users",
+                    activeColor: "secondary"
+                },
+                {
                     label: "Access",
                     icon: VpnKeyIcon,
                     to: `/settings/immich/access`,
-                }
+                    activeColor: "secondary"
+                },
+
             ] : undefined // eller [] avhengig av hva Sidebar-komponenten din liker best
         },
         {
@@ -142,8 +158,8 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
                     to: "/settings/wifi"
                 },
                 {
-                    label: "Direct",
-                    icon: TapAndPlayIcon,
+                    label: "Tether",
+                    icon: WifiTetheringIcon,
                     to: "/settings/ap"
                 }
             ]
@@ -183,7 +199,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
                 <StatusIndicator label="Kammich" state={connectionStatus} />
                 <StatusIndicator
                     label="Immich"
-                    state={immichAvailability?.isAvailable ? "online" : "offline"}
+                    state={(immichAvailability?.isAvailable && connectionStatus == "online") ? "online" : "offline"}
                 />
             </Box>
         </Box>

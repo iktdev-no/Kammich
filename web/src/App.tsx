@@ -14,6 +14,8 @@ import ImmichAccess from './routes/immich/ImmichAccess';
 import ImmichLogin from './components/immich/ImmichLogin';
 import { Album } from './routes/Album';
 import ImportOwnership from './routes/ImportOwnership';
+import ImmichProfiles from './routes/immich/ImmichProfiles';
+import ImmichMe from './routes/immich/ImmichMe';
 
 const router = createBrowserRouter([
   {
@@ -34,7 +36,9 @@ const router = createBrowserRouter([
       { path: 'settings/ap', element: <WifiApSettings /> },
       { path: 'settings/immich', element: <Immich /> },
       { path: 'settings/immich/login', element: <ImmichLogin /> },
+      { path: 'settings/immich/me', element: <ImmichMe /> },
       { path: 'settings/immich/access', element: <ImmichAccess /> },
+      { path: 'settings/immich/users', element: <ImmichProfiles /> },
 
     ],
   },

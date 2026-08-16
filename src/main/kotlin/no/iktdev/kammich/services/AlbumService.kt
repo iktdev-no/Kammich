@@ -4,7 +4,7 @@ import no.iktdev.kammich.database.tables.AlbumsTable
 import no.iktdev.kammich.database.tables.UploadFilesTable
 import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.withTransaction
-import no.iktdev.kammich.immich.ImmichUserContext
+import no.iktdev.kammich.immich.context.ImmichUserContext
 import no.iktdev.kammich.models.shared.Album
 import no.iktdev.kammich.models.shared.AlbumCreateRequest
 import no.iktdev.kammich.models.shared.AlbumUpdateRequest

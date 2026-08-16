@@ -1,5 +1,6 @@
 package no.iktdev.kammich.system.network.wifi.parser
 
+import no.iktdev.kammich.system.network.v1.wifi.parser.WifiPhyInfoParser
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 

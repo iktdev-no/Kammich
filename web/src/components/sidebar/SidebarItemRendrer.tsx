@@ -5,6 +5,8 @@ import {
     ListItemIcon,
     ListItemText,
     IconButton,
+    useTheme,
+    alpha,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -27,10 +29,11 @@ export function SidebarItemRenderer({
     onItemClick,
     depth,
 }: SidebarItemRendererProps) {
+    const theme = useTheme();
     const hasChildren = item.children && item.children.length > 0;
     const [open, setOpen] = useState(true);
 
-    const paddingLeft = depth * 2; // ⭐ dynamisk indent
+    const paddingLeft = depth * 2;
 
     const handleClick = () => {
         if (item.action) item.action();
@@ -43,40 +46,55 @@ export function SidebarItemRenderer({
         setOpen((prev) => !prev);
     };
 
-    const ParentContent = ({ isActive }: { isActive: boolean }) => (
-        <ListItemButton
-            sx={{
-                ...sx.item,
-                pl: paddingLeft,
-                ...(isActive ? sx.itemActive : {}),
+    const ParentContent = ({ isActive }: { isActive: boolean }) => {
+        // Sjekk om elementet skal ha secondary-farge ved aktiv tilstand
+        const isSecondary = item.activeColor === "secondary";
 
-            }}
-            onClick={handleClick}
-        >
-            <ListItemIcon sx={{ minWidth: 32 }}>
-                <item.icon sx={isActive ? sx.iconActive : sx.icon} />
-            </ListItemIcon>
+        const customActiveBg = isSecondary
+            ? alpha(theme.palette.secondary.main, 0.18)
+            : sx.itemActive.backgroundColor;
 
-            <ListItemText
-                primary={item.label}
-                sx={isActive ? sx.textActive : sx.text}
-            />
+        const customActiveColor = isSecondary
+            ? theme.palette.secondary.main
+            : sx.iconActive.color;
 
-            {hasChildren && (
-                <IconButton
-                    size="small"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        toggle(e);
-                    }}
-                    sx={{ ml: "auto", color: sx.icon.color }}
-                >
-                    {open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                </IconButton>
-            )}
-        </ListItemButton>
-    );
+        return (
+            <ListItemButton
+                sx={{
+                    ...sx.item,
+                    pl: paddingLeft,
+                    ...(isActive ? { ...sx.itemActive, backgroundColor: customActiveBg } : {}),
+                    ...item.sx,
+                }}
+                onClick={handleClick}
+            >
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                    <item.icon
+                        sx={isActive ? { color: customActiveColor } : sx.icon}
+                    />
+                </ListItemIcon>
+
+                <ListItemText
+                    primary={item.label}
+                    sx={isActive ? { ...sx.textActive, color: customActiveColor } : sx.text}
+                />
+
+                {hasChildren && (
+                    <IconButton
+                        size="small"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            toggle(e);
+                        }}
+                        sx={{ ml: "auto", color: sx.icon.color }}
+                    >
+                        {open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </IconButton>
+                )}
+            </ListItemButton>
+        );
+    };
 
     const children = hasChildren && (
         <Collapse in={open} unmountOnExit>
@@ -88,19 +106,18 @@ export function SidebarItemRenderer({
                         sx={sx}
                         navigate={navigate}
                         onItemClick={onItemClick}
-                        depth={depth + 1} // ⭐ øker dybden
+                        depth={depth + 1}
                     />
                 ))}
             </Box>
         </Collapse>
     );
 
+    // Fjernet <Box sx={item.sx}> rundt her, siden vi sprøyer inn item.sx direkte på ListItemButton i stedet
     if (item.to) {
         return (
-            <Box sx={item.sx}>
-                <NavLink to={item.to} style={{ 
-                    textDecoration: "none", 
-                 }}>
+            <Box>
+                <NavLink to={item.to} style={{ textDecoration: "none" }}>
                     {({ isActive }) => <ParentContent isActive={isActive} />}
                 </NavLink>
                 {children}
@@ -109,10 +126,9 @@ export function SidebarItemRenderer({
     }
 
     return (
-        <Box sx={item.sx}>
+        <Box>
             <ParentContent isActive={false} />
             {children}
         </Box>
     );
 }
-

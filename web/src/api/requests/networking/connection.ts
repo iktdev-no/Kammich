@@ -1,19 +1,23 @@
-import type { WirelessInterface, WifiNetwork } from "../../../types/types"
+import type { WifiNetwork, WifiInterfaceClient } from "../../../types/types"
 import { apiGet, apiPost } from "../../client"
 
 const endpoint = "/v1/wifi/client"
 
 
 export function getInterfaces() {
-    return apiGet<Array<WirelessInterface>>(`${endpoint}/interfaces`)
+    return apiGet<Array<WifiInterfaceClient>>(`${endpoint}`)
 }
 
 export function getNetworks(ifName: string) {
     return apiGet<Array<WifiNetwork>>(`${endpoint}/${ifName}/scan`)
 }
 
-export function getNewNetworks(ifName: string) {
-    return apiPost<null, Array<WifiNetwork>>(`${endpoint}/${ifName}/scan`, null)
+export function startNetworkScan(ifName: string) {
+    return apiPost<null, never>(`${endpoint}/${ifName}/scan/start`, null)
+}
+
+export function stopNetworkScan(ifName: string) {
+    return apiPost<null, never>(`${endpoint}/${ifName}/scan/stop`, null)
 }
 
 

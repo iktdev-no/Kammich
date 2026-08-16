@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-08-12T21:55:14.416081151Z
+// Time: 2026-08-15T21:37:47.542942880Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -169,9 +169,13 @@ export interface AlbumCreateRequest {
   startDate: string | null;
 }
 
-export interface WirelessNetworkSearch {
-  lastSearched: string;
-  networks: WifiNetwork[];
+export interface SharedWifiInterfaceInstance {
+  caps: WirelessNetworkInterfaceCapability[];
+  isUsable: boolean;
+  mode: InterfaceMode;
+  name: string;
+  network: WifiNetwork | null;
+  operatingMode: NetworkInterfaceMode;
 }
 
 export interface NetworkInterface {
@@ -183,7 +187,12 @@ export interface NetworkInterface {
 
 export type NetworkInterfaceType = "Ethernet" | "Wifi"
 
-export type WifiNetworkConnectionError = "WrongPassword"
+export interface NetworkCaptiveStatus {
+  interfaceName: string;
+  message: string | null;
+  portalUrl: string | null;
+  state: CaptivePortalState;
+}
 
 export interface WifiTetherAP {
   password: string;
@@ -191,83 +200,80 @@ export interface WifiTetherAP {
   ssid: string;
 }
 
-export type InterfaceActiveState = "Idle" | "Scanning" | "StartingTether" | "Tethering" | "StoppingTether" | "Connecting" | "Connected" | "Disconnected" | "CaptivePortal"
+export type CaptivePortalState = "Online" | "CaptivePortal" | "Offline"
 
-export interface WirelessTethering {
-  network: WifiNetwork | null;
-  state: WirelessTetheringState;
-}
+export type WirelessTetheringError = "Unknown" | "DeviceNotFound" | "StartFailed" | "StopFailed" | "PasswordTooShort" | "InvalidSettings"
 
 export type WifiSecurityType = "NONE" | "WPA2" | "WPA3"
 
-export interface WifiNetworkInterface {
-  name: string;
-}
-
-export interface WifiNetworkConnection extends WifiNetworkInterface {
-  error: WifiNetworkConnectionError | null;
-  network: WifiNetwork | null;
-  state: InterfaceActiveState;
-}
-
-export interface WifiNetworkTether extends WifiNetworkInterface {
+export interface WifiTether {
+  error: WirelessTetheringError | null;
+  ifName: string;
   network: WifiNetwork | null;
   state: WirelessTetheringState;
 }
 
-export type WirelessTetheringState = "Idle" | "Broadcasting"
+export type WirelessTetheringState = "Idle" | "Acquired" | "Starting" | "Tethering" | "Stopping"
 
-export type NetworkInterfaceMode = "External" | "Master" | "Client" | "Idle"
+export type NetworkInterfaceMode = "External" | "Tether" | "Client" | "Idle"
+
+export type InterfaceMode = "Idle" | "Tether" | "Client" | "Mesh" | "AdHoc"
+
+export interface WifiScanResult {
+  error: WifiScanError | null;
+  ifName: string;
+  networks: WifiNetwork[];
+}
 
 export type WifiNetworkHardwareMode = "a" | "g"
+
+export interface WifiScanStatus {
+  ifName: string;
+  isScanning: boolean;
+}
 
 export interface WirelessNetworkInterface extends NetworkInterface {
   caps: WirelessNetworkInterfaceCapability[];
 }
 
-export interface WirelessConnection {
-  network: WifiNetwork | null;
-  state: InterfaceActiveState;
+export type WifiScanError = "Unknown"
+
+export interface WifiInterfaceClient extends SharedWifiInterfaceInstance {
+  state: WifiConnectionStateType;
 }
 
-export type WirelessOperatingState = "AP" | "STA" | "Idle"
-
-export interface WifiConnectionResult {
-  message: string;
-  status: InterfaceActiveState;
-  success: boolean;
+export interface WifiConnection {
+  error: WifiInterfaceClientError | null;
+  ifName: string;
+  network: WifiNetwork | null;
+  state: WifiConnectionStateType;
 }
 
 export type WirelessNetworkInterfaceCapability = "STA" | "AP" | "Concurrent" | "Concurrent_Restricted_Same_Channel"
 
-export interface WirelessInterface {
-  address: string;
-  connection: WirelessConnection | null;
-  isAvailable: boolean;
-  name: string;
-  operatingState: WirelessOperatingState;
-  search: WirelessNetworkSearch | null;
-  tethering: WirelessTethering | null;
-}
-
-export interface WifiNetworkScan extends WifiNetworkInterface {
-  networks: WifiNetwork[];
-  state: InterfaceActiveState;
-}
-
+export type WifiConnectionStateType = "Connecting" | "Connected" | "Disconnecting" | "Disconnected" | "Idle"
 
 export interface WifiNetwork {
+  bandwidthMhz: number;
   bssid: string;
   channel: number | null;
   frequencyMhz: number;
   hwMode: WifiNetworkHardwareMode;
+  inUse: boolean;
   interfaceName: string;
+  isActive: boolean;
   isHidden: boolean;
   isSecure: boolean;
   securityType: string;
   signalPercent: number;
   ssid: string;
 }
+
+export interface WifiInterfaceTether extends SharedWifiInterfaceInstance {
+  state: WirelessTetheringState;
+}
+
+export type WifiInterfaceClientError = "WrongPassword" | "NetworkNotFound" | "Unknown"
 
 export interface EthernetNetworkInterface extends NetworkInterface {
 }
@@ -428,6 +434,17 @@ export interface ImmichAuthenticationLogin {
   password: string;
 }
 
+export interface ImmichServerVersion {
+  major: number;
+  minor: number;
+  patch: number;
+  preRelease: number | null;
+}
+
+export interface ImmichServerConnection {
+  url: string;
+}
+
 export type ImmichUserStatus = "active" | "removing" | "deleted"
 
 export type UserAvatarColor = "primary" | "pink" | "red" | "yellow" | "blue" | "green" | "purple" | "orange" | "gray" | "amber"
@@ -452,9 +469,25 @@ export interface ImmichUserMe {
   updatedAt: string | null;
 }
 
+export interface ImmichSupportedMediaTypes {
+  images: string[];
+  sidecar: string[];
+  videos: string[];
+}
+
 export interface ImmichApiKeyPostResponse {
   apiKey: ImmichApiKeyPostResponseDto;
   secret: string;
+}
+
+export interface ImmichServerStorage {
+  diskAvailable: string;
+  diskAvailableRaw: number;
+  diskSize: string;
+  diskSizeRaw: number;
+  diskUsagePercentage: number;
+  diskUse: string;
+  diskUseRaw: number;
 }
 
 export interface ImmichApiKeyPost {
@@ -468,6 +501,40 @@ export interface ImmichApiKeyPostResponseDto {
   name: string;
   permissions: string[];
   updatedAt: string;
+}
+
+export interface ImmichServerFeatures {
+  configFileAvailable: boolean;
+  duplicateDetectionEnabled: boolean;
+  emailNotificationEnabled: boolean;
+  facialRecognitionEnabled: boolean;
+  importFacesEnabled: boolean;
+  mapEnabled: boolean;
+  oauthAutoLaunchEnabled: boolean;
+  oauthEnabled: boolean;
+  ocrEnabled: boolean;
+  passwordLoginEnabled: boolean;
+  realtimeTranscodingEnabled: boolean;
+  reverseGeocodingEnabled: boolean;
+  searchEnabled: boolean;
+  sidecarSupported: boolean;
+  smartSearchEnabled: boolean;
+  trashEnabled: boolean;
+}
+
+export interface ImmichServerConfig {
+  externalDomain: string;
+  isInitialized: boolean;
+  isOnboarded: boolean;
+  loginPageMessage: string;
+  maintenanceMode: boolean;
+  mapDarkStyleUrl: string;
+  mapLightStyleUrl: string;
+  minFaces: number;
+  oauthButtonText: string;
+  publicUsersEnabled: boolean;
+  trashDays: number;
+  userDeleteDelay: number;
 }
 
 export interface ImmichAuthenticationLoginResponse {

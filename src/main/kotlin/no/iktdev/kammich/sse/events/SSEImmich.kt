@@ -9,7 +9,7 @@ data class SSEImmichUser(val payload: ImmichUserMe?): ISSE {
     override val type = "immich-user-me"
 }
 
-data class SSEImmichApiKeyInUse(val payload: ImmichApiKeyPostResponseDto): ISSE {
+data class SSEImmichApiKeyInUse(val payload: ImmichApiKeyPostResponseDto?): ISSE {
     override val type = "immich-api-key-in-use"
 }
 

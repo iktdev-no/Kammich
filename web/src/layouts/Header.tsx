@@ -62,7 +62,7 @@ export default function Header({ onToggleSidebar }: { onToggleSidebar: () => voi
 
                     <Box sx={{ display: "flex", flexDirection: "row", flexWrap: "nowrap", maxHeight: `${headerHeight}px`, alignContent: "center", alignItems: "center", ml: 1 }}>
                         {!immichUser ? (
-                            <IconButton onClick={() => naviage("/settings/immich/login")}>
+                            <IconButton onClick={() => naviage("/settings/immich")}>
                                 <ImmichLoginBadge />
                             </IconButton>
                         ) : (

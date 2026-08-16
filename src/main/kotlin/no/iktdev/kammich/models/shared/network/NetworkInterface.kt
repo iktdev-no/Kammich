@@ -8,7 +8,6 @@ abstract class NetworkInterface {
     abstract fun withMode(newMode: NetworkInterfaceMode): NetworkInterface
 }
 
-fun NetworkInterface.asWifi(): WirelessNetworkInterface? = this as? WirelessNetworkInterface
 
 
 data class WirelessNetworkInterface(
@@ -38,7 +37,7 @@ enum class NetworkInterfaceType {
 
 enum class NetworkInterfaceMode {
     External,
-    Master, // Fallback
+    Tether, // Fallback
     Client,
     Idle,
 }

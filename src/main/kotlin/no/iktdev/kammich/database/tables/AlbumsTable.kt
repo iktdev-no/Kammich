@@ -16,6 +16,7 @@ object AlbumsTable : LongIdTable("ALBUMS") {
     val startDate = text("START_DATE").nullable()
     val endDate = text("END_DATE").nullable()
     val use = bool("USE").default(true)
+    val immichAlbumId = varchar("IMMICH_ALBUM_ID", 36)
     val createdAt = text("CREATED_AT")
 
     init {

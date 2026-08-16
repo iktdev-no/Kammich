@@ -1,7 +1,6 @@
 package no.iktdev.kammich.system.network
 
 import org.springframework.stereotype.Component
-import org.springframework.stereotype.Service
 import java.net.InetSocketAddress
 import java.net.Socket
 

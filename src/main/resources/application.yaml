@@ -17,3 +17,7 @@ logging:
     # Valgfritt: Hvis du vil se hva Spring/GPhoto2 driver med internt
     org.springframework: INFO
     org.flywaydb: INFO
+    no.iktdev.kammich.services.importing.DeviceContentIndexing: OFF
+    no.iktdev.kammich.gphoto2.parsers.GPhoto2FileListParser: OFF
+    no.iktdev.kammich.storage.DeviceManagerService: OFF
+    no.iktdev.kammich.ConfigService: INFO

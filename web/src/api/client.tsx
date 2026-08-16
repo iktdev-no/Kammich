@@ -91,17 +91,24 @@ export async function apiPost<TRequest, TResponse>(
 
   if (!res.ok) {
     let errorBody: any = null;
+    const contentTypeRead = res.headers.get("content-type") ?? "";
 
     try {
-      errorBody = await res.json();
+      if (contentTypeRead.includes("application/json")) {
+        errorBody = await res.json();
+      } else {
+        errorBody = await res.text();
+      }
     } catch {
       errorBody = await res.text().catch(() => null);
     }
 
     const message =
-      typeof errorBody === "object" && errorBody?.message
-        ? errorBody.message
-        : `POST ${path} failed with ${res.status}`;
+      typeof errorBody === "string" && errorBody.trim().length > 0
+        ? errorBody
+        : typeof errorBody === "object" && errorBody?.message
+          ? errorBody.message
+          : `POST ${path} failed with ${res.status}`;
 
     toast.error(message);
 

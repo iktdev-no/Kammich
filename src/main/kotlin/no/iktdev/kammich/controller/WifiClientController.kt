@@ -1,9 +1,9 @@
 package no.iktdev.kammich.controller
 
+import no.iktdev.kammich.models.shared.network.WifiInterfaceClient
 import no.iktdev.kammich.models.shared.network.WifiNetwork
-import no.iktdev.kammich.models.shared.network.WirelessInterface
-import no.iktdev.kammich.system.network.wifi.WifiConnectivityService
-import no.iktdev.kammich.system.network.wifi.WifiScanner
+import no.iktdev.kammich.system.network.WifiConnectionServiceV2
+import no.iktdev.kammich.system.network.WifiScanServiceV2
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -11,23 +11,29 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/v1/wifi/client")
 class WifiClientController(
-    private val wifiScanner: WifiScanner,
-    private val wifiConnector: WifiConnectivityService,
+    private val wifiScanner: WifiScanServiceV2,
+    private val wifiConnector: WifiConnectionServiceV2,
 ) {
 
-    @GetMapping("/interfaces")
-    fun getInterfaces(): List<WirelessInterface> {
-        return wifiConnector.getWifiClientInterfaces()
+    @GetMapping("", "/")
+    fun getInterfaces(): List<WifiInterfaceClient> {
+        return wifiConnector.getCurrentState()
     }
 
     @GetMapping("/{interfaceName}/scan")
     fun getKnownNetworks(@PathVariable interfaceName: String): List<WifiNetwork> {
-        return wifiScanner.getNetworks(interfaceName, false)
+        return wifiScanner.getNetworks(interfaceName)
     }
-    @PostMapping("/{interfaceName}/scan")
-    fun getNetworks(@PathVariable interfaceName: String): List<WifiNetwork> {
-        return wifiScanner.getNetworks(interfaceName, true)
+    @PostMapping("/{interfaceName}/scan/start")
+    fun startPeriodicallyScans(@PathVariable interfaceName: String){
+        return wifiScanner.startPeriodicScan(interfaceName)
     }
+
+    @PostMapping("/{interfaceName}/scan/stop")
+    fun stopPeriodicallyScans(@PathVariable interfaceName: String) {
+        return wifiScanner.stopPeriodicScan(interfaceName)
+    }
+
 
     @PostMapping("/{interfaceName}/connect")
     fun connect(
@@ -35,17 +41,20 @@ class WifiClientController(
         @RequestParam bssid: String,
         @RequestParam(required = false) password: String?
     ): ResponseEntity<Boolean> {
-        val result = wifiConnector.connectToNetwork(interfaceName, bssid, password)
-        return if (result) {
+        return try {
+            wifiConnector.connectAsync(interfaceName, bssid, password)
             ResponseEntity(true, HttpStatus.OK)
-        } else ResponseEntity(false, HttpStatus.NOT_ACCEPTABLE)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ResponseEntity(false, HttpStatus.NOT_ACCEPTABLE)
+        }
     }
 
     @PostMapping("/{interfaceName}/disconnect")
     fun disconnect(
         @PathVariable interfaceName: String
     ): ResponseEntity<Boolean> {
-        val success = wifiConnector.disconnectFromNetwork(interfaceName)
+        val success = wifiConnector.disconnect(interfaceName)
         val code = if (success) HttpStatus.OK else HttpStatus.BAD_REQUEST
         return ResponseEntity(success, code)
     }

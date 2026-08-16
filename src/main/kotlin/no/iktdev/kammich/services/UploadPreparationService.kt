@@ -10,18 +10,16 @@ import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.ImportJobOwnerTable
 import no.iktdev.kammich.database.tables.UploadFilesTable
 import no.iktdev.kammich.database.tables.UploadState
-import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.database.tables.getDeviceSerialNumber
 import no.iktdev.kammich.database.withTransaction
-import no.iktdev.kammich.immich.ImmichService
-import no.iktdev.kammich.immich.ImmichUserContext
+import no.iktdev.kammich.immich.services.ImmichService
+import no.iktdev.kammich.immich.context.ImmichUserContext
 import no.iktdev.kammich.models.internal.events.ImportJobCompletedEvent
 import no.iktdev.kammich.models.shared.Album
 import no.iktdev.kammich.repository.FileRepository
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
-import org.jetbrains.exposed.v1.core.notInList
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -30,6 +28,8 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
 import java.time.Instant
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 @Service
@@ -116,7 +116,7 @@ class UploadPreparationService(
 
 
     fun isSingleAndOnlyUser(userId: String): Boolean {
-        val allUsers = immichService.getAllUsers()
+        val allUsers = immichService.getUsersWithAccesses().map { it.user }
         return allUsers.size == 1 && allUsers.first().id.toString() == userId
     }
 
@@ -178,7 +178,8 @@ class UploadPreparationService(
                 val file = imported.getFile(deviceSerialNumber)
 
                 val exifDate = if (file.exists()) file.getExifTimestamp() else null
-                val effectiveTimestamp = exifDate ?: Instant.parse(imported.importedAt)
+                val effectiveTimestamp = exifDate ?:
+                    ZonedDateTime.parse(imported.importedAt, DateTimeFormatter.ISO_ZONED_DATE_TIME).toInstant()
 
                 val matchingAlbum = findAlbumForTimestamp(effectiveTimestamp, albums)
 

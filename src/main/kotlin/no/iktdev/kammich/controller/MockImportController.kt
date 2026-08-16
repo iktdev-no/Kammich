@@ -1,6 +1,6 @@
 package no.iktdev.kammich.controller
 
-import no.iktdev.kammich.importing.MockImportService
+import no.iktdev.kammich.services.importing.MockImportService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 

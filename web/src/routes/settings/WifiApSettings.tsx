@@ -21,25 +21,24 @@ import {
 
 import WifiTetheringIcon from '@mui/icons-material/WifiTethering';
 import WifiTetheringErrorIcon from '@mui/icons-material/WifiTetheringError';
-
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
-
 import AddIcon from '@mui/icons-material/Add';
-
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { useSseSelector } from "../../sse/useSseSelector";
+import WifiTetheringOff from '@mui/icons-material/WifiTetheringOff';
 
-import type { WifiNetworkTether, WifiSecurityType, WifiTetherAP, WirelessInterface } from "../../types/types";
-import { WifiTetheringOff } from "@mui/icons-material";
-import { addTetherDevice, getAp, getInterfaces, removeTetherDevice, setAp, startTethering, stopTethering } from "../../api/requests/networking/tethering";
+import { useSseSelector } from "../../sse/useSseSelector";
+import type { WifiTetherAP, WifiSecurityType, WifiInterfaceTether, WirelessTetheringState, WifiTether } from "../../types/types";
+import { getAp, getInterfaces, setAp, startTethering, stopTethering, useTetherDevice, removeTetherDevice } from "../../api/requests/networking/tethering";
 
 export default function WifiApSettings() {
     const theme = useTheme();
-    const useTether = useSseSelector(state => state.wifiTether);
 
-    const [interfaces, setInterfaces] = useState<WirelessInterface[]>([]);
+    // Henter inn wifiTether Record fra SSE
+    const wifiTether = useSseSelector(state => state.wifiTether) || {};
+
+    const [interfaces, setInterfaces] = useState<WifiInterfaceTether[]>([]);
     const [apSetting, setApSetting] = useState<WifiTetherAP | undefined>();
 
     const getApConfig = async () => {
@@ -53,13 +52,18 @@ export default function WifiApSettings() {
     };
 
     useEffect(() => {
-        getInterfaces().then((interfaces) => {
-            setInterfaces(interfaces)
+        getInterfaces().then((data) => {
+            setInterfaces(data);
         });
-
         getApConfig();
-    }, [useTether]);
+    }, []);
 
+    // Det aktive grensesnittet er det som ligger registrert i wifiTether-recorden fra backend
+    const activeInterfaceName = Object.keys(wifiTether)[0] || null;
+
+    // Hent WifiTether-objektet knyttet spesifikt til det aktive grensesnittet
+    const activeTetherObj = activeInterfaceName ? wifiTether[activeInterfaceName] : undefined;
+    const activeState: WirelessTetheringState = activeTetherObj?.state || "Idle";
 
     return (
         <Box sx={{ maxWidth: "1000px", mx: "auto", p: 4 }}>
@@ -70,45 +74,54 @@ export default function WifiApSettings() {
             <Box>
                 <Paper sx={{ p: 3, backgroundColor: theme.palette.background.paper, borderRadius: theme.shape.borderRadius, height: '100%' }}>
                     <Typography variant="h6" sx={{ mb: 2 }}>System Status</Typography>
-                    {useTether?.state ? (
+                    {activeInterfaceName ? (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            <Typography>Interface: {useTether?.name}</Typography>
+                            <Typography>Interface: {activeInterfaceName}</Typography>
                             <Box sx={{ display: "flex", alignItems: "center", flexDirection: "row", gap: 1 }}>
                                 <Typography>State:</Typography>
-                                <Chip label={useTether?.state} size="small" color={useTether?.state === "Broadcasting" ? 'success' : 'warning'} />
+                                <Chip
+                                    label={activeState}
+                                    size="small"
+                                    color={activeState === "Tethering" ? 'success' : activeState === "Acquired" ? 'info' : 'warning'}
+                                />
                             </Box>
                             <Divider sx={{ my: 1 }} />
-                            {useTether.network && (
+                            {activeTetherObj?.network && (
                                 <>
-                                    <Typography variant="body2">SSID: {useTether.network.ssid}</Typography>
-                                    <Typography variant="body2">Freq: {useTether.network.frequencyMhz} MHz</Typography>
+                                    <Typography variant="body2">SSID: {activeTetherObj.network.ssid}</Typography>
+                                    <Typography variant="body2">Freq: {activeTetherObj.network.frequencyMhz} MHz</Typography>
                                 </>
                             )}
-                            <Box>
-                                {useTether.state == "Idle" ? (
-                                    <Button
-                                        variant="contained"
-                                        size="small"
-                                        onClick={() => {
-                                            startTethering(useTether.name)
-                                        }}
-                                    >
-                                        Start
-                                    </Button>
+                            <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                                {activeState === "Idle" || activeState === "Acquired" ? (
+                                    <>
+                                        <Button
+                                            variant="contained"
+                                            size="small"
+                                            onClick={() => startTethering(activeInterfaceName)}
+                                        >
+                                            Start
+                                        </Button>
+                                        <Button
+                                            variant="contained"
+                                            color="error"
+                                            size="small"
+                                            onClick={() => removeTetherDevice(activeInterfaceName)}
+                                        >
+                                            Remove
+                                        </Button>
+                                    </>
                                 ) : (
                                     <Button
                                         variant="contained"
                                         color="error"
                                         size="small"
-                                        onClick={() => {
-                                            stopTethering(useTether.name)
-                                        }}
+                                        onClick={() => stopTethering(activeInterfaceName)}
                                     >
                                         Stop
                                     </Button>
                                 )}
                             </Box>
-
                         </Box>
                     ) : (
                         <Box sx={{
@@ -119,14 +132,13 @@ export default function WifiApSettings() {
                             p: 5
                         }}>
                             <WifiTetheringOff />
-                            <Typography>No interface configured</Typography>
+                            <Typography sx={{ mt: 1 }}>No interface configured</Typography>
                         </Box>
                     )}
                 </Paper>
             </Box>
 
             <Box sx={{ mt: 2 }}>
-
                 <Box sx={{ display: 'grid', gridTemplateColumns: { md: '1fr 1fr' }, gap: 4 }}>
                     <ApTetherConfig config={apSetting} onUpdate={updateApSettings} />
                     <Box sx={{
@@ -134,37 +146,31 @@ export default function WifiApSettings() {
                         p: 1,
                         borderRadius: theme.shape.borderRadius
                     }}>
-                        <ActiveTetherDevice tether={useTether} />
-                        <AvailableInterfaces activeTether={useTether} availableInterfaces={interfaces} />
+                        <AvailableInterfaces
+                            availableInterfaces={interfaces}
+                            activeInterfaceName={activeInterfaceName}
+                            wifiTether={wifiTether}
+                        />
                     </Box>
-                    {/* VENSTRE: Kontrollpanel */}
-
-                    {/* HØYRE: Status / Informasjon */}
-
                 </Box>
             </Box>
-        </Box >
-
+        </Box>
     );
 }
 
-export function ActiveTetherDevice({ tether }: { tether: WifiNetworkTether | undefined }) {
-    const [t, setT] = useState<WifiNetworkTether | undefined>()
-    useEffect(() => {
-        setT(tether)
-    }, [tether])
-
+export function ActiveTetherDevice({ activeInterfaceName, activeState }: { activeInterfaceName: string | null, activeState: WirelessTetheringState }) {
     return (
         <Box>
-            {t && (
+            {activeInterfaceName && (
                 <InterfaceItem
-                    iface={t.name}
+                    iface={activeInterfaceName}
                     supportsTethering={true}
                     isInUse={true}
+                    state={activeState}
                 />
             )}
         </Box>
-    )
+    );
 }
 
 function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined, onUpdate: (data: WifiTetherAP) => void }) {
@@ -194,16 +200,12 @@ function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined
             p: 1,
             borderRadius: theme.shape.borderRadius
         }}>
-            <Typography sx={{
-                mt: 2,
-                ml: 2,
-                mb: 2,
-            }} variant="h6">Wifi Network settings</Typography>
+            <Typography sx={{ mt: 2, ml: 2, mb: 2 }} variant="h6">Wifi Network settings</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}>
                 <TextField
                     size="small"
                     label="SSID"
-                    value={ssid}
+                    value={ssid || ""}
                     onChange={(e) => setSsid(e.target.value)}
                     slotProps={{
                         inputLabel: { shrink: !!ssid }
@@ -214,7 +216,7 @@ function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined
                     size="small"
                     label="Password"
                     type={showPassword ? 'text' : 'password'}
-                    value={password}
+                    value={password || ""}
                     onChange={(e) => setPassword(e.target.value)}
                     slotProps={{
                         input: {
@@ -229,7 +231,7 @@ function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined
                                 </InputAdornment>
                             )
                         },
-                        inputLabel: { shrink: !!ssid }
+                        inputLabel: { shrink: !!password }
                     }}
                 />
 
@@ -253,11 +255,11 @@ function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined
                     variant="contained"
                     color="primary"
                     onClick={() => onUpdate({
-                        password: password,
+                        password: password || "",
                         security: security,
-                        ssid: ssid
-                    } as WifiTetherAP)}
-                    disabled={!ssid} // Enkel validering
+                        ssid: ssid || ""
+                    })}
+                    disabled={!ssid}
                 >
                     Save Configuration
                 </Button>
@@ -266,22 +268,52 @@ function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined
     );
 }
 
-function AvailableInterfaces({ availableInterfaces, activeTether }: { activeTether: WifiNetworkTether | undefined, availableInterfaces: Array<WirelessInterface> }) {
-    const [interfaces, setInterfaces] = useState<Array<WirelessInterface>>([]);
-    const [at, setActiveTether] = useState<WifiNetworkTether | undefined>()
-    useEffect(() => {
-        setInterfaces(availableInterfaces)
-        setActiveTether(activeTether)
-    }, [availableInterfaces, activeTether])
+interface AvailableInterfacesProps {
+    availableInterfaces: Array<WifiInterfaceTether>;
+    activeInterfaceName: string | null;
+    wifiTether: Record<string, WifiTether>;
+}
 
+function AvailableInterfaces({ availableInterfaces, activeInterfaceName, wifiTether }: AvailableInterfacesProps) {
+    const [interfaces, setInterfaces] = useState<Array<WifiInterfaceTether>>([]);
+
+    useEffect(() => {
+        setInterfaces(availableInterfaces);
+    }, [availableInterfaces]);
+
+    // Vis enheter som verken er valgt/aktive ELLER har en operativ modus (bortsett fra "Idle" / tom)
+    const filteredInterfaces = interfaces.filter(iface => {
+        const isSelected = iface.name === activeInterfaceName;
+        const isInWifiTether = !!wifiTether[iface.name];
+
+        // En enhet er ledig hvis den ikke er i wifiTether, ikke er valgt, 
+        // og enten mangler operatingMode eller står som "Idle"
+        const isIdleOrNone = !iface.operatingMode || iface.operatingMode === "Idle";
+
+        return !isSelected && !isInWifiTether && isIdleOrNone;
+    });
 
     return (
         <>
-            {interfaces.length > 0 ? (
+            {filteredInterfaces.length > 0 ? (
                 <List disablePadding>
-                    {interfaces.map((iface: WirelessInterface, i: number) => (
-                        <InterfaceItem key={i} iface={iface.name} supportsTethering={iface.isAvailable} isInUse={false} />
-                    ))}
+                    {filteredInterfaces.map((iface: WifiInterfaceTether, i: number) => {
+                        const supportsAP = iface.caps?.includes("AP") || false;
+                        const interfaceState = wifiTether[iface.name]?.state || iface.state || "Idle";
+                        const isInUse = iface.name === activeInterfaceName;
+
+                        return (
+                            <InterfaceItem
+                                key={i}
+                                iface={iface.name}
+                                supportsTethering={supportsAP}
+                                isInUse={isInUse}
+                                isUsable={iface.isUsable}
+                                operatingMode={iface.operatingMode}
+                                state={interfaceState}
+                            />
+                        );
+                    })}
                 </List>
             ) : (
                 <Box sx={{
@@ -292,24 +324,34 @@ function AvailableInterfaces({ availableInterfaces, activeTether }: { activeTeth
                     p: 5
                 }}>
                     <WifiTetheringErrorIcon />
-                    <Typography>{(at ? `${at.name} was the only one available` : "No interface available")}</Typography>
+                    <Typography sx={{ mt: 1 }}>No available interface</Typography>
                 </Box>
             )}
-
         </>
-    )
+    );
 }
 
-function InterfaceItem({ iface, isInUse,
-    supportsTethering }: { iface: string, supportsTethering: boolean, isInUse: boolean }) {
-    const [expanded, setExpanded] = useState(false);
-    const [inUse, setInUse] = useState<boolean>(false)
-    const theme = useTheme()
+interface InterfaceItemProps {
+    iface: string;
+    isInUse: boolean;
+    supportsTethering: boolean;
+    isUsable?: boolean;
+    operatingMode?: string;
+    state?: WirelessTetheringState;
+}
 
+function InterfaceItem({ iface, isInUse, supportsTethering, isUsable = true, operatingMode, state = "Idle" }: InterfaceItemProps) {
+    const [expanded, setExpanded] = useState(false);
+    const [inUse, setInUse] = useState<boolean>(false);
+    const theme = useTheme();
 
     useEffect(() => {
-        setInUse(isInUse)
-    }, [isInUse])
+        setInUse(isInUse);
+    }, [isInUse]);
+
+    const secondaryText = !isUsable && operatingMode
+        ? `In use: ${operatingMode}`
+        : (inUse ? `Status: ${state}` : "");
 
     return (
         <Box sx={{
@@ -324,16 +366,13 @@ function InterfaceItem({ iface, isInUse,
             >
                 <ListItemText
                     primary={iface}
-                    secondary={inUse ? "Is in use" : ""}
+                    secondary={secondaryText}
                     slotProps={{
                         primary: { sx: { fontWeight: inUse ? 600 : 500 } }
                     }}
                 />
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, textAlign: "center" }}>
-                    <Box sx={{
-                        display: "flex",
-                        flexDirection: "column"
-                    }}>
+                    <Box sx={{ display: "flex", flexDirection: "column" }}>
                         <Box sx={{
                             display: "flex",
                             borderColor: supportsTethering ? theme.palette.success.dark : theme.palette.error.dark,
@@ -341,33 +380,31 @@ function InterfaceItem({ iface, isInUse,
                             borderRadius: 5,
                             p: 1,
                             justifyContent: "center"
-                        }} >
-                            {supportsTethering ? <WifiTetheringIcon sx={{ fontSize: 24, }} /> : <WifiTetheringErrorIcon sx={{ fontSize: 24 }} />}
-                        </Box>
-                        <Typography>AP mode</Typography>
-                    </Box>
-                    <Box sx={{
-                        display: "flex",
-                        flexDirection: "column"
-                    }}>
-                        <Box sx={{
-                            display: "flex",
-                            borderColor: supportsTethering ? theme.palette.success.dark : theme.palette.error.dark,
-                            borderStyle: "solid",
-                            borderRadius: 5,
-                            p: 1,
-                            justifyContent: "center"
-                        }} >
+                        }}>
                             {supportsTethering ? <WifiTetheringIcon sx={{ fontSize: 24 }} /> : <WifiTetheringErrorIcon sx={{ fontSize: 24 }} />}
-                            <AddIcon sx={{ fontSize: 24 }} />
-                            {supportsTethering ? <WifiIcon sx={{ fontSize: 24 }} /> : <WifiOffIcon sx={{ fontSize: 24 }} />}
                         </Box>
-                        <Typography>Concurrent mode</Typography>
+                        <Typography variant="caption">AP mode</Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <Box sx={{
+                            display: "flex",
+                            borderColor: supportsTethering ? theme.palette.success.dark : theme.palette.error.dark,
+                            borderStyle: "solid",
+                            borderRadius: 5,
+                            p: 1,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            gap: 0.5
+                        }}>
+                            {supportsTethering ? <WifiTetheringIcon sx={{ fontSize: 20 }} /> : <WifiTetheringErrorIcon sx={{ fontSize: 20 }} />}
+                            <AddIcon sx={{ fontSize: 16 }} />
+                            {supportsTethering ? <WifiIcon sx={{ fontSize: 20 }} /> : <WifiOffIcon sx={{ fontSize: 20 }} />}
+                        </Box>
+                        <Typography variant="caption">Concurrent</Typography>
                     </Box>
                 </Box>
             </ListItem>
 
-            {/* Expanderbar seksjon */}
             {expanded && (
                 <Box sx={{ p: 2, display: 'flex', gap: 1, borderRadius: 1, mr: 1, ml: 1, mb: 1 }}>
                     {inUse ? (
@@ -375,29 +412,31 @@ function InterfaceItem({ iface, isInUse,
                             variant="contained"
                             color="error"
                             size="small"
-                            onClick={() => {
-                                removeTetherDevice(iface)
-                            }}
+                            onClick={() => removeTetherDevice(iface)}
                         >
                             Remove
                         </Button>
                     ) : (
                         <Box>
-                            <Typography>
-                                AP Mode: Declares if we found support to host a wifi network from this device
-                                <br />
-                                <br />
-                                Concurrent mode: Declares if we found support to host a wifi network fron this device as well as being able to connect to a seperate wifi network siumltaniously
+                            <Typography variant="body2" sx={{ mb: 2 }}>
+                                AP Mode: Declares if we found support to host a wifi network from this device.
+                                <br /><br />
+                                Concurrent mode: Declares if we found support to host a wifi network from this device as well as being able to connect to a separate wifi network simultaneously.
                             </Typography>
                             <Box sx={{ display: "flex", gap: 1 }}>
-                                <Button variant="contained" size="small" onClick={() => {
-                                    addTetherDevice(iface)
-                                }} sx={{ textTransform: 'none', px: 3 }}>Use</Button>
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    onClick={() => useTetherDevice(iface)}
+                                    sx={{ textTransform: 'none', px: 3 }}
+                                >
+                                    Use
+                                </Button>
                             </Box>
                         </Box>
                     )}
                 </Box>
             )}
         </Box>
-    )
+    );
 }

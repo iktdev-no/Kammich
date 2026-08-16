@@ -28,6 +28,7 @@ object DeviceOwnerTable : LongIdTable("DEVICE_OWNER") {
 object ImportJobOwnerTable : LongIdTable("IMPORT_JOB_OWNER") {
     val importJob = varchar("IMPORT_JOB", 36).uniqueIndex()
     val immichUserId = varchar("IMMICH_USER_ID", 36)
+    val locked = bool("LOCKED").default(false)
 
     fun getWhere(predicate: () -> Op<Boolean>): List<PersistedJobOwner> {
         return ImportJobOwnerTable.selectAll()

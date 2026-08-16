@@ -1,8 +1,10 @@
 package no.iktdev.kammich.models.shared.network
 
-import no.iktdev.kammich.models.internal.network.InterfaceState
+
 
 data class WifiNetwork(
+    val inUse: Boolean,
+    val isActive: Boolean,
     val ssid: String,
     val isHidden: Boolean,
     val signalPercent: Int,
@@ -11,6 +13,7 @@ data class WifiNetwork(
     val securityType: String,
     val interfaceName: String,
     val channel: Int?,
+    val bandwidthMhz: Int = 0,
     val frequencyMhz: Int = 0,
     val hwMode: WifiNetworkHardwareMode // "g" eller "a"
 )
@@ -18,25 +21,3 @@ data class WifiNetwork(
 enum class WifiNetworkHardwareMode {
     a, g
 }
-
-interface WifiNetworkInterface {
-    val name: String
-}
-
-data class WifiNetworkScan(
-    override val name: String,
-    val state: InterfaceActiveState,
-    val networks: List<WifiNetwork>
-): WifiNetworkInterface
-
-data class WifiNetworkConnection(
-    override val name: String,
-    val state: InterfaceActiveState,
-    val network: WifiNetwork? = null
-): WifiNetworkInterface
-
-data class WifiNetworkTether(
-    override val name: String,
-    val state: WirelessTetheringState,
-    val network: WifiNetwork? = null
-): WifiNetworkInterface

@@ -13,32 +13,34 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
       };
 
     case 'notifications':
-      console.log(event.payload)
       return {
         ...state,
         notifications: event.payload
-      }
+      };
+
     case 'sync-status':
       return { ...state, syncRunning: event.running };
 
     case 'custom':
       return state;
+
     case 'removable-devices':
       return {
         ...state,
         devices: event.payload
-      }
+      };
 
     case 'storage-info-internal':
       return {
         ...state,
         internalStorageInfo: event.payload
-      }
+      };
+
     case "storage-stats-media":
       return {
         ...state,
         internalMediaStats: event.payload
-      }
+      };
 
     case 'sse-online':
       return { ...state, connectionStatus: 'online' };
@@ -49,34 +51,61 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
     case 'sse-offline':
       return { ...state, connectionStatus: 'offline' };
 
-    case 'wifi-scan':
+    // --- Ny V2 WiFi hantering via Records ---
+    case 'wifi-scan-status':
       return {
         ...state,
-        wifiScans: event.payload,
-      }
-    case 'wifi-connectivity':
-      return {
-        ...state,
-        wifiConnections: event.payload
-      }
-
-    case "wifi-tethering":
-      return {
-        ...state,
-        wifiTether: event.payload
-      }
-
-    case "wifi-tethering-selected-interface":
-      return {
-        ...state,
-        wifiTetherDevice: event.payload
-      }
-
-    case 'job-update':
-      return {
-        ...state,
-        jobs: { ...state.jobs, [event.jobId]: event.status },
+        wifiScanStatuses: {
+          ...state.wifiScanStatuses,
+          [event.state.ifName]: event.state
+        }
       };
+
+    case 'wifi-scan-result':
+      return {
+        ...state,
+        wifiScanResults: {
+          ...state.wifiScanResults,
+          [event.payload.ifName]: event.payload
+        }
+      };
+
+    case 'wifi-connect':
+      const updatedWifiConnections = { ...state.wifiConnection };
+      if (event.payload === undefined || event.payload === null) {
+        delete updatedWifiConnections[event.ifName];
+      } else {
+        updatedWifiConnections[event.ifName] = event.payload;
+      }
+      return {
+        ...state,
+        wifiConnection: updatedWifiConnections,
+      };
+
+    case 'wifi-interface-client':
+      return {
+        ...state,
+        wifiConnectionInterfaces: event.payload,
+      };
+
+    case 'wifi-tether':
+      const updatedWifiTether = { ...state.wifiTether };
+      if (event.payload === undefined || event.payload === null) {
+        delete updatedWifiTether[event.ifName];
+      } else {
+        updatedWifiTether[event.ifName] = event.payload;
+      }
+      return {
+        ...state,
+        wifiTether: updatedWifiTether,
+      };
+
+    case 'wifi-interface-tether':
+      return {
+        ...state,
+        wifiTetherInterfaces: event.payload,
+      };
+    // ---------------------------------------
 
     case "import-media-progress":
       return {
@@ -102,22 +131,22 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
       return {
         ...state,
         immichUserMe: event.payload
-      }
+      };
 
     case "immich-api-key-in-use":
       return {
         ...state,
         immichApiKeyInUse: event.payload
-      }
+      };
 
     case "immich-availability":
       return {
         ...state,
         immichAvailability: event.payload
-      }
+      };
 
     default:
-      console.log("Ingen tok seg av ", event)
+      console.log("Ingen tok seg av ", event);
       return state;
   }
 }

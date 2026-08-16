@@ -1,15 +1,17 @@
-package no.iktdev.kammich.system.network
+package no.iktdev.kammich.system.network.v2
 
-import no.iktdev.kammich.models.shared.network.InterfaceActiveState
-import no.iktdev.kammich.models.shared.network.old.WifiConnectionResult
+import no.iktdev.kammich.models.shared.network.CaptivePortalState
+import no.iktdev.kammich.models.shared.network.NetworkCaptiveStatus
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.net.HttpURLConnection
 import java.net.URL
 
 @Component
-class CapativePortal {
+class CaptivePortalV2 {
+    private val log = LoggerFactory.getLogger(javaClass)
 
-    fun verify(): WifiConnectionResult {
+    fun verify(interfaceName: String): NetworkCaptiveStatus {
         val captiveUrls = listOf(
             "http://connectivitycheck.gstatic.com/generate_204",
             "http://www.msftconnecttest.com/connecttest.txt"
@@ -24,19 +26,40 @@ class CapativePortal {
                 connection.readTimeout = 3000
                 connection.useCaches = false
 
+                // TODO: Hvis du har bundet socketen/tilkoblingen til et spesifikt interface
+                // via NetworkManager/Socket-binding tidligere, kan det gjøres her.
+
                 connection.connect()
                 val responseCode = connection.responseCode
 
-                if (responseCode in 300..399) {
-                    val portalLocation = connection.getHeaderField("Location") ?: ""
-                    return WifiConnectionResult(false, portalLocation, InterfaceActiveState.CaptivePortal)
-                } else if (responseCode == 204) {
-                    return WifiConnectionResult(true, "Internett-forbindelsen er aktiv.", InterfaceActiveState.Connected)
+                when (responseCode) {
+                    in 300..399 -> {
+                        val portalLocation = connection.getHeaderField("Location") ?: ""
+                        log.info("Captive portal detektert på $interfaceName: $portalLocation")
+                        return NetworkCaptiveStatus(
+                            interfaceName = interfaceName,
+                            state = CaptivePortalState.CaptivePortal,
+                            portalUrl = portalLocation,
+                            message = "Omdirigert til captive portal"
+                        )
+                    }
+                    204 -> {
+                        return NetworkCaptiveStatus(
+                            interfaceName = interfaceName,
+                            state = CaptivePortalState.Online,
+                            message = "Internett-forbindelsen er aktiv."
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 // Prøv neste URL
             }
         }
-        return WifiConnectionResult(false, "Ingen nettverksforbindelse detektert.", InterfaceActiveState.Disconnected)
+
+        return NetworkCaptiveStatus(
+            interfaceName = interfaceName,
+            state = CaptivePortalState.Offline,
+            message = "Ingen nettverksforbindelse detektert."
+        )
     }
 }

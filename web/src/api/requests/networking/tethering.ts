@@ -1,17 +1,14 @@
-import type { WifiNetworkTether, WifiTetherAP, WirelessInterface } from "../../../types/types"
+import type { WifiInterfaceTether, WifiTetherAP } from "../../../types/types"
 import { apiDelete, apiGet, apiPost } from "../../client"
 
 
 const endpoint = "/v1/wifi/tethering"
 
 
-export function getState() {
-    return apiGet<Array<WifiNetworkTether>>(`${endpoint}/state`)
+export function getInterfaces() {
+    return apiGet<Array<WifiInterfaceTether>>(`${endpoint}`)
 }
 
-export function getInterfaces() {
-    return apiGet<Array<WirelessInterface>>(`${endpoint}/interfaces`)
-}
 
 export function startTethering(ifName: string) {
     return apiPost<null, void>(`${endpoint}/start/${ifName}`, null)
@@ -22,11 +19,11 @@ export function stopTethering(ifName: string) {
 }
 
 export function removeTetherDevice(ifName: string) {
-    return apiDelete<boolean>(`${endpoint}/remove`, { body: ifName })
+    return apiDelete<boolean>(`${endpoint}/release`, { body: ifName })
 }
 
-export function addTetherDevice(ifName: string) {
-    return apiPost<string, void>(`${endpoint}/add`, ifName)
+export function useTetherDevice(ifName: string) {
+    return apiPost<string, void>(`${endpoint}/use`, ifName)
 }
 
 export function setAp(ap: WifiTetherAP) {
