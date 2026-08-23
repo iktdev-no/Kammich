@@ -1,9 +1,12 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Box, Typography, CircularProgress, keyframes, useTheme, useMediaQuery, IconButton } from '@mui/material';
+import { useEffect, useState, useRef, useCallback, useMemo, type MouseEvent } from 'react';
+import { Box, Typography, CircularProgress, keyframes, useTheme, useMediaQuery, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useParams } from 'react-router-dom';
 import type { RemoteFile } from "../types/types";
 import { getPhotos, getPhotoThumbUrl, getPhotoUrl } from "../api/requests/photo";
+import { uploadFile } from "../api/requests/upload";
+import { useSseSelector } from '../sse/useSseSelector';
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(8px); }
@@ -18,6 +21,14 @@ export default function Photo() {
     const [page, setPage] = useState(0);
 
     const [selectedPhoto, setSelectedPhoto] = useState<RemoteFile | null>(null);
+
+    // State for Context Menu
+    const [contextMenu, setContextMenu] = useState<{ mouseX: number; mouseY: number } | null>(null);
+    const [contextPhoto, setContextPhoto] = useState<RemoteFile | null>(null);
+
+    // Hent ut bruker fra SSE kontekst
+    const immichUser = useSseSelector(state => state.immichUserMe);
+    const userId = immichUser?.id;
 
     const theme = useTheme();
     const isXl = useMediaQuery(theme.breakpoints.up('xl'));
@@ -35,7 +46,6 @@ export default function Photo() {
 
     const observerRef = useRef<IntersectionObserver | null>(null);
 
-    // Bruk referanser for å unngå at lukkede funksjoner (closures) henger igjen på gammel state
     const loadingRef = useRef(loading);
     loadingRef.current = loading;
 
@@ -45,7 +55,6 @@ export default function Photo() {
     const pageRef = useRef(page);
     pageRef.current = page;
 
-    // Nullstill alt når 'sn' endrer seg
     useEffect(() => {
         setPhotos([]);
         setPage(0);
@@ -59,7 +68,7 @@ export default function Photo() {
                 if (!isMounted) return;
                 setPhotos(res.data);
                 setHasMore(res.hasMore);
-                setPage(1); // Klar for neste side
+                setPage(1);
             })
             .catch(err => {
                 if (isMounted) console.error("Kunne ikke laste første side:", err);
@@ -73,7 +82,6 @@ export default function Photo() {
         };
     }, [sn]);
 
-    // Stabil loadMore som bruker refs og aldri går i spinn
     const loadMore = useCallback(async () => {
         if (loadingRef.current || !hasMoreRef.current) return;
 
@@ -118,6 +126,41 @@ export default function Photo() {
         return cols;
     }, [photos, numCols]);
 
+    // Håndter høyreklikk på bilde (kun aktivt hvis brukeren er logget inn)
+    const handleContextMenu = (event: MouseEvent<HTMLDivElement>, photo: RemoteFile) => {
+        if (!userId) return; // Ikke gjør noe eller åpne meny om brukeren ikke er logget inn
+        event.preventDefault();
+        setContextPhoto(photo);
+        setContextMenu(
+            contextMenu === null
+                ? { mouseX: event.clientX + 2, mouseY: event.clientY - 6 }
+                : null,
+        );
+    };
+
+    const handleCloseContextMenu = () => {
+        setContextMenu(null);
+        setContextPhoto(null);
+    };
+
+    // Trigget når bruker trykker på "Last opp" i menyen
+    const handleUploadClick = async () => {
+        if (!userId || !contextPhoto) {
+            console.error("Mangler bruker-ID eller bilde-ID for opplasting");
+            handleCloseContextMenu();
+            return;
+        }
+
+        try {
+            await uploadFile(userId, contextPhoto.id);
+            console.log(`Startet opplasting for fil ${contextPhoto.id}`);
+        } catch (err) {
+            console.error("Feil ved opplasting av fil:", err);
+        } finally {
+            handleCloseContextMenu();
+        }
+    };
+
     return (
         <Box sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: 'background.default', minHeight: '100vh', position: 'relative' }}>
             <Typography variant="h4" sx={{ mb: 4, fontWeight: 600, color: 'text.primary' }}>
@@ -131,6 +174,7 @@ export default function Photo() {
                             <Box
                                 key={photo.id}
                                 onClick={() => setSelectedPhoto(photo)}
+                                onContextMenu={(e) => handleContextMenu(e, photo)}
                                 sx={{
                                     borderRadius: 2,
                                     overflow: 'hidden',
@@ -170,6 +214,28 @@ export default function Photo() {
                 </Box>
             )}
 
+            {/* Context Menu for bilder (vises kun om brukeren erlogget inn) */}
+            {userId && (
+                <Menu
+                    open={contextMenu !== null}
+                    onClose={handleCloseContextMenu}
+                    anchorReference="anchorPosition"
+                    anchorPosition={
+                        contextMenu !== null
+                            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                            : undefined
+                    }
+                >
+                    <MenuItem onClick={handleUploadClick}>
+                        <ListItemIcon>
+                            <CloudUploadIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>Last opp bilde</ListItemText>
+                    </MenuItem>
+                </Menu>
+            )}
+
+            {/* Fullskjerm-visning */}
             {selectedPhoto && (
                 <Box
                     onClick={() => setSelectedPhoto(null)}

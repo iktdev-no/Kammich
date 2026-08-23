@@ -1,6 +1,6 @@
 package no.iktdev.kammich.storage.media
 
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.withTransaction

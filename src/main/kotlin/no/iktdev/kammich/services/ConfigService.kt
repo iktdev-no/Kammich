@@ -1,4 +1,4 @@
-package no.iktdev.kammich
+package no.iktdev.kammich.services
 
 import com.google.gson.GsonBuilder
 import no.iktdev.kammich.models.internal.config.RuntimeKammichConfig
@@ -9,7 +9,7 @@ import java.io.File
 
 @Service
 class ConfigService {
-    private val log = LoggerFactory.getLogger(ConfigService::class.java)
+    private val log = LoggerFactory.getLogger(javaClass)
 
 
     private val configFile = File("./kammich.json") // Eller en mer robust sti

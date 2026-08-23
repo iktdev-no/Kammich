@@ -1,8 +1,9 @@
 package no.iktdev.kammich.repository
 
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.database.models.PersistedImportedFile
 import no.iktdev.kammich.database.tables.DevicesTable
+import no.iktdev.kammich.database.tables.DevicesTable.toPersistedDevice
 import no.iktdev.kammich.database.tables.ImportJobOwnerTable
 import no.iktdev.kammich.database.tables.ImportJobOwnerTable.toPersistedJobOwner
 import no.iktdev.kammich.database.tables.ImportedFilesTable
@@ -14,6 +15,7 @@ import no.iktdev.kammich.getFileType
 import no.iktdev.kammich.immich.context.ImmichUserContext
 import no.iktdev.kammich.models.FileHash
 import no.iktdev.kammich.models.internal.KFile
+import no.iktdev.kammich.models.internal.PersistedDevice
 import no.iktdev.kammich.models.shared.DeviceImport
 import no.iktdev.kammich.models.shared.DeviceImportJobSummary
 import no.iktdev.kammich.models.shared.ImportFile
@@ -132,7 +134,7 @@ class FileRepository(
 
     fun getImportHistorySummary(): List<DeviceImportJobSummary> {
         // 1. Hent alle enheter slik at vi har navn, serialNumber osv.
-        val devices = DevicesTable.getDevices().associateBy { it.id }
+        val devices = getDevices().associateBy { it.id }
         val userId = immichUserContext.getCurrentUserId()
 
         return withTransaction {
@@ -185,10 +187,16 @@ class FileRepository(
         }.getOrDefault(emptyList())
     }
 
+    fun getDevices(): List<PersistedDevice> {
+        return withTransaction {
+            DevicesTable.selectAll()
+                .map { it.toPersistedDevice() }
+        }.getOrDefault(emptyList())
+    }
 
     fun getImportHistory(): List<DeviceImport> {
         // 1. Hent alle enheter slik at vi har navn, serialNumber osv.
-        val devices = DevicesTable.getDevices().associateBy { it.id }
+        val devices = getDevices().associateBy { it.id }
 
         return withTransaction {
             // 2. Hent alle importerte filer og gruppér dem på deviceId
@@ -242,5 +250,13 @@ class FileRepository(
                 ImportedFilesTable.deviceId eq deviceId
             }
         }.getOrDefault(emptyList())
+    }
+
+    fun getFileById(id: Long): PersistedImportedFile? {
+        return withTransaction {
+            ImportedFilesTable.selectAll()
+                .where { ImportedFilesTable.id eq id }
+                .singleOrNull()?.toPersisted()
+        }.getOrNull()
     }
 }

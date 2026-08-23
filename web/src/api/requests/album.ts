@@ -16,3 +16,7 @@ export function updateAlbum(id: number, data: AlbumUpdateRequest) {
 export function deleteAlbum(id: number) {
     return apiDelete<void>(`/v1/album/${id}`);
 }
+
+export function syncAlbumWithFIles(id: number) {
+    return apiPost<null, void>(`/v1/album/${id}/sync-timeslot`, null)
+}

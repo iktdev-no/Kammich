@@ -1,7 +1,7 @@
 package no.iktdev.kammich.services.importing
 
 import kotlinx.coroutines.*
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.infoNotification
 import no.iktdev.kammich.models.internal.KFile
 import no.iktdev.kammich.models.internal.KFileType

@@ -1,6 +1,6 @@
 package no.iktdev.kammich.immich.services
 
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.database.tables.ImmichAuthenticationTable
 import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.immich.client.ImmichClientFactory

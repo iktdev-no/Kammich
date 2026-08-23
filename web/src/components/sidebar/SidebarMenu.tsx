@@ -186,7 +186,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
 
             <Box
                 sx={{
-                    //marginTop: "auto",
+                    marginTop: "auto",
                     paddingTop: theme.spacing(2),
                     paddingBottom: theme.spacing(2),
                     borderTop: `1px solid ${theme.palette.grey[800]}`,

@@ -1,7 +1,7 @@
 package no.iktdev.kammich.system.network
 
 import com.google.gson.Gson
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.models.internal.config.SelectedWirelessTetherInterface
 import no.iktdev.kammich.models.shared.network.*
 import no.iktdev.kammich.sse.SseManager

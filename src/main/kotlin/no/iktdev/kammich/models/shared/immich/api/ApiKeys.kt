@@ -19,6 +19,7 @@ data class ImmichApiKeyPost(
 val defaultPermissions = listOf(
     "asset.read",
     "asset.update",
+    "asset.upload",
     "asset.download",
     "album.create",
     "album.read",

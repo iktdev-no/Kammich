@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-08-15T21:37:47.542942880Z
+// Time: 2026-08-18T12:05:29.262178455Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -8,6 +8,8 @@ export interface DeviceSettingsDto {
   excludeFolders: string[] | null;
   includeFolders: string[] | null;
 }
+
+export type JobStatus = "Running" | "Completed" | "Failed"
 
 export interface ImportProgressEvent {
   completedFiles: number;
@@ -25,6 +27,12 @@ export interface DeviceImportJobSummary {
   deviceName: string;
   jobs: ImportJobSummary[];
   started: string;
+}
+
+export interface UploadMediaItem {
+  fileName: string;
+  fileSize: number;
+  state: UploadState;
 }
 
 export interface AlbumUpdateRequest {
@@ -142,6 +150,8 @@ export interface ImportJobOwnershipSummary {
 
 export type Severity = "Info" | "Warning" | "Error"
 
+export type UploadState = "Pending" | "Uploading" | "Success" | "Failure"
+
 export interface ImportFile {
   file: string;
   isNew: boolean;
@@ -161,6 +171,38 @@ export type FileImportState = "Pending" | "InProgress" | "Success" | "Failure"
 export type WFileType = "FILE" | "DIRECTORY"
 
 export type ImportState = "Indexing" | "Importing" | "Completed" | "Canceled"
+
+export interface UploadSummary {
+  lastUpdatedAt: string | null;
+  totalFailedUploads: number;
+  totalInQueueUploads: number;
+  totalReadyUploads: number;
+  totalSucceededUploads: number;
+  totalUploads: number;
+  userId: string;
+}
+
+export interface UploadJobSummary {
+  jobId: string;
+  total: number;
+  totalFailure: number;
+  totalSuccess: number;
+  userId: string;
+}
+
+export interface UploadProgressEvent {
+  failedFiles: number;
+  items: UploadMediaItem[];
+  jobId: string;
+  state: JobStatus;
+  successfulFiles: number;
+  totalFiles: number;
+}
+
+export interface AlbumDeleteRequest {
+  albumId: number;
+  deleteFromImmich: boolean;
+}
 
 export interface AlbumCreateRequest {
   albumName: string;

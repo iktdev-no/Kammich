@@ -1,5 +1,7 @@
 package no.iktdev.kammich
 
+import com.drew.imaging.ImageMetadataReader
+import com.drew.metadata.exif.ExifSubIFDDirectory
 import com.google.gson.GsonBuilder
 import net.jpountz.xxhash.XXHashFactory
 import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceAbility
@@ -18,12 +20,16 @@ import no.iktdev.kammich.models.shared.Severity
 import no.iktdev.kammich.models.shared.device.Capability
 import org.springframework.context.ApplicationEventPublisher
 import java.io.File
+import java.lang.Long
+import java.security.MessageDigest
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
 
 fun String.toMD5(): String {
     return this.toByteArray().let {
-        java.security.MessageDigest.getInstance("MD5").digest(it)
+        MessageDigest.getInstance("MD5").digest(it)
             .joinToString("") { b -> "%02x".format(b) }
     }
 }
@@ -146,7 +152,23 @@ fun File.toXxHash(): FileHash {
     }
 
     return FileHash(
-        hash = java.lang.Long.toHexString(streamHasher.value),
+        hash = Long.toHexString(streamHasher.value),
         method = FileHashType.XX64Hash
     )
+}
+
+fun Instant.asOffsetDateTime(): OffsetDateTime = this.atZone(ZoneId.systemDefault()).toOffsetDateTime()
+
+fun File.getExifTimestamp(): Instant? {
+    return try {
+        val metadata = ImageMetadataReader.readMetadata(this)
+        val directory = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory::class.java)
+        directory?.getDate(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL)?.toInstant()
+    } catch (e: Exception) {
+        null
+    }
+}
+
+fun Instant.between(start: Instant, end: Instant): Boolean {
+    return this in start..end
 }

@@ -1,7 +1,8 @@
 package no.iktdev.kammich.storage.media
 
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
+import no.iktdev.kammich.database.tables.DevicesTable.toPersistedDevice
 import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.models.FileType
@@ -11,6 +12,7 @@ import no.iktdev.kammich.storage.Thumbnail
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.FileSystemResource
 import org.springframework.stereotype.Service
@@ -25,7 +27,11 @@ class PhotoService(
     // Cacher index per deviceId
 
     fun getPhotoDevices(): List<PhotoDevice> {
-        return DevicesTable.getDevices().map { device ->
+        return withTransaction {
+            DevicesTable.selectAll()
+                .mapNotNull { it.toPersistedDevice() }
+        }.getOrDefault(emptyList())
+            .map { device ->
             PhotoDevice(
                 name = device.name,
                 serialNumber = device.serialNumber,

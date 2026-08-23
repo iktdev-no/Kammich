@@ -107,6 +107,15 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
       };
     // ---------------------------------------
 
+    case "upload-media-progress":
+      return {
+        ...state,
+        activeUploadProgress: {
+          ...state.activeUploadProgress,
+          [event.payload.jobId]: event.payload, // Bytt ut event.jobId med den nøkkelen du bruker i eventet ditt
+        },
+      };
+
     case "import-media-progress":
       return {
         ...state,

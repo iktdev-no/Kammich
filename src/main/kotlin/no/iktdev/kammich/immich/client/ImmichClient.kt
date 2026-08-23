@@ -1,16 +1,28 @@
 package no.iktdev.kammich.immich.client
 
+import com.google.gson.Gson
+import kotlinx.datetime.toLocalDateTime
+import no.iktdev.kammich.asOffsetDateTime
 import no.iktdev.kammich.immich.ImmichApi
 import no.iktdev.kammich.immich.api.APIKeysApi // Eller ApiKeysApi / KeyApi
+import no.iktdev.kammich.immich.api.AlbumsApi
+import no.iktdev.kammich.immich.api.AssetsApi
 import no.iktdev.kammich.immich.api.AuthenticationApi
 import no.iktdev.kammich.immich.api.ServerApi
 import no.iktdev.kammich.immich.api.UsersApi
 import no.iktdev.kammich.immich.exceptions.ImmichConnectionUnavailableException
+import no.iktdev.kammich.immich.exceptions.ImmichException
 import no.iktdev.kammich.immich.exceptions.ImmichLoginIncorrectUsernameOrPasswordException
 import no.iktdev.kammich.immich.mapper.fromDomain
 import no.iktdev.kammich.immich.mapper.toDomain
+import no.iktdev.kammich.immich.models.AlbumResponseDto
+import no.iktdev.kammich.immich.models.AlbumsAddAssetsDto
+import no.iktdev.kammich.immich.models.BulkIdsDto
+import no.iktdev.kammich.immich.models.CreateAlbumDto
 import no.iktdev.kammich.immich.models.LoginCredentialDto
 import no.iktdev.kammich.immich.models.LoginResponseDto
+import no.iktdev.kammich.immich.models.UpdateAlbumDto
+import no.iktdev.kammich.models.internal.immich.UploadAssetRequest
 import no.iktdev.kammich.models.shared.immich.api.ImmichApiKeyPost
 import no.iktdev.kammich.models.shared.immich.api.ImmichApiKeyPostResponse
 import no.iktdev.kammich.models.shared.immich.api.ImmichApiKeyPostResponseDto
@@ -24,6 +36,7 @@ import no.iktdev.kammich.models.shared.immich.api.ImmichUserMe
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import org.openapitools.client.infrastructure.ApiClient
+import org.openapitools.client.infrastructure.ApiResponse
 import org.openapitools.client.infrastructure.ClientError
 import org.openapitools.client.infrastructure.ClientException
 import org.openapitools.client.infrastructure.ResponseType
@@ -218,6 +231,85 @@ class ImmichClient(
         } catch (e: Exception) {
          e.printStackTrace()
          null
+        }
+    }
+
+
+    override fun uploadFile(apiKey: String, upload: UploadAssetRequest): UUID {
+        val client = ExtensiveImmichAssetUploadClient(serverUrl, apiKeyClient(apiKey))
+        return try {
+            log.info("""
+                Upload file exists: ${upload.file.exists()}
+                Filename: ${upload.file.name}
+                Created: ${upload.createdAt.asOffsetDateTime()}
+                Modified at: ${upload.modifiedAt.asOffsetDateTime()}
+            """.trimIndent())
+            val out = client.uploadAssetSlim(
+                assetData = upload.file,
+                fileCreatedAt = upload.createdAt.asOffsetDateTime(),
+                fileModifiedAt = upload.modifiedAt.asOffsetDateTime(),
+                filename = upload.file.name
+            )
+
+            log.info(Gson().toJson(out))
+            out.id
+        } catch (e: ClientException) {
+            // Dette henter ut den faktiske JSON-feilen fra Immich-serveren
+            val errorBody = Gson().toJson(e.response)
+            log.error("Immich 400 Bad Request Detaljer: statusCode=${e.statusCode}, body=$errorBody", e)
+            throw e
+        } catch (e: Exception) {
+            log.error("Feilet ved opplasting: ${e.message}", e)
+            throw e
+        }
+    }
+
+    override fun createAlbum(apiKey: String, albumName: String, albumDescription: String?): UUID {
+        val client = AlbumsApi(serverUrl, apiKeyClient(apiKey))
+        return try {
+            val out = client.createAlbum(CreateAlbumDto(albumName = albumName, description = albumDescription))
+            out.id
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    override fun updateAlbum(apiKey: String, albumId: UUID, albumName: String?, albumDescription: String?): AlbumResponseDto {
+        val client = AlbumsApi(serverUrl, apiKeyClient(apiKey))
+        val updatePayload = UpdateAlbumDto(albumName = albumName, description = albumDescription)
+        log.info("Updating album: $albumId with payload: ${Gson().toJson(updatePayload)}")
+        return client.updateAlbumInfo(albumId, updatePayload)
+    }
+
+    override fun addPhotoToAlbum(apiKey: String, albumId: UUID, assetIds: List<UUID>): Boolean {
+        val client = AlbumsApi(serverUrl, apiKeyClient(apiKey))
+        return tryImmich {
+            client.addAssetsToAlbums(AlbumsAddAssetsDto(listOf(albumId), assetIds)).success
+        }
+    }
+
+
+    // En ren wrapper for å holde på responsen uansett utfall
+    sealed class ApiResult<out T> {
+        data class Success<T>(val data: T, val statusCode: Int) : ApiResult<T>()
+        data class Error(val message: String, val statusCode: Int, val rawResponse: Any) : ApiResult<Nothing>()
+    }
+
+    inline fun <T> tryImmich(block: () -> T): T {
+        return try {
+            block()
+        } catch (e: ClientException) {
+            e.statusCode
+            print(e.response)
+            throw e
+        } catch (e: ServerException) {
+            print(e.response)
+            throw e
+        } catch (e: ImmichException) {
+            throw e
+        } catch (e: Exception) {
+            throw ImmichException("Uventet feil mot Immich: ${e.message}")
         }
     }
 

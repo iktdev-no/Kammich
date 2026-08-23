@@ -1,6 +1,5 @@
 package no.iktdev.kammich.services.importing
 
-import no.iktdev.kammich.ConfigService
 import no.iktdev.kammich.models.internal.KFile
 import no.iktdev.kammich.models.shared.device.RemovableDevice
 import no.iktdev.kammich.repository.FileRepository
@@ -8,10 +7,7 @@ import no.iktdev.kammich.storage.DeviceManagerService
 import no.iktdev.kammich.storage.provider.StorageProvider
 import no.iktdev.kammich.storage.provider.StorageProviderFactory
 import org.slf4j.LoggerFactory
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.scheduling.TaskScheduler
 import org.springframework.stereotype.Component
-import kotlin.plus
 
 @Component
 class DeviceContentIndexing(

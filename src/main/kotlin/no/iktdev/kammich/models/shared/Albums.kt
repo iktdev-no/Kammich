@@ -29,3 +29,8 @@ data class Album(
     val totalFiles: Long = 0,
     val sampleFile: RemoteFile? = null
 )
+
+data class AlbumDeleteRequest(
+    val albumId: Long,
+    val deleteFromImmich: Boolean = false
+)

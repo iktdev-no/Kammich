@@ -75,7 +75,7 @@ class NetworkInterfaceScannerV2(
 
     @Scheduled(fixedRate = 30000)
     fun scan() {
-        log.info("Scanning network interface og synkroniserer state")
+        //log.info("Scanning network interface og synkroniserer state")
         val devices = nmcliAL.getDevices()
 
         devices

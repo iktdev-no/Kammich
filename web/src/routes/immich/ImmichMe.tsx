@@ -60,7 +60,6 @@ export default function ImmichMe() {
     }, [hasQuota, me]);
 
     // Beregn total serverdisk-bruk fra ImmichServerStorage-modellen
-    // Beregn total serverdisk-bruk med riktig feltnavn (diskUseRaw)
     const serverUsagePercent = useMemo(() => {
         if (serverStorage?.diskSizeRaw && serverStorage?.diskUseRaw && serverStorage.diskSizeRaw > 0) {
             return Math.min(100, (serverStorage.diskUseRaw / serverStorage.diskSizeRaw) * 100);
@@ -68,7 +67,7 @@ export default function ImmichMe() {
         return 0;
     }, [serverStorage]);
 
-    // Beregn hvor mange prosent av *hele serverdisken* denne brukeren bruker (hvis kvote ikke finnes, eller som sammenligning)
+    // Beregn hvor mange prosent av *hele serverdisken* denne brukeren bruker
     const userShareOfTotalPercent = useMemo(() => {
         if (serverStorage?.diskSizeRaw && serverStorage?.diskSizeRaw > 0 && me?.quotaUsageInBytes) {
             return Math.min(100, (me.quotaUsageInBytes / serverStorage.diskSizeRaw) * 100);
@@ -239,26 +238,40 @@ export default function ImmichMe() {
                                         Ubegrenset personlig kvote
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary">
-                                        Kontoen din har ingen individuell lagringsgrense.
+                                        Du bruker <b>{formatBytes(me.quotaUsageInBytes || 0)}</b> personlig. Kontoen din har ingen individuell lagringsgrense.
                                     </Typography>
                                 </Box>
                             </Stack>
 
-                            {/* Serverdisk-info */}
+                            {/* Serverdisk-info med fargeprikker */}
                             {serverStorage?.diskSizeRaw && (
                                 <Stack spacing={1.5} sx={{ mt: 2, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-                                    <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
+
+                                    {/* Tekst / Teller for server og bruker */}
+                                    <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: 1 }}>
                                         <Typography variant="body2" color="text.secondary">
-                                            Total serverdisk: {formatBytes(serverStorage.diskUseRaw || 0)} av {formatBytes(serverStorage.diskSizeRaw)} brukt
+                                            Total serverdisk: <b>{formatBytes(serverStorage.diskUseRaw || 0)}</b> av <b>{formatBytes(serverStorage.diskSizeRaw)}</b> brukt ({serverUsagePercent.toFixed(0)}%)
                                         </Typography>
-                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                            {serverUsagePercent.toFixed(0)}% brukt
+                                        <Typography variant="body2" color="text.secondary">
+                                            Din bruk: <b>{formatBytes(me.quotaUsageInBytes || 0)}</b>
                                         </Typography>
                                     </Stack>
 
-                                    {/* Overlappende progress-barer (Android-stil) */}
-                                    <Box sx={{ position: "relative", height: 8, width: "100%" }}>
-                                        {/* Bakre bar: Total diskbruk på serveren (nedtonet) */}
+                                    {/* Fargeforklaring (Dott-legende) */}
+                                    <Stack direction="row" spacing={3} sx={{ alignItems: "center" }}>
+                                        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                                            <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: theme.palette.info.dark }} />
+                                            <Typography variant="caption" color="text.secondary">Total serverbruk</Typography>
+                                        </Stack>
+                                        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                                            <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: theme.palette.success.main }} />
+                                            <Typography variant="caption" color="text.secondary">Din andel</Typography>
+                                        </Stack>
+                                    </Stack>
+
+                                    {/* Overlappende progress-barer */}
+                                    <Box sx={{ position: "relative", height: 10, width: "100%" }}>
+                                        {/* Bakre bar: Total diskbruk på serveren */}
                                         <LinearProgress
                                             variant="determinate"
                                             value={serverUsagePercent}
@@ -267,30 +280,30 @@ export default function ImmichMe() {
                                                 top: 0,
                                                 left: 0,
                                                 right: 0,
-                                                height: 8,
-                                                borderRadius: 4,
+                                                height: 10,
+                                                borderRadius: 5,
                                                 bgcolor: theme.palette.background.default,
                                                 '& .MuiLinearProgress-bar': {
-                                                    borderRadius: 4,
-                                                    bgcolor: alpha(theme.palette.info.dark, 1), // Lysere/nedtonet for totalen
+                                                    borderRadius: 5,
+                                                    bgcolor: theme.palette.info.dark,
                                                 }
                                             }}
                                         />
-                                        {/* Fremre bar: Din egen bruk / eller fremhevet primærfarge */}
+                                        {/* Fremre bar: Brukerens andel av totalen */}
                                         <LinearProgress
                                             variant="determinate"
-                                            value={userShareOfTotalPercent + 20}
+                                            value={userShareOfTotalPercent}
                                             sx={{
                                                 position: "absolute",
                                                 top: 0,
                                                 left: 0,
                                                 right: 0,
-                                                height: 8,
-                                                borderRadius: 4,
-                                                bgcolor: "transparent", // Gjennomsiktig bakgrunn så den bakre syner gjennom
+                                                height: 10,
+                                                borderRadius: 5,
+                                                bgcolor: "transparent",
                                                 '& .MuiLinearProgress-bar': {
-                                                    borderRadius: 4,
-                                                    bgcolor: theme.palette.success.main, // Sterkere farge for din del
+                                                    borderRadius: 5,
+                                                    bgcolor: theme.palette.success.main,
                                                 }
                                             }}
                                         />
@@ -304,7 +317,7 @@ export default function ImmichMe() {
                                 <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                                     <CloudDoneIcon color="success" fontSize="small" />
                                     <Typography variant="body2" color="text.secondary">
-                                        Bruker {formatBytes(me.quotaUsageInBytes || 0)} av {formatBytes(me.quotaSizeInBytes!)}
+                                        Bruker <b>{formatBytes(me.quotaUsageInBytes || 0)}</b> av <b>{formatBytes(me.quotaSizeInBytes!)}</b>
                                     </Typography>
                                 </Stack>
                                 <Typography variant="body2" sx={{ fontWeight: 600 }}>

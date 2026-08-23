@@ -2,6 +2,7 @@ package no.iktdev.kammich.immich.services
 
 import com.google.gson.Gson // Eventuell avhengighet for gson, tilpass om du har den injisert
 import no.iktdev.kammich.database.tables.ImmichAuthenticationTable
+import no.iktdev.kammich.database.tables.ImmichAuthenticationTable.toPersistedApiKey
 import no.iktdev.kammich.database.tables.ImmichUsersTable
 import no.iktdev.kammich.database.tables.ImmichUsersTable.toPersistedImmichUser
 import no.iktdev.kammich.database.withTransaction
@@ -100,6 +101,33 @@ class ImmichContextService(
             )
         }.getOrNull()
     }
+
+    fun findSessionsByUserId(userId: UUID): SavedSession? {
+        return withTransaction {
+            // Hent aktiv auth-sesjon (serverUrl og apiKey)
+            val authRow = ImmichAuthenticationTable.selectAll()
+                .where { ImmichAuthenticationTable.userId eq userId.toString() }
+                .singleOrNull()?.toPersistedApiKey() ?: return@withTransaction null
+
+            val serverUrl = authRow.serverUrl
+            val apiKey = authRow.apiKey
+
+            // Hent aktiv bruker ved hjelp av din metode (tilpasset inn i transaksjonen)
+            val pusr = ImmichUsersTable.selectAll()
+                .where { ImmichUsersTable.userId eq userId.toString() }
+                .map { it.toPersistedImmichUser() }
+                .singleOrNull() ?: return@withTransaction null
+
+            val user = gson.fromJson(pusr.data, ImmichUserMe::class.java) ?: return@withTransaction null
+
+            SavedSession(
+                serverUrl = serverUrl,
+                apiKey = apiKey,
+                user = user
+            )
+        }.getOrNull()
+    }
+
 
     private fun isServerReachable(client: ImmichApi): Boolean {
         val success = client.getServerPing()

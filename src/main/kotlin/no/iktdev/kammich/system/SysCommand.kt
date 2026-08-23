@@ -53,24 +53,26 @@ class SysCommand {
     private fun runCommand(command: List<String>): Result {
         return try {
             val process = ProcessBuilder(command).start()
-            val output = process.inputStream.bufferedReader().use { it.readText() }
-            val errorOutput = process.errorStream.bufferedReader().use { it.readText() }
 
             val finished = process.waitFor(12, TimeUnit.SECONDS)
             if (!finished) {
                 process.destroyForcibly()
-                return Result.Failure("Timeout etter 12 sekunder")
+                return Result.Failure(errOutput = "Timeout etter 12 sekunder", exitCode = -1)
             }
 
-            if (process.exitValue() != 0) {
-                log.error("Could not run command successfully (Exit Code: ${process.exitValue()}): ${command.joinToString(" ")}\nOutput:\n${output}\nError:\n${errorOutput}")
-                Result.Failure(output, errorOutput.trim(), process.exitValue())
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            val errorOutput = process.errorStream.bufferedReader().use { it.readText() }
+
+            val exitCode = process.exitValue()
+            if (exitCode != 0) {
+                log.error("Could not run command successfully (Exit Code: $exitCode): ${command.joinToString(" ")}\nOutput:\n${output}\nError:\n${errorOutput}")
+                Result.Failure(output, errorOutput.trim(), exitCode)
             } else {
                 Result.Success(output)
             }
         } catch (e: Exception) {
             log.error("Systemfeil under kjøring av: ${command.joinToString(" ")}", e)
-            Result.Failure(e.message ?: "Ukjent feil")
+            Result.Failure(errOutput = e.message ?: "Ukjent feil")
         }
     }
 

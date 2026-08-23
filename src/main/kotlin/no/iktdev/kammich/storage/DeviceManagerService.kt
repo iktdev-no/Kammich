@@ -1,6 +1,6 @@
 package no.iktdev.kammich.storage
 
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.gphoto2.IGPhoto2
 import no.iktdev.kammich.models.internal.events.DeviceReadyEvent
 import no.iktdev.kammich.models.internal.SysPathRemoved

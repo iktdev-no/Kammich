@@ -24,22 +24,15 @@ export default function MadeInNorwayBadge() {
                 height="30"
                 style={{ display: "block" }}
             >
-                {/* Hvit bakgrunn begrenset nøyaktig til SVG-ens viewBox */}
+                {/* Hvit bakgrunn for hele badge-en */}
                 <rect width="130" height="45" fill="#ffffff" rx="3" />
 
-                {/* Venstre kolonne: rød boks + rød sirkel */}
-                <rect x="6" y="7" width="14" height="14" fill="#ba0c2f" />
-                <circle cx="13" cy="31" r="7" fill="#ba0c2f" />
-
-                {/* Hvite skillelinjer / kors-geometri */}
-                <rect x="21" y="7" width="2" height="31" fill="#ffffff" />
-                <rect x="6" y="22" width="47" height="2" fill="#ffffff" />
-
-                {/* Midtre stripe (blå) */}
-                <rect x="24" y="7" width="4" height="31" fill="#00205b" />
-
-                {/* Høyre rektangel (stort rødt) */}
-                <rect x="31" y="7" width="22" height="31" fill="#ba0c2f" />
+                {/* Innfelt norsk flagg på venstre side (skalert opp fra 22x16 til 47x35 for å passe formatet) */}
+                <g transform="translate(6, 5)">
+                    <rect width="47" height="35" fill="#ba0c2f" rx="1" />
+                    <path d="M0,17.5h47M17.5,0v35" stroke="#fff" stroke-width="8.75" />
+                    <path d="M0,17.5h47M17.5,0v35" stroke="#00205b" stroke-width="4.375" />
+                </g>
 
                 {/* Typografi: "MADE IN" */}
                 <text

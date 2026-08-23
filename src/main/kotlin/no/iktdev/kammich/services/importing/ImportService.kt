@@ -1,7 +1,7 @@
 package no.iktdev.kammich.services.importing
 
 import kotlinx.coroutines.*
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.getDeviceId
 import no.iktdev.kammich.errorNotification

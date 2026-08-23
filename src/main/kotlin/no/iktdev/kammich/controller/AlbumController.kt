@@ -7,6 +7,7 @@ import no.iktdev.kammich.services.AlbumService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -31,7 +32,7 @@ class AlbumController(
         return ResponseEntity.ok(id)
     }
 
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     fun updateAlbum(
         @PathVariable id: Long,
         @RequestBody request: AlbumUpdateRequest
@@ -45,4 +46,10 @@ class AlbumController(
         val success = albumService.deleteAlbum(id)
         return if (success) ResponseEntity.ok().build() else ResponseEntity.notFound().build()
     }
+
+    @PostMapping("/{id}/sync-timeslot")
+    fun syncTimeslot(@PathVariable id: Long) {
+        return albumService.synchTimeSlot(id)
+    }
+
 }

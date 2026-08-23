@@ -2,13 +2,12 @@ package no.iktdev.kammich.database.tables
 
 import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.models.internal.PersistedDevice
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 import org.jetbrains.exposed.v1.core.dao.id.LongIdTable
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import java.sql.ResultSet
 
 object DevicesTable : LongIdTable("DEVICES") {
     val deviceName = text("DEVICE_NAME")
@@ -18,7 +17,7 @@ object DevicesTable : LongIdTable("DEVICES") {
     val model = text("MODEL").nullable()
     val lastSeen = text("LAST_SEEN")
 
-    fun ResultRow.toPersisted(): PersistedDevice {
+    fun ResultRow.toPersistedDevice(): PersistedDevice {
         return PersistedDevice(
             id = this[DevicesTable.id].value,
             name = this[DevicesTable.deviceName],
@@ -30,11 +29,10 @@ object DevicesTable : LongIdTable("DEVICES") {
         )
     }
 
-    fun getDevices(): List<PersistedDevice> {
-        return withTransaction {
-            DevicesTable.selectAll()
-                .mapNotNull { it.toPersisted() }
-        }.getOrDefault(emptyList())
+    fun getWhere(predicate: () -> Op<Boolean>): List<PersistedDevice> {
+        return DevicesTable.selectAll()
+            .where(predicate)
+            .map { it ->  it.toPersistedDevice()}
     }
 }
 

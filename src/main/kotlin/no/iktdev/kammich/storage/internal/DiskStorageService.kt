@@ -1,6 +1,6 @@
 package no.iktdev.kammich.storage.internal
 
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.models.shared.storage.LsblkBlockDevice
 import no.iktdev.kammich.models.shared.storage.MediaStats
 import no.iktdev.kammich.models.shared.storage.StorageStats

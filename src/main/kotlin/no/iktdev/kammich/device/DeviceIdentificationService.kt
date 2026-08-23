@@ -4,7 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import no.iktdev.kammich.ConfigService
+import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.gphoto2.IGPhoto2
 import no.iktdev.kammich.models.internal.PersistedDevice
 import no.iktdev.kammich.models.internal.events.DeviceReadyEvent

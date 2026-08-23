@@ -91,7 +91,7 @@ class WifiScanServiceV2(
         sseManager.send(SSEWifiScanStatus(WifiScanStatus(interfaceName, isScanning = true)))
 
         return try {
-            log.info("Utfører passiv skanning på $interfaceName uten å endre lease-status")
+            //log.info("Utfører passiv skanning på $interfaceName uten å endre lease-status")
             val result = strategy.scan(interfaceName)
             val scanResult = WifiScanResult(interfaceName, result.networks)
 

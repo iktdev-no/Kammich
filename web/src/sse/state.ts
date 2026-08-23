@@ -14,6 +14,7 @@ import type {
   WifiInterfaceClient,
   WifiTether,
   WifiInterfaceTether,
+  UploadProgressEvent,
 } from "../types/types";
 
 export interface SseState {
@@ -37,6 +38,8 @@ export interface SseState {
   importDevices: Record<string, DeviceImportSummary>;
   activeMediaImports: Record<string, ImportProgressEvent>;
 
+  activeUploadProgress: Record<string, UploadProgressEvent>;
+
   immichUserMe: ImmichUserMe | undefined;
   immichApiKeyInUse: ImmichApiKeyPostResponseDto | undefined;
   immichAvailability: ImmichAvailability | undefined;
@@ -57,6 +60,8 @@ export const initialSseState: SseState = {
   wifiConnectionInterfaces: [],
   wifiTether: {},
   wifiTetherInterfaces: [],
+
+  activeUploadProgress: {},
 
   importDevices: {},
   activeMediaImports: {},
