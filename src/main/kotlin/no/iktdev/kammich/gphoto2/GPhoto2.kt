@@ -42,58 +42,86 @@ class GPhoto2: IGPhoto2 {
         onProgress: (Int) -> Unit
     ): File {
         val targetFile = File(destination, fileName)
+
         if (targetFile.exists()) {
             targetFile.delete()
         }
-        val builder = GPhoto2CommandBuilder()
+
+        val arguments = GPhoto2CommandBuilder()
             .port(port)
             .copy(targetFile, containingFolder, fileName)
+            .build()
 
-        val process = ProcessBuilder("gphoto2", *builder.build())
-            .redirectErrorStream(false) // Viktig: Hold stderr adskilt for progresjon
+        log.info(
+            "Copying file $fileName with arguments: " +
+                    "gphoto2 ${arguments.joinToString(" ")}"
+        )
+
+        val process = ProcessBuilder("gphoto2", *arguments)
+            .redirectErrorStream(false)
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
             .start()
 
         val errorOutput = StringBuilder()
 
-        // 1. Les stderr for progresjon
         val stderrThread = Thread {
-            process.errorStream.bufferedReader().useLines { lines ->
-                lines.forEach { line ->
-                    log.error(line)
-                    errorOutput.append(line).append("\n")
-                    // Regex for å finne prosenten, f.eks "Downloading: 45%"
-                    val match = Regex("""(\d+)%""").find(line)
-                    if (match != null) {
-                        val percent = match.groupValues[1].toInt()
-                        onProgress(percent)
-                    }
+            process.errorStream.bufferedReader().use { reader ->
+                reader.forEachLine { line ->
+                    log.error("gphoto2: $line")
+                    errorOutput.append(line).append('\n')
+
+                    Regex("""(\d+)%""")
+                        .find(line)
+                        ?.groupValues
+                        ?.get(1)
+                        ?.toIntOrNull()
+                        ?.let(onProgress)
                 }
             }
         }
+
         stderrThread.start()
 
-        // 2. Vent på at prosessen fullføres
         log.info("Waiting for copy of $fileName to $destination for completion")
+
         val exitCode = process.waitFor()
 
-        if (exitCode == 1) {
-            val cleanError = errorOutput.toString().replace(Regex("\\s+"), " ").trim()
-            val isDeviceUnavailable = (
-                    cleanError.contains("No camera found", ignoreCase = true) ||
-                            cleanError.contains("Could not claim the USB device", ignoreCase = true) ||
-                            cleanError.contains("I/O error", ignoreCase = true) ||
-                            cleanError.contains("Could not open port", ignoreCase = true)
-                    )
+        // Sørg for at hele stderr faktisk er lest
+        stderrThread.join()
 
-            if (isDeviceUnavailable) {
-                throw DeviceUnavailableException("Kamera mistet eller utilgjengelig: $cleanError")
-            }
+        val error = errorOutput.toString().trim()
+
+        log.info("gphoto2 finished with exitCode=$exitCode")
+        if (error.isNotEmpty()) {
+            log.info("gphoto2 stderr: $error")
         }
 
         if (exitCode != 0) {
-            throw ImportException("Feil ved nedlasting, exit kode: $exitCode. Detaljer: \n$errorOutput")
+            val isDeviceUnavailable =
+                error.contains("No camera found", ignoreCase = true) ||
+                        error.contains("Could not claim the USB device", ignoreCase = true) ||
+                        error.contains("I/O error", ignoreCase = true) ||
+                        error.contains("Could not open port", ignoreCase = true)
+
+            if (isDeviceUnavailable) {
+                throw DeviceUnavailableException(
+                    "Kamera mistet eller utilgjengelig: $error"
+                )
+            }
+
+            throw ImportException(
+                "Feil ved nedlasting, exit kode: $exitCode. Detaljer:\n$error"
+            )
         }
-        return File(destination, fileName)
+
+        if (!targetFile.exists()) {
+            throw ImportException(
+                "gphoto2 rapporterte suksess (exit code 0), " +
+                        "men filen eksisterer ikke etter nedlasting: $targetFile"
+            )
+        }
+
+        return targetFile
     }
 
     override fun deleteFile(device: GPhoto2DiscoveredDevice, file: GPhoto2File): Boolean {

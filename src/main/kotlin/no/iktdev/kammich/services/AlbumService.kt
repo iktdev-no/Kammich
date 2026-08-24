@@ -25,6 +25,7 @@ import no.iktdev.kammich.models.shared.AlbumUpdateRequest
 import no.iktdev.kammich.models.shared.RemoteFile
 import no.iktdev.kammich.models.shared.UploadState
 import no.iktdev.kammich.repository.FileRepository
+import no.iktdev.kammich.within
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -261,7 +262,7 @@ class AlbumService(
                 null
             }
         }.toMap()
-        val toAdd = uploadToFileTime.filter { it.value.between(start, end) }
+        val toAdd = uploadToFileTime.filter { it.value.within(start, end) }
         if (toAdd.isNotEmpty()) {
             withTransaction {
                 toAdd.forEach { (uploadFileID, instant) ->

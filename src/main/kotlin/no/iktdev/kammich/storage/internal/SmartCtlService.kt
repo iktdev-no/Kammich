@@ -15,7 +15,7 @@ class SmartCtlService(
     private val exec: SysCommand
 ) {
 
-    private val log = LoggerFactory.getLogger(SmartCtlService::class.java)
+    private val log = LoggerFactory.getLogger(javaClass)
 
 
     fun getSMART(path: String): Result<DiskHealth> = runCatching {

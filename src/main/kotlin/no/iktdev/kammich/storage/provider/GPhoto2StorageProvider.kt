@@ -88,6 +88,9 @@ class GPhoto2StorageProvider(
         val out = gPhoto2.copyFile(g.port, importFile.path, importFile.name, storeFile) { progress ->
             log.info("Import progress on ${importFile.name} ($progress)")
         }
+        if (out == null || !out.exists()) {
+            log.error("Could not copy ${importFile.name} to ${storeFile.absolutePath}")
+        }
         return out
     }
 

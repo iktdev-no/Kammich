@@ -3,6 +3,7 @@ package no.iktdev.kammich.controller
 import no.iktdev.kammich.models.shared.upload.UploadJobSummary
 import no.iktdev.kammich.models.shared.upload.UploadSummary
 import no.iktdev.kammich.services.UploadService
+import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -15,6 +16,8 @@ import java.util.UUID
 class UploadController(
     private val uploadService: UploadService,
 ) {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @GetMapping("/user/{userId}")
     fun checkUploadQueue(@PathVariable userId: UUID) {
@@ -43,6 +46,7 @@ class UploadController(
 
     @PostMapping("/user/{userId}/upload/{fileId}")
     fun uploadFile(@PathVariable userId: UUID, @PathVariable fileId: Long) {
+        log.info("Uploading file $fileId for user $userId")
         uploadService.uploadFile(userId, fileId)
     }
 

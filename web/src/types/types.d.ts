@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-08-18T12:05:29.262178455Z
+// Time: 2026-08-24T14:59:50.547444944Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -41,6 +41,16 @@ export interface AlbumUpdateRequest {
   endDate: string | null;
   startDate: string | null;
   use: boolean | null;
+}
+
+export interface ActionResponse {
+  message: string;
+  success: boolean;
+}
+
+export interface PowerPermissionsDto {
+  canPowerOff: boolean;
+  canReboot: boolean;
 }
 
 export type NotificationType = "Alert"

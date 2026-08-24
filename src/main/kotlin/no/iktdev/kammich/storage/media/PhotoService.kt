@@ -8,6 +8,7 @@ import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.models.FileType
 import no.iktdev.kammich.models.shared.RemoteFile
 import no.iktdev.kammich.models.shared.device.PhotoDevice
+import no.iktdev.kammich.services.ThumbnailService
 import no.iktdev.kammich.storage.Thumbnail
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -22,6 +23,7 @@ import java.io.FileNotFoundException
 @Service
 class PhotoService(
     private val config: ConfigService,
+    private val thumbnailService: ThumbnailService,
 ): MediaService {
     private val log = LoggerFactory.getLogger(PhotoService::class.java)
     // Cacher index per deviceId
@@ -70,30 +72,7 @@ class PhotoService(
     }
 
     fun getThumbFile(deviceId: Long, filename: String): FileSystemResource {
-        // 1. Hent serialnummer fra DB
-        val serial = withTransaction {
-            DevicesTable.select(DevicesTable.serialNumber)
-                .where { (DevicesTable.id eq deviceId) }
-                .singleOrNull()?.get(DevicesTable.serialNumber)
-        }.getOrNull() ?: throw IllegalArgumentException("Enhet med ID $deviceId finnes ikke")
-
-        // 2. Konstruer stien til originalfilen
-        val cachePath = config.getConfig().cachePath
-        val originalFile = File(config.getConfig().mediaPath, "$serial/$filename")
-
-        // 3. Sikkerhetssjekk: Eksisterer originalfilen?
-        if (!originalFile.exists() || !originalFile.isFile) {
-            throw FileNotFoundException("Filen $filename ble ikke funnet på enhet $serial")
-        }
-
-        val thumb = Thumbnail(File(cachePath, "$serial/thumbs"))
-        return try {
-            thumb.getThumbnailOf(originalFile)
-        } catch (e: Exception) {
-            log.error("Failed to generate thumbnail", e)
-            log.warn("Prepare for large file!")
-            FileSystemResource(originalFile)
-        }
+        return thumbnailService.getThumbFile(deviceId, filename)
     }
 
     override fun getPagedFiles(page: Int, size: Int, serialNumber: String?): Pair<List<RemoteFile>, Long> {

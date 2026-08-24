@@ -44,7 +44,7 @@ class FileRepository(
     private val eventPublisher: ApplicationEventPublisher,
     private val immichUserContext: ImmichUserContext
 ) {
-    private val log = LoggerFactory.getLogger(FileRepository::class.java)
+    private val log = LoggerFactory.getLogger(javaClass)
 
     fun getStorageLocationForImport(device: RemovableDevice): File? {
         val mediaRoot = File(configService.getConfig().mediaPath).ensureWritable(

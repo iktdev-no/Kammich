@@ -272,7 +272,7 @@ class ImportService(
                     null
                 }
 
-                if (imported != null) {
+                if (imported != null && imported.exists()) {
                     try {
                         val hash = imported.toXxHash()
                         val persistedFile = fileRepository.saveFile(dbId, imported, ZonedDateTime.now(), hash, importJobId)

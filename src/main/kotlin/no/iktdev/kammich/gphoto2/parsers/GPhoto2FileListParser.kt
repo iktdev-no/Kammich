@@ -53,21 +53,28 @@ class GPhoto2FileListParser : GPhoto2Parser<List<GPhoto2File>> {
     }
 
     val enforcedExtension = listOf(
-        GFile("image/jpeg", "jpg"),
-        GFile("image/png", "png")
+        GFile("image/jpeg", setOf("jpg", "JPG", "jpeg", "JPEG")),
+        GFile("image/png", setOf("png", "PNG"))
     )
+
+    data class GFile(val mimetype: String, val extensions: Set<String>)
 
     private fun sanitizeFileName(name: String, mimeType: String): String {
         val eex = enforcedExtension.find { it.mimetype.equals(mimeType, ignoreCase = true) }
         if (eex != null) {
-            if (name.substringAfter(".") != eex.extension) {
-                val newName = name.substringBeforeLast(".") + ".${eex.extension}"
-                log.info("Vasket filnavn: Endrer '{}' til '{}' (Mime: {})", name, newName, mimeType)
-                return newName
+            val currentExtension = name.substringAfterLast(".", "")
+
+            // Hvis den nåværende endelsen finnes i settet, rører vi den IKKE (beholder f.eks. .JPG)
+            if (currentExtension in eex.extensions) {
+                return name
             }
+
+            // Hvis den IKKE finnes i settet (f.eks. "jpgrd"), tvinger vi den første i settet som standard
+            val targetExtension = eex.extensions.first()
+            val newName = name.substringBeforeLast(".") + ".$targetExtension"
+            log.info("Vasket filnavn: Endrer '{}' til '{}' (Mime: {}, ugyldig endelse '{}')", name, newName, mimeType, currentExtension)
+            return newName
         }
         return name
     }
-
-    data class GFile(val mimetype: String, val extension: String)
 }

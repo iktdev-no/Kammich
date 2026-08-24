@@ -47,7 +47,6 @@ export function SidebarItemRenderer({
     };
 
     const ParentContent = ({ isActive }: { isActive: boolean }) => {
-        // Sjekk om elementet skal ha secondary-farge ved aktiv tilstand
         const isSecondary = item.activeColor === "secondary";
 
         const customActiveBg = isSecondary
@@ -64,7 +63,6 @@ export function SidebarItemRenderer({
                     ...sx.item,
                     pl: paddingLeft,
                     ...(isActive ? { ...sx.itemActive, backgroundColor: customActiveBg } : {}),
-                    ...item.sx,
                 }}
                 onClick={handleClick}
             >
@@ -113,11 +111,11 @@ export function SidebarItemRenderer({
         </Collapse>
     );
 
-    // Fjernet <Box sx={item.sx}> rundt her, siden vi sprøyer inn item.sx direkte på ListItemButton i stedet
+    // Legg item.sx her på den ytterste Box-en, slik at marginer (f.eks. marginTop: 'auto') fungerer riktig på elementnivå!
     if (item.to) {
         return (
-            <Box>
-                <NavLink to={item.to} style={{ textDecoration: "none" }}>
+            <Box sx={item.sx}>
+                <NavLink to={item.to} style={{ textDecoration: "none", display: "block" }}>
                     {({ isActive }) => <ParentContent isActive={isActive} />}
                 </NavLink>
                 {children}
@@ -126,7 +124,7 @@ export function SidebarItemRenderer({
     }
 
     return (
-        <Box>
+        <Box sx={item.sx}>
             <ParentContent isActive={false} />
             {children}
         </Box>

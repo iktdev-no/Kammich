@@ -7,21 +7,12 @@ import {
     Card,
     CardContent,
     Button,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Paper,
     IconButton,
     Tooltip,
     LinearProgress,
-    createTheme,
-    ThemeProvider,
-    CssBaseline,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import PhotoAlbumIcon from '@mui/icons-material/PhotoAlbum';
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlined";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
@@ -29,49 +20,9 @@ import { useSseSelector } from "../sse/useSseSelector";
 import type { UploadSummary, UploadJobSummary } from "../types/types";
 import { getJobs, getStats, resetJobQueue, resetUserQueue } from "../api/requests/upload";
 
-// Immich-inspirert mørkt tema
-const immichDarkTheme = createTheme({
-    palette: {
-        mode: "dark",
-        background: {
-            default: "#121214",
-            paper: "#1a1a1e",
-        },
-        primary: {
-            main: "#4285f4",
-        },
-        success: {
-            main: "#34a853",
-        },
-        error: {
-            main: "#ea4335",
-        },
-        warning: {
-            main: "#fbbc05",
-        },
-        text: {
-            primary: "#e8eaed",
-            secondary: "#9aa0a6",
-        },
-    },
-    shape: {
-        borderRadius: 12,
-    },
-    typography: {
-        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-        h5: {
-            fontWeight: 600,
-        },
-        h6: {
-            fontWeight: 600,
-        },
-    },
-});
-
 export default function Home() {
-    const ping = useSseSelector((state) => state.lastPing);
     const immichUser = useSseSelector((state) => state.immichUserMe);
-    const uploadProgress = useSseSelector((state) => state.activeUploadProgress);
+    const activeUploadProgress = useSseSelector((state) => state.activeUploadProgress);
 
     const [stats, setStats] = useState<UploadSummary | null>(null);
     const [jobs, setJobs] = useState<UploadJobSummary[]>([]);
@@ -116,179 +67,195 @@ export default function Home() {
 
     if (!userId) {
         return (
-            <ThemeProvider theme={immichDarkTheme}>
-                <CssBaseline />
-                <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-                    <Typography color="textSecondary">Venter på Immich-bruker...</Typography>
-                </Box>
-            </ThemeProvider>
+            <Box sx={{ p: 4 }}>
+                <Typography>Vennligst logg inn på immich først</Typography>
+            </Box>
         );
     }
 
     return (
-        <ThemeProvider theme={immichDarkTheme}>
-            <CssBaseline />
-            <Box sx={{ minHeight: "100vh", py: 4, px: 2 }}>
-                <Container maxWidth="lg">
+        <Box sx={{ minHeight: "100vh", py: { xs: 2, md: 4 }, px: { xs: 1, md: 2 } }}>
+            <Container maxWidth="lg" sx={{ px: { xs: 1, sm: 2 } }}>
 
-                    {/* Header */}
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-                        <Box>
-                            <Typography variant="h5" color="textPrimary">
-                                Opplastingskontroll
-                            </Typography>
-                            <Typography variant="body2" color="textSecondary">
-                                Sanntidsovervåking av filer og jobber på vei til Immich (Bruker: {immichUser.name || userId})
-                            </Typography>
-                        </Box>
-                        <Box display="flex" gap={2} alignItems="center">
-                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                                SSE Ping: {ping || "Venter..."}
-                            </Typography>
-                            <Button
-                                variant="outlined"
-                                size="small"
-                                startIcon={<RefreshIcon />}
-                                onClick={fetchData}
-                                disabled={loading}
-                                sx={{ borderColor: "rgba(255,255,255,0.12)", color: "text.primary" }}
-                            >
-                                Oppdater
-                            </Button>
-                        </Box>
+                {/* Header */}
+                <Box
+                    sx={{
+                        display: "flex",
+                        flexDirection: { xs: "column", sm: "row" },
+                        justifyContent: "space-between",
+                        alignItems: { xs: "flex-start", sm: "center" },
+                        gap: 2,
+                        mb: 4,
+                    }}
+                >
+                    <Box>
+                        <Typography variant="h5" color="textPrimary" sx={{ fontSize: { xs: "1.25rem", sm: "1.5rem" } }}>
+                            Opplastingskontroll
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                            Sanntidsovervåking av filer og jobber på vei til Immich (Bruker: {immichUser.name || userId})
+                        </Typography>
                     </Box>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={fetchData}
+                        disabled={loading}
+                        sx={{ borderColor: "rgba(255,255,255,0.12)", color: "text.primary", alignSelf: { xs: "stretch", sm: "auto" } }}
+                    >
+                        Oppdater
+                    </Button>
+                </Box>
 
-                    {/* Statistikk-kort (MUI v6 Grid-syntaks uten 'item') */}
-                    {stats && (
-                        <Grid container spacing={3} sx={{ mb: 4 }}>
-                            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                <Card sx={{ backgroundColor: "background.paper", border: "1px solid rgba(255,255,255,0.06)" }}>
-                                    <CardContent>
-                                        <Typography color="textSecondary" variant="subtitle2" gutterBottom>
-                                            Totalt Filer
-                                        </Typography>
-                                        <Typography variant="h4">{stats.totalUploads}</Typography>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                <Card sx={{ backgroundColor: "background.paper", border: "1px solid rgba(255,255,255,0.06)" }}>
-                                    <CardContent>
-                                        <Box display="flex" alignItems="center" gap={1} mb={1}>
-                                            <HourglassEmptyIcon color="warning" fontSize="small" />
-                                            <Typography color="textSecondary" variant="subtitle2">
-                                                Klar / Venter
-                                            </Typography>
-                                        </Box>
-                                        <Typography variant="h4">{stats.totalReadyUploads}</Typography>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                <Card sx={{ backgroundColor: "background.paper", border: "1px solid rgba(255,255,255,0.06)" }}>
-                                    <CardContent>
-                                        <Box display="flex" alignItems="center" gap={1} mb={1}>
-                                            <CheckCircleOutlineIcon color="success" fontSize="small" />
-                                            <Typography color="textSecondary" variant="subtitle2">
-                                                Fullført
-                                            </Typography>
-                                        </Box>
-                                        <Typography variant="h4" color="success.main">
-                                            {stats.totalSucceededUploads}
-                                        </Typography>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                <Card sx={{ backgroundColor: "background.paper", border: "1px solid rgba(255,255,255,0.06)" }}>
-                                    <CardContent>
-                                        <Box display="flex" alignItems="center" gap={1} mb={1}>
-                                            <ErrorOutlineIcon color="error" fontSize="small" />
-                                            <Typography color="textSecondary" variant="subtitle2">
-                                                Feilet
-                                            </Typography>
-                                        </Box>
-                                        <Typography variant="h4" color="error.main">
-                                            {stats.totalFailedUploads}
-                                        </Typography>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-                        </Grid>
-                    )}
+                {/* Statistikk-kort */}
+                <UploadStats stats={stats} />
 
-                    {/* Handlingsknapper */}
-                    <Box display="flex" justifyContent="flex-end" mb={2}>
-                        <Button
-                            variant="contained"
-                            color="error"
-                            size="small"
-                            onClick={handleResetUser}
-                        >
-                            Nullstill alle feilede for bruker
-                        </Button>
-                    </Box>
+                {/* Handlingsknapper */}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 3 }}>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        onClick={handleResetUser}
+                        sx={{ width: { xs: "100%", sm: "auto" } }}
+                    >
+                        Nullstill alle feilede for bruker
+                    </Button>
+                </Box>
 
-                    {/* Jobb-tabell */}
-                    <TableContainer component={Paper} sx={{ backgroundColor: "background.paper", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell sx={{ fontWeight: 600 }}>Jobb ID</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600 }}>Totalt</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600 }}>Suksess</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600 }}>Feilet</TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: 600 }}>Fremdrift</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600 }}>Handlinger</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {jobs.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} align="center" sx={{ py: 4, color: "text.secondary" }}>
-                                            Ingen aktive eller tidligere opplastingsjobber funnet.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    jobs.map((job) => {
-                                        const progress = job.total > 0 ? ((job.totalSuccess + job.totalFailure) / job.total) * 100 : 0;
-                                        return (
-                                            <TableRow key={job.jobId} hover sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
-                                                <TableCell component="th" scope="row" sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
-                                                    {job.jobId}
-                                                </TableCell>
-                                                <TableCell align="right">{job.total}</TableCell>
-                                                <TableCell align="right" sx={{ color: "success.main" }}>{job.totalSuccess}</TableCell>
-                                                <TableCell align="right" sx={{ color: job.totalFailure > 0 ? "error.main" : "inherit" }}>
-                                                    {job.totalFailure}
-                                                </TableCell>
-                                                <TableCell align="center" sx={{ width: "20%" }}>
-                                                    <Box display="flex" alignItems="center" gap={1}>
-                                                        <Box width="100%">
-                                                            <LinearProgress variant="determinate" value={progress} sx={{ borderRadius: 4, height: 6 }} />
-                                                        </Box>
-                                                        <Typography variant="caption" color="textSecondary">
-                                                            {Math.round(progress)}%
-                                                        </Typography>
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell align="right">
+                {/* Jobber som kort */}
+                <Typography variant="h6" sx={{ mb: 2, fontSize: "1.1rem" }}>
+                    Aktive og tidligere jobber
+                </Typography>
+
+                {jobs.length === 0 ? (
+                    <Card sx={{ backgroundColor: "background.paper", borderRadius: 2, border: "1px solid rgba(255,255,255,0.06)", p: 4, textAlign: "center" }}>
+                        <Typography color="textSecondary">Ingen aktive eller tidligere opplastingsjobber funnet.</Typography>
+                    </Card>
+                ) : (
+                    <Grid container spacing={2}>
+                        {jobs.map((job) => {
+                            const liveProgress = activeUploadProgress[job.jobId];
+
+                            const total = liveProgress ? liveProgress.totalFiles : job.total;
+                            const success = liveProgress ? liveProgress.successfulFiles : job.totalSuccess;
+                            const failed = liveProgress ? liveProgress.failedFiles : job.totalFailure;
+
+                            const processed = success + failed;
+                            const progressPercent = total > 0 ? (processed / total) * 100 : 0;
+
+                            // Vis kun reset-knapp dersom jobben ikke er helt ferdig (totalt avvik fra suksess)
+                            const showResetButton = total !== success;
+
+                            return (
+                                <Grid size={{ xs: 12, md: 6 }} key={job.jobId}>
+                                    <Card sx={{ backgroundColor: "background.paper", borderRadius: 2, border: "1px solid rgba(255,255,255,0.06)", height: "100%", display: "flex", flexDirection: "column" }}>
+                                        <CardContent sx={{ p: 2.5, flexGrow: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+
+                                            {/* Topptekst med Jobb ID og betinget restart-knapp */}
+                                            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                                                <Box>
+                                                    <Typography variant="caption" color="textSecondary" sx={{ display: "block" }} >
+                                                        Jobb ID
+                                                    </Typography>
+                                                    <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: 600, wordBreak: "break-all" }}>
+                                                        {job.jobId}
+                                                    </Typography>
+                                                </Box>
+                                                {showResetButton && (
                                                     <Tooltip title="Nullstill og kjør jobb på nytt">
-                                                        <IconButton size="small" onClick={() => handleResetJob(job.jobId)} color="primary">
+                                                        <IconButton size="small" onClick={() => handleResetJob(job.jobId)} color="primary" sx={{ ml: 1 }}>
                                                             <RefreshIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                                )}
+                                            </Box>
 
-                </Container>
-            </Box>
-        </ThemeProvider>
+                                            {/* Statistikk for jobben */}
+                                            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, mb: 2, backgroundColor: "rgba(255,255,255,0.02)", p: 1.5, borderRadius: 1.5 }}>
+                                                <Box>
+                                                    <Typography variant="caption" color="textSecondary">Totalt</Typography>
+                                                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{total}</Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="textSecondary">Suksess</Typography>
+                                                    <Typography variant="body1" sx={{ fontWeight: 600 }} color="success.main">{success}</Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="textSecondary">Feilet</Typography>
+                                                    <Typography variant="body1" sx={{ fontWeight: 600 }} color={failed > 0 ? "error.main" : "inherit"}>{failed}</Typography>
+                                                </Box>
+                                            </Box>
+
+                                            {/* Progresjonslinje i bunn */}
+                                            <Box>
+                                                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                                                    <Typography variant="caption" color="textSecondary">Fremdrift ({processed} / {total})</Typography>
+                                                    <Typography variant="caption" sx={{ fontWeight: 600 }} color="textSecondary">
+                                                        {Math.round(progressPercent)}%
+                                                    </Typography>
+                                                </Box>
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={progressPercent}
+                                                    sx={{ borderRadius: 4, height: 6, backgroundColor: "rgba(255,255,255,0.08)" }}
+                                                />
+                                            </Box>
+
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                            );
+                        })}
+                    </Grid>
+                )}
+
+            </Container>
+        </Box>
+    );
+}
+
+function UploadStats({ stats }: { stats: UploadSummary | null }) {
+    return (
+        <Grid container spacing={1} sx={{ mb: 4 }}>
+            <Grid size={{ xs: 3 }}>
+                <CardStat label="Total" count={stats?.totalUploads ?? 0} color="textSecondary" icon={<PhotoAlbumIcon color="primary" fontSize="small" />} />
+            </Grid>
+            <Grid size={{ xs: 3 }}>
+                <CardStat label="Pending" count={stats?.totalReadyUploads ?? 0} color="warning.main" icon={<HourglassEmptyIcon color="warning" fontSize="small" />} />
+            </Grid>
+            <Grid size={{ xs: 3 }}>
+                <CardStat label="Succeeded" count={stats?.totalSucceededUploads ?? 0} color="success.main" icon={<CheckCircleOutlineIcon color="success" fontSize="small" />} />
+            </Grid>
+            <Grid size={{ xs: 3 }}>
+                <CardStat label="Failed" count={stats?.totalFailedUploads ?? 0} color="error.main" icon={<ErrorOutlineIcon color="error" fontSize="small" />} />
+            </Grid>
+        </Grid>
+    );
+}
+
+interface CardStatProps {
+    icon: React.ReactNode;
+    count: number;
+    label: string;
+    color: string;
+}
+
+export function CardStat({ icon, count, label, color }: CardStatProps) {
+    return (
+        <Card sx={{ backgroundColor: "background.paper", borderRadius: 2, border: "1px solid rgba(255,255,255,0.06)", height: "100%" }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+                    {icon}
+                    <Typography color="textSecondary" variant="subtitle2" sx={{ fontSize: { xs: "0.7rem", sm: "0.875rem" }, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {label}
+                    </Typography>
+                </Box>
+                <Typography variant="h5" sx={{ fontSize: { xs: "1.2rem", sm: "1.75rem" }, fontWeight: 600 }} color={color}>
+                    {count}
+                </Typography>
+            </CardContent>
+        </Card>
     );
 }

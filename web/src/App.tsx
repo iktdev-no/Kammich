@@ -16,6 +16,7 @@ import { Album } from './routes/Album';
 import ImportOwnership from './routes/ImportOwnership';
 import ImmichProfiles from './routes/immich/ImmichProfiles';
 import ImmichMe from './routes/immich/ImmichMe';
+import { System } from './routes/System';
 
 const router = createBrowserRouter([
   {
@@ -39,6 +40,7 @@ const router = createBrowserRouter([
       { path: 'settings/immich/me', element: <ImmichMe /> },
       { path: 'settings/immich/access', element: <ImmichAccess /> },
       { path: 'settings/immich/users', element: <ImmichProfiles /> },
+      { path: 'settings/system', element: <System /> },
 
     ],
   },

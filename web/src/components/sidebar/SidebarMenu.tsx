@@ -27,6 +27,7 @@ import { useSseSelector } from "../../sse/useSseSelector";
 import { useEffect, useMemo, useState } from "react";
 import TapAndPlayIcon from '@mui/icons-material/TapAndPlay';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import MemoryIcon from '@mui/icons-material/Memory';
 import PublicIcon from '@mui/icons-material/Public';
 import ImportIcon from '@mui/icons-material/SystemUpdateAlt';
 import { getPhotoDevices } from "../../api/requests/photo";
@@ -57,11 +58,18 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
     const [photoDevices, setPhotoDevices] = useState<PhotoDevice[]>([]);
     const immichAccesses = useState<ImmichUserAccesses[]>([]);
 
-    useEffect(() => {
+    const fetchPhotoDevices = () => {
+        console.info("Henter photo enheter");
         getPhotoDevices()
             .then(data => setPhotoDevices(data))
             .catch(err => console.error("Klarte ikke å hente foto-enheter:", err));
+    };
+
+    // Hent enheter én gang ved oppstart
+    useEffect(() => {
+        fetchPhotoDevices();
     }, []);
+
 
     // Bruk useMemo slik at menyen oppdateres kun når 'devices' endres
     const mainMenuItems: SidebarItem[] = useMemo(() => [
@@ -69,6 +77,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             label: "Photos",
             icon: PhotoLibraryIcon,
             to: "/",
+            action: fetchPhotoDevices,
             children: photoDevices.map(d => ({
                 label: d.model ?? d.name,
                 icon: PhotoLibraryIcon,
@@ -111,7 +120,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             sx: { marginTop: "auto" }
         },
 
-    ], [devices]); // <-- Dependency: Re-kalkulerer kun når devices endres
+    ], [devices, photoDevices]);
 
 
     const settingsMenuItems: SidebarItem[] = useMemo(() => [
@@ -163,6 +172,12 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
                     to: "/settings/ap"
                 }
             ]
+        },
+        {
+            label: "System",
+            icon: MemoryIcon,
+            to: "/settings/system",
+            sx: { marginTop: "auto" }
         },
     ], [immichAccesses]);
 

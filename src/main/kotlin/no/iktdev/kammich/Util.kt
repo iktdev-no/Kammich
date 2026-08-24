@@ -26,6 +26,8 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.util.UUID
+
 
 fun String.toMD5(): String {
     return this.toByteArray().let {
@@ -171,4 +173,13 @@ fun File.getExifTimestamp(): Instant? {
 
 fun Instant.between(start: Instant, end: Instant): Boolean {
     return this in start..end
+}
+
+fun Instant.within(start: Instant, end: Instant): Boolean {
+    val zone = ZoneId.systemDefault()
+    val date = atZone(zone).toLocalDate()
+    val startDate = start.atZone(zone).toLocalDate()
+    val endDate = end.atZone(zone).toLocalDate()
+
+    return date >= startDate && date <= endDate
 }
