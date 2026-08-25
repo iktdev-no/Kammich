@@ -10,79 +10,174 @@ class GPhoto2FileListParserTest {
     private val parser = GPhoto2FileListParser()
 
     @Test
-    @DisplayName("Skal parse rot-mappe og filer med 'rd' attributt korrekt")
-    fun `should parse non-recursive folder and file listing`() {
+    @DisplayName("Skal parse mappe fra absolutt sti")
+    fun `should parse folder from absolute path`() {
         val input = """
-        There are 23 folders in folder '/store_00010001'.
-         - ASD
-         - Alarms
-        There is 1 file in folder '/store_00010001'.
-        #1     QTAudioEngine            rd     1 KB application/x-unknown 1659796433
-    """.trimIndent()
-
-        val result = parser.parse(input)
-
-        // Verifiser mappe
-        val asdFolder = result.find { it.name == "ASD" }
-        assertThat(asdFolder?.folderPath).isEqualTo("/store_00010001/ASD")
-
-        // Verifiser fil
-        val file = result.find { it.name == "QTAudioEngine" }
-        assertThat(file).isNotNull
-        assertThat(file?.sizeBytes).isEqualTo(1024) // 1 KB
-        assertThat(file?.mimeType).isEqualTo("application/x-unknown")
-    }
-
-    @Test
-    @DisplayName("Skal parse komplekse filnavn og beholde korrekt path")
-    fun `should handle spaces in names and correct paths`() {
-        val input = """
-            There are 1 files in folder '/store_0001/Music'.
-            #1    My Cool Song (Remix 2026).mp3    4096 KB audio/mpeg 1629200643
+            /store_00010001
         """.trimIndent()
 
         val result = parser.parse(input)
-        val musicFile = result.find { it.name == "My Cool Song (Remix 2026).mp3" }
 
-        assertThat(musicFile).isNotNull
-        assertThat(musicFile?.folderPath).isEqualTo("/store_0001/Music")
+        assertThat(result).hasSize(1)
+
+        val folder = result.single()
+        assertThat(folder.name).isEqualTo("store_00010001")
+        assertThat(folder.type).isEqualTo(GPhoto2NodeType.FOLDER)
+        assertThat(folder.folderPath).isEqualTo("/store_00010001")
     }
 
     @Test
-    @DisplayName("Skal ignorere tomme mapper og håndtere 0 filer")
-    fun `should handle empty folder list gracefully`() {
-        val input = "There are 0 files in folder '/empty'."
-        val result = parser.parse(input)
-        assertThat(result.filter { it.type == GPhoto2NodeType.FILE }).isEmpty()
-    }
-
-    @Test
-    @DisplayName("Skal parse DCIM-filer med 'rd' attributt og korrekt filstørrelse")
-    fun `should parse DCIM camera files correctly`() {
+    @DisplayName("Skal parse fil med FILENAME, FILESIZE og FILETYPE")
+    fun `should parse file correctly`() {
         val input = """
-            There are 0 folders in folder '/store_00010001/DCIM/Camera'.
-            There are 5 files in folder '/store_00010001/DCIM/Camera'.
-            #1     20201116_165231.jpg        rd  3234 KB image/jpeg 1605545551
-            #2     20210913_101331.jpg        rd  3180 KB image/jpeg 1631528011
-            #3     20220330_223704.jpg        rd  5386 KB image/jpeg 1648679824
-            #4     20220409_234535.jpg        rd  5273 KB image/jpeg 1649547935
-            #5     20220413_125949.jpg        rd  6446 KB image/jpeg 1649854789
+            FILENAME='/store_00010001/QTAudioEngine' FILESIZE=1024 FILETYPE=application/x-unknown
         """.trimIndent()
 
         val result = parser.parse(input)
-        val files = result.filter { it.type == GPhoto2NodeType.FILE }
 
-        assertThat(files).hasSize(5)
+        assertThat(result).hasSize(1)
 
-        // Verifiser første fil
-        val firstFile = files.find { it.name == "20201116_165231.jpg" }
-        assertThat(firstFile).isNotNull
-        assertThat(firstFile?.sizeBytes).isEqualTo(3234 * 1024)
-        assertThat(firstFile?.folderPath).isEqualTo("/store_00010001/DCIM/Camera")
-
-        // Verifiser siste fil
-        val lastFile = files.find { it.name == "20220413_125949.jpg" }
-        assertThat(lastFile?.sizeBytes).isEqualTo(6446 * 1024)
+        val file = result.single()
+        assertThat(file.name).isEqualTo("QTAudioEngine")
+        assertThat(file.type).isEqualTo(GPhoto2NodeType.FILE)
+        assertThat(file.folderPath).isEqualTo("/store_00010001")
+        assertThat(file.sizeBytes).isEqualTo(1024)
     }
 
+    @Test
+    @DisplayName("Skal beholde filnavn med mellomrom og parenteser")
+    fun `should handle spaces and special characters in file names`() {
+        val input = """
+            FILENAME='/store_0001/Music/My Cool Song (Remix 2026).mp3' FILESIZE=4096 FILETYPE=audio/mpeg
+        """.trimIndent()
+
+        val result = parser.parse(input)
+
+        assertThat(result).hasSize(1)
+
+        val file = result.single()
+        assertThat(file.name).isEqualTo("My Cool Song (Remix 2026).mp3")
+        assertThat(file.folderPath).isEqualTo("/store_0001/Music")
+        assertThat(file.sizeBytes).isEqualTo(4096)
+    }
+
+    @Test
+    @DisplayName("Skal håndtere tom input")
+    fun `should handle empty input`() {
+        val result = parser.parse("")
+
+        assertThat(result).isEmpty()
+    }
+
+    @Test
+    @DisplayName("Skal ignorere tomme linjer")
+    fun `should ignore empty lines`() {
+        val input = """
+            
+            /store_00010001
+            
+        """.trimIndent()
+
+        val result = parser.parse(input)
+
+        assertThat(result).hasSize(1)
+        assertThat(result.single().name).isEqualTo("store_00010001")
+    }
+
+    @Test
+    @DisplayName("Skal parse flere kamerafiler korrekt")
+    fun `should parse multiple camera files`() {
+        val input = """
+            FILENAME='/store_00010001/DCIM/Camera/20201116_165231.jpg' FILESIZE=3311616 FILETYPE=image/jpeg
+            FILENAME='/store_00010001/DCIM/Camera/20210913_101331.jpg' FILESIZE=3256320 FILETYPE=image/jpeg
+            FILENAME='/store_00010001/DCIM/Camera/20220330_223704.jpg' FILESIZE=5515264 FILETYPE=image/jpeg
+            FILENAME='/store_00010001/DCIM/Camera/20220409_234535.jpg' FILESIZE=5399552 FILETYPE=image/jpeg
+            FILENAME='/store_00010001/DCIM/Camera/20220413_125949.jpg' FILESIZE=6600704 FILETYPE=image/jpeg
+        """.trimIndent()
+
+        val result = parser.parse(input)
+
+        assertThat(result).hasSize(5)
+        assertThat(result).allMatch { it.type == GPhoto2NodeType.FILE }
+        assertThat(result).allMatch {
+            it.folderPath == "/store_00010001/DCIM/Camera"
+        }
+    }
+
+    @Test
+    @DisplayName("Skal beholde korrekt JPG-endelse når MIME-type er image/jpeg")
+    fun `should preserve valid jpg extension`() {
+        val input = """
+            FILENAME='/DCIM/Camera/photo.JPG' FILESIZE=1234 FILETYPE=image/jpeg
+        """.trimIndent()
+
+        val result = parser.parse(input)
+
+        assertThat(result).hasSize(1)
+        assertThat(result.single().name).isEqualTo("photo.JPG")
+    }
+
+    @Test
+    @DisplayName("Skal legge til JPG-endelse når image/jpeg mangler gyldig endelse")
+    fun `should enforce jpg extension for jpeg mime type`() {
+        val input = """
+            FILENAME='/DCIM/Camera/photo' FILESIZE=1234 FILETYPE=image/jpeg
+        """.trimIndent()
+
+        val result = parser.parse(input)
+
+        assertThat(result).hasSize(1)
+        assertThat(result.single().name).isEqualTo("photo.jpg")
+    }
+
+    @Test
+    @DisplayName("Skal legge til PNG-endelse når image/png mangler gyldig endelse")
+    fun `should enforce png extension for png mime type`() {
+        val input = """
+            FILENAME='/DCIM/Camera/image' FILESIZE=5678 FILETYPE=image/png
+        """.trimIndent()
+
+        val result = parser.parse(input)
+
+        assertThat(result).hasSize(1)
+        assertThat(result.single().name).isEqualTo("image.png")
+    }
+
+    @Test
+    @DisplayName("Skal ikke endre ukjent MIME-type")
+    fun `should not modify filename for unknown mime type`() {
+        val input = """
+            FILENAME='/store_0001/file.unknown' FILESIZE=100 FILETYPE=application/octet-stream
+        """.trimIndent()
+
+        val result = parser.parse(input)
+
+        assertThat(result).hasSize(1)
+        assertThat(result.single().name).isEqualTo("file.unknown")
+    }
+
+    @Test
+    @DisplayName("Skal fjerne duplikater basert på path og filnavn")
+    fun `should remove duplicate files`() {
+        val input = """
+            FILENAME='/DCIM/photo.jpg' FILESIZE=1234 FILETYPE=image/jpeg
+            FILENAME='/DCIM/photo.jpg' FILESIZE=1234 FILETYPE=image/jpeg
+        """.trimIndent()
+
+        val result = parser.parse(input)
+
+        assertThat(result).hasSize(1)
+    }
+
+    @Test
+    @DisplayName("Skal bevare filstørrelse korrekt")
+    fun `should parse file size correctly`() {
+        val input = """
+            FILENAME='/DCIM/large.jpg' FILESIZE=123456789 FILETYPE=image/jpeg
+        """.trimIndent()
+
+        val result = parser.parse(input)
+
+        assertThat(result.single().sizeBytes).isEqualTo(123456789L)
+    }
 }

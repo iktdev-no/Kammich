@@ -41,6 +41,9 @@ jobs:
       - name: Set executable permissions for gradlew
         run: chmod +x ./gradlew
 
+      - name: Generate OpenAPI Kotlin client
+        run: ./gradlew openApiGenerate
+
       - name: Generate TypeScript types (tsGenerator)
         run: ./gradlew generateTs
 
@@ -57,9 +60,6 @@ jobs:
           rm -rf src/main/resources/static
           mkdir -p src/main/resources/static
           cp -r web/dist/* src/main/resources/static/
-
-      - name: Generate OpenAPI Kotlin client & Run unit tests
-        run: ./gradlew openApiGenerate test
 
       - name: Build Spring Boot executable jar (bootJar)
         run: ./gradlew bootJar

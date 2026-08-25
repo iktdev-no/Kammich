@@ -1,0 +1,86 @@
+name: Build and Test
+
+env:
+  CI: true
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set executable permissions for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Generate OpenAPI Kotlin client
+        run: ./gradlew openApiGenerate
+
+      - name: Generate TypeScript types
+        run: ./gradlew generateTs
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build React frontend
+        working-directory: web
+        run: npm run build
+
+      - name: Copy React build into Spring Boot resources
+        run: |
+          rm -rf src/main/resources/static
+          mkdir -p src/main/resources/static
+          cp -r web/dist/* src/main/resources/static/
+
+      - name: Run tests
+        run: ./gradlew test
+
+      - name: Build Spring Boot JAR
+        run: ./gradlew bootJar
+
+      - name: Create snapshot name
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "SNAPSHOT_NAME=Kammich-${SHORT_SHA}-SNAPSHOT.jar" >> "$GITHUB_ENV"
+
+      - name: Rename JAR
+        run: |
+          JAR_FILE=$(find build/libs -maxdepth 1 -name "*.jar" | head -n 1)
+
+          if [ -z "$JAR_FILE" ]; then
+            echo "No JAR found!"
+            exit 1
+          fi
+
+          mv "$JAR_FILE" "build/libs/${SNAPSHOT_NAME}"
+
+      - name: Upload snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kammich-snapshot-${{ github.sha }}
+          path: build/libs/Kammich-*-SNAPSHOT.jar
+          retention-days: 7

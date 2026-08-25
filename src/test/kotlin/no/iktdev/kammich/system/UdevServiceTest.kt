@@ -1,12 +1,12 @@
 package no.iktdev.kammich.system
 
-import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
+import org.mockito.kotlin.mock
 import org.springframework.context.ApplicationEventPublisher
 import kotlin.test.Test
 
 class UdevServiceTest {
-    val eventPublisher = mockk<ApplicationEventPublisher>()
+    val eventPublisher = mock<ApplicationEventPublisher>()
 
     @Test
     fun `skal parse korrekt add event for hovedenhet`() {

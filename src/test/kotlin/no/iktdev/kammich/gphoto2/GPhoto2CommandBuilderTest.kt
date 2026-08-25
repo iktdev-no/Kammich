@@ -18,7 +18,7 @@ class GPhoto2CommandBuilderTest {
             sizeBytes = 1024,
             mimeType = "image/jpeg"
         )
-        val destination = File("/home/user/downloads")
+        val destination = File("/home/user/downloads/bilde.jpg")
 
         builder.port("usb:001,036").copy(destination, file.folderPath, file.name)
         val args = builder.build()

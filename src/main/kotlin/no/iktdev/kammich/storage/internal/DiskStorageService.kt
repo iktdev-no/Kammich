@@ -43,7 +43,7 @@ class DiskStorageService(
         val mediaPath = File(configService.getConfig().mediaPath)
 
         // 1. Finn disk-info
-        val allDevices = lsblkService.getAllDevices()
+        val allDevices = lsblkService.getAllPhysicalDevices()
         val device = allDevices.find {
             it.mountPoint != null && mediaPath.absolutePath.startsWith(it.mountPoint)
         }
