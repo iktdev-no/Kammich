@@ -6,7 +6,7 @@ env:
 on:
   push:
     tags:
-      - 'v*' # Kjører når du pusher en tag som starter med v (f.eks. v1.0.0)
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -32,7 +32,6 @@ jobs:
       - name: Extract version from Git Tag
         id: tag
         run: |
-          # Fjerner 'v' fra starten av taggen hvis den finnes (f.eks. v1.2.3 -> 1.2.3)
           TAG=${{ github.ref_name }}
           VERSION=${TAG#v}
           echo "VERSION=$VERSION" >> $GITHUB_ENV
@@ -41,6 +40,9 @@ jobs:
 
       - name: Set executable permissions for gradlew
         run: chmod +x ./gradlew
+
+      - name: Generate TypeScript types (tsGenerator)
+        run: ./gradlew generateTs
 
       - name: Build React frontend (SPA)
         env:
@@ -56,8 +58,8 @@ jobs:
           mkdir -p src/main/resources/static
           cp -r web/dist/* src/main/resources/static/
 
-      - name: Run unit tests
-        run: ./gradlew test
+      - name: Generate OpenAPI Kotlin client & Run unit tests
+        run: ./gradlew openApiGenerate test
 
       - name: Build Spring Boot executable jar (bootJar)
         run: ./gradlew bootJar
