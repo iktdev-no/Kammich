@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
-    Box, Typography, Avatar, Button, CircularProgress,
-    Dialog, IconButton, useTheme, Chip, Stack, Divider, Slide
+    Box, Typography, Avatar, CircularProgress,
+    Dialog, IconButton, useTheme, Chip, Stack, Slide
 } from "@mui/material";
 import type { TransitionProps } from '@mui/material/transitions';
 import AddIcon from '@mui/icons-material/Add';
@@ -11,8 +11,6 @@ import type { ImmichUserAccesses, ImmichUserMe } from "../../types/types";
 import { immichAccessAll, immichChangeUser } from "../../api/requests/immich";
 import { getAvatarColor } from "../../utils/immichColor";
 import ImmichLogin from "../../components/immich/ImmichLogin";
-import HttpIcon from '@mui/icons-material/Http';
-import HttpsIcon from '@mui/icons-material/Https';
 import React from "react";
 
 const Transition = React.forwardRef(function Transition(
@@ -26,7 +24,7 @@ interface ImmichProfilesProps {
     onLoginSuccess?: (login: ImmichUserMe) => void;
 }
 
-export default function ImmichProfiles({ onLoginSuccess }: ImmichProfilesProps) {
+export default function ImmichProfiles({ }: ImmichProfilesProps) {
     const theme = useTheme();
     const [profiles, setProfiles] = useState<ImmichUserAccesses[]>([]);
     const [loading, setLoading] = useState(true);
@@ -55,8 +53,6 @@ export default function ImmichProfiles({ onLoginSuccess }: ImmichProfilesProps) 
             const success = await immichChangeUser(userId); // Bruker din definerte funksjon
 
             if (success) {
-                // Siden funksjonen returnerer en boolsk suksess, 
-                // kan vi trigger en oppdatering/callback her.
                 loadProfiles();
             } else {
                 throw new Error("Kunne ikke bytte til bruker");
@@ -75,29 +71,45 @@ export default function ImmichProfiles({ onLoginSuccess }: ImmichProfilesProps) 
             <Typography variant="h3" sx={{ fontWeight: 800, mb: 6, textAlign: "center" }}>Hvem er fotografen?</Typography>
 
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center" }}>
-                {profiles.map(({ user, servers }) => (
-                    <Box key={user.id} sx={{ width: 160, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                        <Avatar
-                            onClick={() => handleSelectUser(user.id)}
-                            src={user.profileImagePath ? `/api/v1/immich/profile-image?userId=${user.id}` : undefined}
-                            sx={{
-                                width: 130, height: 130, mb: 2, cursor: "pointer",
-                                bgcolor: getAvatarColor(user.avatarColor),
-                                border: "4px solid transparent", transition: "all 0.2s",
-                                '&:hover': { transform: "scale(1.05)", borderColor: "primary.main" }
-                            }}
-                        >{user.name[0].toUpperCase()}</Avatar>
+                {profiles.map(({ user, servers }) => {
+                    const isSwapping = swappingId === user.id;
 
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{user.name}</Typography>
+                    return (
+                        <Box key={user.id} sx={{ width: 160, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <Avatar
+                                onClick={() => !swappingId && handleSelectUser(user.id)}
+                                src={user.profileImagePath && !isSwapping ? `/api/v1/immich/profile-image?userId=${user.id}` : undefined}
+                                sx={{
+                                    width: 130, height: 130, mb: 2,
+                                    cursor: swappingId ? "wait" : "pointer",
+                                    bgcolor: getAvatarColor(user.avatarColor),
+                                    border: "4px solid transparent",
+                                    transition: "all 0.2s",
+                                    opacity: isSwapping ? 0.6 : 1,
+                                    '&:hover': {
+                                        transform: swappingId ? "none" : "scale(1.05)",
+                                        borderColor: "primary.main"
+                                    }
+                                }}
+                            >
+                                {isSwapping ? (
+                                    <CircularProgress size={40} sx={{ color: "white" }} />
+                                ) : (
+                                    user.name[0].toUpperCase()
+                                )}
+                            </Avatar>
 
-                        <Stack spacing={0.5} sx={{ mt: 1, width: "100%", alignItems: "center" }}>
-                            {servers.map((s) => (
-                                <Chip key={s.keyId} label={s.serverUrl} size="small" variant="outlined"
-                                    icon={<StorageIcon fontSize="small" />} sx={{ fontSize: "0.7rem", maxWidth: "100%" }} />
-                            ))}
-                        </Stack>
-                    </Box>
-                ))}
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>{user.name}</Typography>
+
+                            <Stack spacing={0.5} sx={{ mt: 1, width: "100%", alignItems: "center" }}>
+                                {servers.map((s) => (
+                                    <Chip key={s.keyId} label={s.serverUrl} size="small" variant="outlined"
+                                        icon={<StorageIcon fontSize="small" />} sx={{ fontSize: "0.7rem", maxWidth: "100%" }} />
+                                ))}
+                            </Stack>
+                        </Box>
+                    );
+                })}
 
                 <Box sx={{ width: 160, display: "flex", flexDirection: "column", alignItems: "center" }}>
                     <Avatar

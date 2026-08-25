@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import {
     Box, Typography, Paper, LinearProgress, Stack,
-    Collapse, IconButton, Chip
+    IconButton, Chip
 } from "@mui/material";
 import CancelIcon from '@mui/icons-material/Cancel';
-import DownloadDoneIcon from '@mui/icons-material/DownloadDone';
 
-import type { DeviceImport, DeviceImportSummary, ImportProgressEvent, FileImportState, DeviceImportJobSummary } from "../types/types";
+import type { DeviceImportSummary, ImportProgressEvent, DeviceImportJobSummary } from "../types/types";
 import { toast } from "react-toastify";
 import { cancelImportFor, getHistoricalImports } from "../api/requests/importer";
 import { ImportHistoryList } from "../components/importer/ImportHistory";

@@ -8,7 +8,7 @@ import BatteryChargingFullIcon from "@mui/icons-material/BatteryChargingFull";
 import StorageIcon from "@mui/icons-material/Storage";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { updateDeviceSettings } from "../../api/requests/camera";
-import type { DeviceInfo, DeviceSettingsDto } from "../../types/types";
+import type { DeviceInfo } from "../../types/types";
 import { formatBytes } from "../../utils/format";
 
 export function DeviceCard({ device }: { device: DeviceInfo }) {

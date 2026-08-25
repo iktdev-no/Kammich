@@ -1,5 +1,5 @@
 import {
-    AppBar, Toolbar, IconButton, Typography, Box, useTheme, Avatar, Tooltip, keyframes,
+    AppBar, Toolbar, IconButton, Typography, Box, useTheme, Avatar, Tooltip,
     type SvgIconProps
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -7,8 +7,6 @@ import { useIsMobile } from "../hooks/useIsMobile";
 import { useColorMode } from "../context/ColorModeContext";
 import { DarkModeOutlined, LightModeOutlined } from "@mui/icons-material";
 import NotificationPopover from "../components/NotificationPopover";
-import SyncIcon from "../components/icons/SyncIcon";
-import CancelIcon from "@mui/icons-material/Clear";
 import LoginIcon from '@mui/icons-material/Login';
 import { ImportIndicator } from "./ImportIndicator";
 import ImmichIcon from "../components/icons/ImmichIcon";
@@ -22,7 +20,6 @@ export default function Header({ onToggleSidebar }: { onToggleSidebar: () => voi
     const { mode, toggleColorMode } = useColorMode();
     const naviage = useNavigate();
     const immichUser = useSseSelector(state => state.immichUserMe)
-    const immichAuth = useSseSelector(state => state.immichApiKeyInUse)
 
     const headerHeight = isMobile ? theme.layout.headerMobile : theme.layout.headerDesktop;
 
