@@ -137,3 +137,16 @@ sourceSets {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+tasks.named<Jar>("bootJar") {
+	manifest {
+		attributes(
+			"Implementation-Title" to project.name,
+			"Implementation-Version" to project.version
+		)
+	}
+}
+
+tasks.named<Jar>("jar") {
+	enabled = false
+}
