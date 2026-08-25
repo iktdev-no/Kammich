@@ -13,7 +13,8 @@ class WifiConnectionServiceV2(
     private val sseManager: SseManager,
     private val interfaceRegistry: NetworkInterfaceRegistryV2,
     private val strategies: List<WifiConnectionStrategy>,
-    private val scanServiceV2: WifiScanServiceV2
+    private val scanServiceV2: WifiScanServiceV2,
+    private val captivePortal: CaptivePortal
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -69,6 +70,11 @@ class WifiConnectionServiceV2(
             log.info("Kobler til $bssid på ${lease.interfaceName}")
             connectResult = strategy.connect(lease.interfaceName, network, password)
 
+            if (connectResult.state == WifiConnectionStateType.Connected) {
+                // Sjekk om det er en captive portal med en gang vi er tilkoblet!
+                val captiveStatus = captivePortal.verify(lease.interfaceName)
+                log.info("Captive portal sjekk fullført for ${lease.interfaceName}: ${captiveStatus.state}")
+            }
             // Hvis tilkoblingen feilet med en gang, kan vi frigi leasen igjen med en gang
             if (connectResult.state != WifiConnectionStateType.Connected && connectResult.state != WifiConnectionStateType.Connecting) {
                 lease.release()

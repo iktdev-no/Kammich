@@ -1,4 +1,4 @@
-package no.iktdev.kammich.system.network.v2
+package no.iktdev.kammich.system.network
 
 import no.iktdev.kammich.models.shared.network.CaptivePortalState
 import no.iktdev.kammich.models.shared.network.NetworkCaptiveStatus
@@ -6,9 +6,10 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.net.HttpURLConnection
 import java.net.URL
+import java.io.OutputStreamWriter
 
 @Component
-class CaptivePortalV2 {
+class CaptivePortal {
     private val log = LoggerFactory.getLogger(javaClass)
 
     fun verify(interfaceName: String): NetworkCaptiveStatus {
@@ -26,9 +27,6 @@ class CaptivePortalV2 {
                 connection.readTimeout = 3000
                 connection.useCaches = false
 
-                // TODO: Hvis du har bundet socketen/tilkoblingen til et spesifikt interface
-                // via NetworkManager/Socket-binding tidligere, kan det gjøres her.
-
                 connection.connect()
                 val responseCode = connection.responseCode
 
@@ -36,6 +34,10 @@ class CaptivePortalV2 {
                     in 300..399 -> {
                         val portalLocation = connection.getHeaderField("Location") ?: ""
                         log.info("Captive portal detektert på $interfaceName: $portalLocation")
+
+                        // Send URL-en videre til Python-kiosken via FastAPI-endepunktet på port 8081
+                        triggerKioskOverlay(portalLocation)
+
                         return NetworkCaptiveStatus(
                             interfaceName = interfaceName,
                             state = CaptivePortalState.CaptivePortal,
@@ -61,5 +63,21 @@ class CaptivePortalV2 {
             state = CaptivePortalState.Offline,
             message = "Ingen nettverksforbindelse detektert."
         )
+    }
+
+    private fun triggerKioskOverlay(portalUrl: String) {
+        try {
+            // Vi bruker URI.create().toURL() for å unngå deprecation-advarsler
+            val fullUrl = java.net.URI.create("http://127.0.0.1:8081/overlay?url=${java.net.URLEncoder.encode(portalUrl, "UTF-8")}").toURL()
+            val postConn = fullUrl.openConnection() as HttpURLConnection
+            postConn.requestMethod = "POST"
+            postConn.connectTimeout = 2000
+            postConn.readTimeout = 2000
+            postConn.responseCode // Trigg forespørselen
+
+            log.info("Sendte captive portal URL til pykiosk overlay: $portalUrl")
+        } catch (e: Exception) {
+            log.error("Klarte ikke å kontakte local pykiosk for å åpne overlay: ${e.message}")
+        }
     }
 }
