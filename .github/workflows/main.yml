@@ -1,0 +1,78 @@
+name: Build and Release Jar
+
+env:
+  CI: true
+
+on:
+  push:
+    tags:
+      - 'v*' # Kjører når du pusher en tag som starter med v (f.eks. v1.0.0)
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Extract version from Git Tag
+        id: tag
+        run: |
+          # Fjerner 'v' fra starten av taggen hvis den finnes (f.eks. v1.2.3 -> 1.2.3)
+          TAG=${{ github.ref_name }}
+          VERSION=${TAG#v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION from tag $TAG"
+
+      - name: Set executable permissions for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build React frontend (SPA)
+        env:
+          CI: false
+        run: |
+          cd web
+          npm ci
+          npm run build
+
+      - name: Copy React build into Spring Boot resources
+        run: |
+          rm -rf src/main/resources/static
+          mkdir -p src/main/resources/static
+          cp -r web/dist/* src/main/resources/static/
+
+      - name: Run unit tests
+        run: ./gradlew test
+
+      - name: Build Spring Boot executable jar (bootJar)
+        run: ./gradlew bootJar
+
+      - name: Rename Jar file
+        run: |
+          cd build/libs
+          JAR_FILE=$(ls *-boot.jar 2>/dev/null || ls *.jar | head -n 1)
+          mv "$JAR_FILE" "Kammich-v${{ env.VERSION }}.jar"
+          echo "Renamed $JAR_FILE to Kammich-v${{ env.VERSION }}.jar"
+
+      - name: Create GitHub Release & Upload Jar
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Release Kammich ${{ env.TAG }}
+          files: build/libs/Kammich-v*.jar
+          generate_release_notes: true
