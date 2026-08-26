@@ -43,7 +43,7 @@ class GPhoto2CommandBuilderTest {
             mimeType = "image/jpeg"
         )
 
-        builder.port("usb:001,036").delete(file)
+        builder.port("usb:001,036").delete(file.folderPath, file.name)
         val args = builder.build()
 
         assertThat(args).containsExactly(
