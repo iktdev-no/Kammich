@@ -107,6 +107,11 @@ class DeviceManagerService(
         updateConfig(device.id) { it.autoImport = enabled }
     }
 
+    fun setDeleteWhenVerifiedBackedUp(device: RemovableDevice, enabled: Boolean) {
+        log.info("Updating deleteWhenVerifiedBackedup for ${device.id} to $enabled")
+        updateConfig(device.id) {it.deleteWhenVerifiedBackedup = enabled }
+    }
+
     fun setIncludeFolders(device: RemovableDevice, folders: List<String>) {
         updateConfig(device.id) { it.includeFolders = folders }
     }

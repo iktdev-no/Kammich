@@ -56,6 +56,10 @@ class CameraFileDeletionService(
             )
             return
         }
+        val allowDeletion = deviceManager.getSettings(deviceSN).autoImport ?: false
+        if (!allowDeletion) {
+            return
+        }
 
         val provider = providerFactory.getProvider(device)
 
@@ -125,14 +129,14 @@ class CameraFileDeletionService(
             eventPublisher.errorNotification(
                 "FileDeletionService-Failed-$deviceSN",
                 "Kameraopprydding feilet",
-                "Slettet $deleted av ${pending.size} filer fra kameraet $deviceSN. " +
+                "Slettet $deleted av ${pending.size} filer fra kameraet ${device.model}. " +
                         "$failed feilet og $remaining gjenstår."
             )
         } else {
             eventPublisher.infoNotification(
                 "FileDeletionService-Completed-$deviceSN",
                 "Kameraopprydding ferdig",
-                "Slettet $deleted filer fra kameraet $deviceSN."
+                "Slettet $deleted filer fra kameraet ${device.model}."
             )
         }
     }

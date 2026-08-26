@@ -1,10 +1,11 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-08-24T14:59:50.547444944Z
+// Time: 2026-08-26T22:40:49.572385014Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
   autoImport: boolean | null;
+  deleteWhenVerifiedBackedup: boolean | null;
   excludeFolders: string[] | null;
   includeFolders: string[] | null;
 }
@@ -54,6 +55,12 @@ export interface PowerPermissionsDto {
 }
 
 export type NotificationType = "Alert"
+
+export interface Version {
+  kammichGithubVersion: string;
+  kammichVersion: string;
+  updateAvailable: boolean;
+}
 
 export interface Notification {
   createdAt: number;
@@ -181,6 +188,10 @@ export type FileImportState = "Pending" | "InProgress" | "Success" | "Failure"
 export type WFileType = "FILE" | "DIRECTORY"
 
 export type ImportState = "Indexing" | "Importing" | "Completed" | "Canceled"
+
+export type DeleteState = "Pending" | "Deleted" | "Failed"
+
+export type Verification = "Verified" | "NotVerified" | "Failed"
 
 export interface UploadSummary {
   lastUpdatedAt: string | null;

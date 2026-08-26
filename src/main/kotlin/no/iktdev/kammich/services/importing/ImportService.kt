@@ -130,14 +130,14 @@ class ImportService(
             deviceContentIndexing.getNewFilesToImport(device)
         } catch (e: Exception) {
             log.error("Feil under indeksering av enhet {}", deviceSN, e)
-            finishImport(deviceSN)
+            finishImport(deviceSN, device.model)
             return
         }
 
         if (filesToImport.isEmpty()) {
             log.info("No new files to import for ${device.name}")
             eventPublisher.infoNotification("ImportService-NoFiles-${device.id}", "No files to import", "All files have already been imported for ${device.model}")
-            finishImport(device.id)
+            finishImport(device.id, device.model)
             return
         }
 
@@ -145,7 +145,7 @@ class ImportService(
         val config = configService.getConfig().deviceSettings[device.id]
         if (config?.autoImport != true) {
             log.error("Device ${device.id} has auto-import disabled")
-            finishImport(device.id)
+            finishImport(device.id, device.model)
             return
         }
         startImportForDevice(device, filesToImport)
@@ -310,7 +310,7 @@ class ImportService(
             log.error("Uventet feil under import-loop for enhet {}", deviceIdStr, e)
         } finally {
             activeImportJobs.remove(deviceIdStr)
-            finishImport(deviceIdStr, importJobId)
+            finishImport(deviceSN = deviceIdStr, importJobId = importJobId, deviceModel = device.model)
         }
     }
 
@@ -336,7 +336,7 @@ class ImportService(
         log.warn("Kansellerte import for enhet {}", deviceIdStr)
     }
 
-    private fun finishImport(deviceSN: String, importJobId: UUID? = null) {
+    private fun finishImport(deviceSN: String, deviceModel: String, importJobId: UUID? = null) {
         val finalFiles = importList[deviceSN] ?: emptyList()
         val successCount = finalFiles.count { it.state == FileImportState.Success }
         val failedFiles = finalFiles.filter { it.state == FileImportState.Failure }
@@ -352,7 +352,7 @@ class ImportService(
             eventPublisher.infoNotification(
                 "ImportService-Success-$deviceSN",
                 "Import ferdig",
-                "Importerte $successCount filer fra enhet $deviceSN. ${if (failCount > 0) "($failCount feilet)" else ""}"
+                "Importerte $successCount filer fra enhet $deviceModel. ${if (failCount > 0) "($failCount feilet)" else ""}"
             )
             log.info("Import fullført for $deviceSN: $successCount suksesser, $failCount feil.")
         } else if (finalFiles.isNotEmpty()) {

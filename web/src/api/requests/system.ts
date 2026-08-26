@@ -1,4 +1,4 @@
-import type { PowerPermissionsDto, ActionResponse } from "../../types/types";
+import type { PowerPermissionsDto, ActionResponse, Version } from "../../types/types";
 import { apiGet, apiPost } from "../client";
 
 
@@ -12,4 +12,8 @@ export function executePowerOff() {
 
 export function executeReboot() {
     return apiPost<null, ActionResponse>(`/v1/system/reboot`, null)
+}
+
+export function getKammichBackendVersion() {
+    return apiGet<Version>(`/v1/version`)
 }

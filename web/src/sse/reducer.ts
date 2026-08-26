@@ -15,7 +15,7 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
     case 'notifications':
       return {
         ...state,
-        notifications: event.payload
+        notifications: [...event.payload].sort((a, b) => b.createdAt - a.createdAt)
       };
 
     case 'sync-status':

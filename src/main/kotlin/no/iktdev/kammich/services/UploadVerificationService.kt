@@ -8,9 +8,11 @@ import no.iktdev.kammich.database.tables.DeleteFilesTable
 import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.tables.UploadFilesTable
 import no.iktdev.kammich.database.withTransaction
+import no.iktdev.kammich.errorNotification
 import no.iktdev.kammich.immich.ImmichApi
 import no.iktdev.kammich.immich.client.ImmichClientFactory
 import no.iktdev.kammich.immich.services.ImmichContextService
+import no.iktdev.kammich.infoNotification
 import no.iktdev.kammich.models.FileHashType
 import no.iktdev.kammich.models.internal.events.UploadCompletedEvent
 import no.iktdev.kammich.models.shared.UploadState
@@ -22,6 +24,7 @@ import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.time.Instant
@@ -32,7 +35,8 @@ import java.util.UUID
 class UploadVerificationService(
     private val immichClientFactory: ImmichClientFactory,
     private val sseManager: SseManager,
-    private val contextService: ImmichContextService
+    private val contextService: ImmichContextService,
+    private val eventPublisher: ApplicationEventPublisher
 ) {
     data class UploadVerificationItem(
         val userId: UUID,
@@ -41,7 +45,6 @@ class UploadVerificationService(
         val assetId: UUID,
         val localChecksum: String
     )
-
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -111,6 +114,9 @@ class UploadVerificationService(
         files: List<UploadVerificationItem>
     ) {
         val client = session.toClient()
+        var verified = 0
+        var failed = 0
+        var retry = 0
 
         files.forEach { file ->
             try {
@@ -123,19 +129,61 @@ class UploadVerificationService(
 
                 if (immichChecksum.equals(file.localChecksum, ignoreCase = true)) {
                     log.info("Verified upload {} / asset {}", file.uploadId, file.assetId)
-
                     updateVerification(file, Verification.Verified)
+                    verified++
                 } else {
-                    log.error("Checksum mismatch for upload {} / asset {}. Local={}, Immich={}", file.uploadId, file.assetId, file.localChecksum, immichChecksum)
+                    log.error(
+                        "Checksum mismatch for upload {} / asset {}. Local={}, Immich={}",
+                        file.uploadId,
+                        file.assetId,
+                        file.localChecksum,
+                        immichChecksum
+                    )
                     updateVerification(file, Verification.Failed)
+                    failed++
                 }
             } catch (e: Exception) {
-                log.error("Failed to verify upload {} / asset {}", file.uploadId, file.assetId, e)
+                log.error(
+                    "Failed to verify upload {} / asset {}",
+                    file.uploadId,
+                    file.assetId,
+                    e
+                )
+                retry++
+            }
+        }
+
+        when {
+            failed > 0 -> {
+                eventPublisher.errorNotification(
+                    "UploadVerification-Failed-${session.user.id}",
+                    "Upload verification feilet",
+                    "$failed filer feilet. $verified filer ble verifisert${if (retry > 0) ", $retry vil bli forsøkt igjen" else ""}."
+                )
+            }
+
+            retry > 0 -> {
+                eventPublisher.errorNotification(
+                    "UploadVerification-Retry-${session.user.id}",
+                    "Upload verification kunne ikke fullføres",
+                    "$verified filer ble verifisert. $retry vil bli forsøkt igjen."
+                )
+            }
+
+            verified > 0 -> {
+                eventPublisher.infoNotification(
+                    "UploadVerification-Success-${session.user.id}",
+                    "Upload verification ferdig",
+                    "$verified filer ble verifisert og er klare for sletting."
+                )
             }
         }
     }
 
-    private fun updateVerification(upload: UploadVerificationItem, result: Verification) {
+    private fun updateVerification(
+        upload: UploadVerificationItem,
+        result: Verification
+    ) {
         withTransaction {
             UploadFilesTable.update({
                 UploadFilesTable.id eq upload.uploadId
@@ -154,8 +202,4 @@ class UploadVerificationService(
             }
         }
     }
-
-
-
-
 }

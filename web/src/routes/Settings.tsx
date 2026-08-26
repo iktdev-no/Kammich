@@ -1,6 +1,60 @@
-import { Box, useTheme } from "@mui/material";
+import { Box, Chip, Typography, useTheme } from "@mui/material";
+import { useEffect, useState } from "react";
+import { getKammichBackendVersion } from "../api/requests/system";
 
-export default function MadeInNorwayBadge() {
+interface Version {
+    kammichVersion: string;
+    kammichGithubVersion: string;
+    updateAvailable: boolean;
+}
+
+export default function Settings() {
+    const [version, setVersion] = useState<Version | null>(null);
+
+    useEffect(() => {
+        getKammichBackendVersion().then((v) => setVersion(v));
+    }, []);
+
+    return (
+        <Box
+            sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                height: "100%",
+            }}
+        >
+            <Box
+                sx={{
+                    pt: 5,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 0.5,
+                }}
+            >
+                <Typography variant="body1">Version</Typography>
+
+                <Typography variant="body1">
+                    {version?.kammichVersion ?? "..."}
+                </Typography>
+
+                {version?.updateAvailable && (
+                    <Chip
+                        label={`Ny versjon tilgjengelig: ${version.kammichGithubVersion}`}
+                        color="primary"
+                        size="small"
+                        sx={{ mt: 1 }}
+                    />
+                )}
+            </Box>
+
+            <MadeInNorwayBadge />
+        </Box>
+    );
+}
+
+function MadeInNorwayBadge() {
     const theme = useTheme();
 
     return (
@@ -10,13 +64,11 @@ export default function MadeInNorwayBadge() {
                 mt: "auto",
                 pt: 4,
                 pb: 2,
-                borderTop: `1px solid ${theme.palette.divider}`,
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center"
             }}
         >
-            {/* Minimalistisk SVG i stil med den offisielle Made in Norway-profilen */}
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 130 45"
@@ -60,5 +112,6 @@ export default function MadeInNorwayBadge() {
                 </text>
             </svg>
         </Box>
-    );
+
+    )
 }

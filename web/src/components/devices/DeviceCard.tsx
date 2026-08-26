@@ -13,7 +13,7 @@ import { formatBytes } from "../../utils/format";
 
 export function DeviceCard({ device }: { device: DeviceInfo }) {
     const [open, setOpen] = useState(false);
-    const [settings, setSettings] = useState(device.deviceSettings || { autoImport: true, includeFolders: [], excludeFolders: [] });
+    const [settings, setSettings] = useState(device.deviceSettings || { autoImport: true, includeFolders: [], excludeFolders: [], deleteWhenVerifiedBackedup: false });
 
     const handleToggleAutoImport = async () => {
         const newValue = !settings.autoImport;
@@ -24,6 +24,29 @@ export function DeviceCard({ device }: { device: DeviceInfo }) {
             setSettings(prev => ({ ...prev, autoImport: !newValue })); // Rollback
         }
     };
+
+    const handleToggleDeleteWhenVerifiedBackedup = async () => {
+        const newValue = !settings.deleteWhenVerifiedBackedup;
+
+        setSettings(prev => ({
+            ...prev,
+            deleteWhenVerifiedBackedup: newValue
+        }));
+
+        try {
+            await updateDeviceSettings(device.id, {
+                deleteWhenVerifiedBackedup: newValue
+            });
+        } catch (e) {
+            console.error("Kunne ikke oppdatere sletting-innstilling:", e);
+
+            setSettings(prev => ({
+                ...prev,
+                deleteWhenVerifiedBackedup: !newValue
+            }));
+        }
+    };
+
 
     const getDeviceDetails = () => {
         switch (device.type) {
@@ -127,6 +150,15 @@ export function DeviceCard({ device }: { device: DeviceInfo }) {
                     <FormControlLabel
                         control={<Switch checked={settings.autoImport ?? true} onChange={handleToggleAutoImport} />}
                         label="Auto-import ved tilkobling"
+                    />
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={settings.deleteWhenVerifiedBackedup ?? false}
+                                onChange={handleToggleDeleteWhenVerifiedBackedup}
+                            />
+                        }
+                        label="Slett etter verifisert backup"
                     />
                     <Typography variant="subtitle2" sx={{ mt: 2 }}>Inkluderte mapper:</Typography>
                     <List dense>

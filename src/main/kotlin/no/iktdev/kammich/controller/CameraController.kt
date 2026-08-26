@@ -49,6 +49,7 @@ class CameraController(
             ?: throw IllegalStateException("Device not found: $deviceId")
 
         settings.autoImport?.let { deviceManager.setAutoImport(device, it) }
+        settings.deleteWhenVerifiedBackedup?.let { deviceManager.setDeleteWhenVerifiedBackedUp(device, it) }
 
         // Her overskriver vi listene med de nye verdiene frontend sender
         settings.includeFolders?.let { deviceManager.setIncludeFolders(device, it) }
