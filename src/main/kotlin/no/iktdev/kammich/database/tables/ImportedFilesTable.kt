@@ -15,6 +15,7 @@ object ImportedFilesTable : LongIdTable("IMPORTED_FILES") {
     val importJob = varchar("IMPORT_JOB", 36)
     val deviceId = reference("DEVICE_ID", DevicesTable) // Refererer til DevicesTable
     val fileName = text("FILE_NAME")
+    val cameraPath = text("CAMERA_PATH")
     val fileType = enumerationByName("FILE_TYPE", 50, FileType::class)
     val fileSize = long("FILE_SIZE")
     val extension = text("EXTENSION")
@@ -41,7 +42,8 @@ object ImportedFilesTable : LongIdTable("IMPORTED_FILES") {
             extension = this[extension],
             checksum = this[checksum],
             checksumType = this[checksumType],
-            importedAt = this[importedAt]
+            importedAt = this[importedAt],
+            cameraPath = this[cameraPath]
         )
     }
 

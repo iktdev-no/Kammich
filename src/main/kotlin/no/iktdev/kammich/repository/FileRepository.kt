@@ -102,7 +102,7 @@ class FileRepository(
         }.isSuccess
     }
 
-    fun saveFile(deviceId: Long, file: File, importedAt: ZonedDateTime, hash: FileHash, importJob: UUID): PersistedImportedFile? {
+    fun saveFile(deviceId: Long, file: File, importedAt: ZonedDateTime, hash: FileHash, importJob: UUID, kFile: KFile): PersistedImportedFile? {
         return withTransaction {
             val id = ImportedFilesTable.insertIgnoreAndGetId {
                 it[this.deviceId] = deviceId // Her bruker du ID fra DB
@@ -112,6 +112,7 @@ class FileRepository(
                 it[this.fileSize] = file.length()
                 it[this.extension] = file.extension
                 it[this.checksum] = hash.hash
+                it[this.cameraPath] = kFile.path
                 it[this.checksumType] = hash.method.name
                 it[this.importedAt] = importedAt.toString()
             }?.value ?: return@withTransaction null
@@ -127,6 +128,7 @@ class FileRepository(
                 checksumType = hash.method.name,
                 importedAt = importedAt.toString(),
                 importJob = importJob,
+                cameraPath = kFile.path,
             )
         }.getOrNull()
     }

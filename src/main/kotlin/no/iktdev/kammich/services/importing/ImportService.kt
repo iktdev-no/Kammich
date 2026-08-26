@@ -273,9 +273,20 @@ class ImportService(
                 }
 
                 if (imported != null && imported.exists()) {
+                    if (imported.length() != file.size) {
+                        log.error(
+                            "Imported file size mismatch for {}. Expected {}, got {}",
+                            file,
+                            file.size,
+                            imported.length()
+                        )
+                        updateFileState(deviceIdStr, file.id, FileImportState.Failure)
+                        return@forEach
+                    }
+
                     try {
                         val hash = imported.toXxHash()
-                        val persistedFile = fileRepository.saveFile(dbId, imported, ZonedDateTime.now(), hash, importJobId)
+                        val persistedFile = fileRepository.saveFile(dbId, imported, ZonedDateTime.now(), hash, importJobId, file)
                         if (persistedFile != null) {
                             updateFileState(deviceIdStr, file.id, FileImportState.Success)
                         } else {

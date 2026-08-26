@@ -10,6 +10,7 @@ data class PersistedImportedFile(
     val deviceId: Long,
     val fileName: String,
     val fileType: FileType,
+    val cameraPath: String,
     val fileSize: Long,
     val extension: String,
     val checksum: String,
