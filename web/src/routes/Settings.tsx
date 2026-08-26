@@ -1,4 +1,4 @@
-import { Box, Chip, Typography, useTheme } from "@mui/material";
+import { Box, Chip, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { getKammichBackendVersion } from "../api/requests/system";
 
