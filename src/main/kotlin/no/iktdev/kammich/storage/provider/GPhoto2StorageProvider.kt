@@ -94,6 +94,11 @@ class GPhoto2StorageProvider(
         return out
     }
 
+    override fun deleteFile(device: RemovableDevice, file: KFile): Boolean {
+        val g = device as GPhoto2Device
+        return gPhoto2.deleteFile(port = g.port, path =  file.path, name = file.name)
+    }
+
     fun GPhoto2File.toKFile(): KFile {
         return KFile(
             id = "$folderPath/$name".toMD5(),

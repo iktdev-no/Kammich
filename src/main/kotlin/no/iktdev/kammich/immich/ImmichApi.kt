@@ -1,6 +1,7 @@
 package no.iktdev.kammich.immich
 
 import no.iktdev.kammich.immich.models.AlbumResponseDto
+import no.iktdev.kammich.immich.models.AssetResponseDto
 import no.iktdev.kammich.immich.models.LoginResponseDto
 import no.iktdev.kammich.models.internal.immich.UploadAssetRequest
 import no.iktdev.kammich.models.shared.immich.api.ImmichApiKeyPost
@@ -42,4 +43,5 @@ interface ImmichApi {
     fun createAlbum(apiKey: String, albumName: String, albumDescription: String?): UUID
     fun updateAlbum(apiKey: String, albumId: UUID, albumName: String?, albumDescription: String?): AlbumResponseDto
     fun addPhotoToAlbum(apiKey: String, albumId: UUID, assetIds: List<UUID>): Boolean
+    fun getFileInfo(apiKey: String, assetId: UUID): AssetResponseDto
 }

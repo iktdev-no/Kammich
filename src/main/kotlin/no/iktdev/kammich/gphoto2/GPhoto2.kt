@@ -124,10 +124,10 @@ class GPhoto2: IGPhoto2 {
         return targetFile
     }
 
-    override fun deleteFile(device: GPhoto2DiscoveredDevice, file: GPhoto2File): Boolean {
+    override fun deleteFile(port: String, path: String, name: String): Boolean {
         val builder = GPhoto2CommandBuilder()
-            .port(device.port)
-            .delete(file)
+            .port(port)
+            .delete(path = path, name = name)
 
         // Vi bruker en enkel run her, siden sletting sjelden returnerer
         // noe annet enn suksess/feil i exit-koden.

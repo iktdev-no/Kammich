@@ -28,3 +28,9 @@ enum class UploadState {
 enum class JobStatus {
     Running, Completed, Failed
 }
+
+enum class Verification {
+    Verified,
+    NotVerified,
+    Failed
+}

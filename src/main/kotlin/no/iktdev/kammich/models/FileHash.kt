@@ -4,5 +4,6 @@ data class FileHash(val hash: String, val method: FileHashType) {
 }
 
 enum class FileHashType {
-    XX64Hash
+    XX64Hash,
+    SHA1
 }

@@ -24,7 +24,7 @@ import no.iktdev.kammich.sse.events.SSEImportState
 import no.iktdev.kammich.storage.DeviceManagerService
 import no.iktdev.kammich.storage.provider.DeviceUnavailableException
 import no.iktdev.kammich.storage.provider.StorageProviderFactory
-import no.iktdev.kammich.toXxHash
+import no.iktdev.kammich.toSha1
 import no.iktdev.kammich.warningNotification
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
@@ -116,12 +116,12 @@ class ImportService(
         deviceManager.getSettings(deviceId).autoImport == true
 
     suspend fun indexDevice(device: RemovableDevice) {
-        val deviceIdStr = device.id
+        val deviceSN = device.id
         log.info("Starting indexing for device ${device.name}")
 
-        importStartedMap[deviceIdStr] = Instant.now()
-        importDeviceNameMap[deviceIdStr] = device.name ?: deviceIdStr
-        importList[deviceIdStr] = emptyList()
+        importStartedMap[deviceSN] = Instant.now()
+        importDeviceNameMap[deviceSN] = device.name
+        importList[deviceSN] = emptyList()
 
         // Eksplisitt broadcast for indexing-fase
         broadcastDeviceState(ImportState.Indexing)
@@ -129,14 +129,14 @@ class ImportService(
         val filesToImport = try {
             deviceContentIndexing.getNewFilesToImport(device)
         } catch (e: Exception) {
-            log.error("Feil under indeksering av enhet {}", deviceIdStr, e)
-            finishImport(deviceIdStr)
+            log.error("Feil under indeksering av enhet {}", deviceSN, e)
+            finishImport(deviceSN)
             return
         }
 
         if (filesToImport.isEmpty()) {
             log.info("No new files to import for ${device.name}")
-            eventPublisher.infoNotification("ImportService-NoFiles-${device.id}", "No files to import", "All files have already been imported for ${device.model ?: device.id}")
+            eventPublisher.infoNotification("ImportService-NoFiles-${device.id}", "No files to import", "All files have already been imported for ${device.model}")
             finishImport(device.id)
             return
         }
@@ -285,7 +285,7 @@ class ImportService(
                     }
 
                     try {
-                        val hash = imported.toXxHash()
+                        val hash = imported.toSha1()
                         val persistedFile = fileRepository.saveFile(dbId, imported, ZonedDateTime.now(), hash, importJobId, file)
                         if (persistedFile != null) {
                             updateFileState(deviceIdStr, file.id, FileImportState.Success)
@@ -336,37 +336,34 @@ class ImportService(
         log.warn("Kansellerte import for enhet {}", deviceIdStr)
     }
 
-    private fun finishImport(deviceIdStr: String, importJobId: UUID? = null) {
-        val finalFiles = importList[deviceIdStr] ?: emptyList()
+    private fun finishImport(deviceSN: String, importJobId: UUID? = null) {
+        val finalFiles = importList[deviceSN] ?: emptyList()
         val successCount = finalFiles.count { it.state == FileImportState.Success }
         val failedFiles = finalFiles.filter { it.state == FileImportState.Failure }
         val failCount = failedFiles.size
 
         broadcastDeviceState(ImportState.Completed)
 
-        importList.remove(deviceIdStr)
-        importStartedMap.remove(deviceIdStr)
-        importDeviceNameMap.remove(deviceIdStr)
+        importList.remove(deviceSN)
+        importStartedMap.remove(deviceSN)
+        importDeviceNameMap.remove(deviceSN)
 
         if (successCount > 0) {
             eventPublisher.infoNotification(
-                "ImportService-Success-$deviceIdStr",
+                "ImportService-Success-$deviceSN",
                 "Import ferdig",
-                "Importerte $successCount filer fra enhet $deviceIdStr. ${if (failCount > 0) "($failCount feilet)" else ""}"
+                "Importerte $successCount filer fra enhet $deviceSN. ${if (failCount > 0) "($failCount feilet)" else ""}"
             )
-            log.info("Import fullført for $deviceIdStr: $successCount suksesser, $failCount feil.")
-            importJobId?.let { jobId ->
-                eventPublisher.publishEvent(ImportJobCompletedEvent(jobId, deviceIdStr))
-            }
+            log.info("Import fullført for $deviceSN: $successCount suksesser, $failCount feil.")
         } else if (finalFiles.isNotEmpty()) {
             eventPublisher.warningNotification(
-                "ImportService-Failed-$deviceIdStr",
+                "ImportService-Failed-$deviceSN",
                 "Import feilet",
                 "Ingen filer ble importert. $failCount feilet."
             )
         }
-
-
-
+        importJobId?.let { jobId ->
+            eventPublisher.publishEvent(ImportJobCompletedEvent(jobId, deviceSN))
+        }
     }
 }

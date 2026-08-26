@@ -4,6 +4,7 @@ import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.exif.ExifSubIFDDirectory
 import com.google.gson.GsonBuilder
 import net.jpountz.xxhash.XXHashFactory
+import no.iktdev.kammich.database.tables.DeleteFilesTable
 import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceAbility
 import no.iktdev.kammich.gphoto2.model.GPhoto2DeviceInfo
 import no.iktdev.kammich.gphoto2.parsers.GPhoto2AbilityParser
@@ -17,7 +18,13 @@ import no.iktdev.kammich.models.NotificationDismissed
 import no.iktdev.kammich.models.shared.Notification
 import no.iktdev.kammich.models.shared.NotificationType
 import no.iktdev.kammich.models.shared.Severity
+import no.iktdev.kammich.models.shared.deletion.DeleteState
 import no.iktdev.kammich.models.shared.device.Capability
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.Query
 import org.springframework.context.ApplicationEventPublisher
 import java.io.File
 import java.lang.Long
@@ -156,6 +163,35 @@ fun File.toXxHash(): FileHash {
     return FileHash(
         hash = Long.toHexString(streamHasher.value),
         method = FileHashType.XX64Hash
+    )
+}
+
+fun Query.whereLocalFilesOnly(): Query {
+    return where {
+        DeleteFilesTable.id.isNull() or
+                (DeleteFilesTable.localState neq DeleteState.Deleted)
+    }
+}
+
+fun localFileCondition(): Op<Boolean> =
+    DeleteFilesTable.id.isNull() or
+            (DeleteFilesTable.localState neq DeleteState.Deleted)
+
+fun File.toSha1(): FileHash {
+    val digest = MessageDigest.getInstance("SHA-1")
+
+    this.inputStream().use { input ->
+        val buffer = ByteArray(1024 * 1024) // 1 MB buffer
+        var bytesRead: Int
+
+        while (input.read(buffer).also { bytesRead = it } != -1) {
+            digest.update(buffer, 0, bytesRead)
+        }
+    }
+
+    return FileHash(
+        hash = digest.digest().joinToString("") { "%02x".format(it) },
+        method = FileHashType.SHA1
     )
 }
 

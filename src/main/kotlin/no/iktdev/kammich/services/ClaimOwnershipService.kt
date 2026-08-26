@@ -55,7 +55,7 @@ class ClaimOwnershipService(
         val shouldAutoClaim = if (isSingleAndOnlyUser(userId) && configService.getConfig().autoClaimImportsWhenSingleUser) {
             true
         } else {
-            userOwnsDevice(event.deviceId, userId)
+            userOwnsDevice(event.deviceSN, userId)
         }
 
         if (shouldAutoClaim) {
@@ -64,7 +64,7 @@ class ClaimOwnershipService(
                 eventPublisher.publishEvent(ImportJobClaimedEvent(event.jobId, userId))
             }
         } else {
-            log.warn("Bruker $userId eier ikke enheten (${event.deviceId}), og systemet har flere brukere. Kan ikke auto-claime.")
+            log.warn("Bruker $userId eier ikke enheten (${event.deviceSN}), og systemet har flere brukere. Kan ikke auto-claime.")
         }
     }
 

@@ -12,7 +12,6 @@ import org.springframework.core.io.FileSystemResource
 import org.springframework.stereotype.Service
 import java.io.File
 import java.io.FileNotFoundException
-import java.util.*
 
 @Service
 class ThumbnailService(
@@ -57,11 +56,11 @@ class ThumbnailService(
 
     @EventListener
     fun onImportCompleted(event: ImportJobCompletedEvent) {
-        log.info("Import fullført for jobb ${event.jobId} (Enhet: ${event.deviceId}). Starter generering av thumbnails...")
+        log.info("Import fullført for jobb ${event.jobId} (Enhet: ${event.deviceSN}). Starter generering av thumbnails...")
 
         try {
             // Konverter deviceId til Long hvis tabellen din krever det (eller slå opp direkte hvis den er String i DB)
-            val serial = event.deviceId
+            val serial = event.deviceSN
 
             // 2. Finn mediamappen for enheten
             val mediaDir = File(configService.getConfig().mediaPath, serial)

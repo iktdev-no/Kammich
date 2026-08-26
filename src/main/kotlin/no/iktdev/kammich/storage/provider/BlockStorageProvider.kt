@@ -51,7 +51,44 @@ class BlockStorageProvider: StorageProvider {
         storeFile: File,
         importFile: KFile
     ): File? {
-        TODO("Not yet implemented")
+        val blockDevice = device as BlockDevice
+        val root = blockDevice.mountPoint?.let { File(it) } ?: return null
+        val source = File(root, importFile.path.removePrefix("/"))
+
+        if (!source.exists() || !source.isFile) {
+            log.warn("Could not find file {} on device {}", importFile.path, device.id)
+            return null
+        }
+
+        return try {
+            val target = File(storeFile, importFile.name)
+            source.copyTo(target, overwrite = false)
+            target
+        } catch (e: Exception) {
+            log.error("Failed to copy {} from device {}", importFile.path, device.id, e)
+            null
+        }
+    }
+
+    override fun deleteFile(
+        device: RemovableDevice,
+        file: KFile
+    ): Boolean {
+        val blockDevice = device as BlockDevice
+        val root = blockDevice.mountPoint?.let { File(it) } ?: return false
+        val target = File(root, file.path.removePrefix("/"))
+
+        if (!target.exists()) {
+            log.debug("File {} is already gone from device {}", file.path, device.id)
+            return true
+        }
+
+        return try {
+            target.delete()
+        } catch (e: Exception) {
+            log.error("Failed to delete {} from device {}", file.path, device.id, e)
+            false
+        }
     }
 
     private fun File.toKFile(device: BlockDevice): KFile {

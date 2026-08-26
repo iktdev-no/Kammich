@@ -9,4 +9,6 @@ interface StorageProvider {
     fun listAllFiles(device: RemovableDevice, path: String?): List<KFile>
     fun getDCIM(device: RemovableDevice): KFile?
     fun copyFile(device: RemovableDevice, storeFile: File, importFile: KFile): File?
+
+    fun deleteFile(device: RemovableDevice, file: KFile): Boolean
 }

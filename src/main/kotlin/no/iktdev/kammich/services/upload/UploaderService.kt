@@ -67,7 +67,8 @@ class UploaderService(
             ImportedFilesTable.getWhere { ImportedFilesTable.importJob eq event.jobId.toString() }
         }.getOrThrow().map { it -> it.id }
 
-        log.error("No imported files found for job ID: ${event.jobId}")
+        if (importIds.isEmpty())
+            log.error("No imported files found for job ID: ${event.jobId}")
 
         val filtered = withTransaction {
             UploadFilesTable.select(UploadFilesTable.importedFileId)
@@ -105,6 +106,12 @@ class UploaderService(
                 }
             }.getOrThrow()
             if (uploadItems.isEmpty()) {
+                eventPublisher.publishEvent(
+                    UploadCompletedEvent(
+                        userId = userId,
+                        assets = emptyList()
+                    )
+                )
                 return@launch
             }
             performUpload(userId, jobId, uploadItems)

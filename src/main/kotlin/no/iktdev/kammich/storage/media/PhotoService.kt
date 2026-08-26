@@ -1,17 +1,22 @@
 package no.iktdev.kammich.storage.media
 
+import no.iktdev.kammich.database.tables.DeleteFilesTable
 import no.iktdev.kammich.services.ConfigService
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.DevicesTable.toPersistedDevice
 import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.withTransaction
+import no.iktdev.kammich.localFileCondition
 import no.iktdev.kammich.models.FileType
 import no.iktdev.kammich.models.shared.RemoteFile
 import no.iktdev.kammich.models.shared.device.PhotoDevice
 import no.iktdev.kammich.services.ThumbnailService
 import no.iktdev.kammich.storage.Thumbnail
+import no.iktdev.kammich.whereLocalFilesOnly
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.notInList
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.slf4j.LoggerFactory
@@ -77,38 +82,39 @@ class PhotoService(
 
     override fun getPagedFiles(page: Int, size: Int, serialNumber: String?): Pair<List<RemoteFile>, Long> {
         return withTransaction {
-            // 1. Bygg opp listen med filtere dynamisk
-            val conditions = mutableListOf<org.jetbrains.exposed.v1.core.Op<Boolean>>()
+            val deletedIds = DeleteFilesTable.getLocallyDeletedIds()
 
-            // Kjernefilter: Kun bilder
+            val conditions = mutableListOf<Op<Boolean>>()
             conditions.add(ImportedFilesTable.fileType eq FileType.IMAGE)
 
-            // Siden vi kjører innerJoin, kan vi filtrere på varchar-kolonnen direkte i DevicesTable!
             if (serialNumber != null) {
                 conditions.add(DevicesTable.serialNumber eq serialNumber)
             }
 
-            // Kombiner alle filtere med AND
+            if (deletedIds.isNotEmpty()) {
+                conditions.add(ImportedFilesTable.id notInList deletedIds)
+            }
+
             val finalCondition = conditions.reduce { acc, op -> acc and op }
 
-            // 2. Opprett base-spørringen (Join mellom tabellene)
-            val baseQuery = ImportedFilesTable.innerJoin(DevicesTable)
-                .select(ImportedFilesTable.id, ImportedFilesTable.deviceId, ImportedFilesTable.fileName)
+            val baseQuery = ImportedFilesTable
+                .innerJoin(DevicesTable)
+                .select(
+                    ImportedFilesTable.id,
+                    ImportedFilesTable.deviceId,
+                    ImportedFilesTable.fileName
+                )
                 .where(finalCondition)
 
-            // 3. Hent totalt antall treff basert på denne konfigurasjonen
             val total = baseQuery.count()
 
-            // 4. Hent ut den paginerte dataen
-            val data = ImportedFilesTable.innerJoin(DevicesTable)
-                .select(ImportedFilesTable.id, ImportedFilesTable.deviceId, ImportedFilesTable.fileName)
-                .where(finalCondition)
+            val data = baseQuery
                 .limit(size)
                 .offset((page * size).toLong())
                 .map { row ->
                     RemoteFile(
                         id = row[ImportedFilesTable.id].value,
-                        deviceId = row[ImportedFilesTable.deviceId].value, // Dette gir ut Int-verdien trygt via .value
+                        deviceId = row[ImportedFilesTable.deviceId].value,
                         fileName = row[ImportedFilesTable.fileName]
                     )
                 }

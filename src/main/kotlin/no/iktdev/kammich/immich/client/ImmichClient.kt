@@ -17,6 +17,7 @@ import no.iktdev.kammich.immich.mapper.fromDomain
 import no.iktdev.kammich.immich.mapper.toDomain
 import no.iktdev.kammich.immich.models.AlbumResponseDto
 import no.iktdev.kammich.immich.models.AlbumsAddAssetsDto
+import no.iktdev.kammich.immich.models.AssetResponseDto
 import no.iktdev.kammich.immich.models.BulkIdsDto
 import no.iktdev.kammich.immich.models.CreateAlbumDto
 import no.iktdev.kammich.immich.models.LoginCredentialDto
@@ -62,7 +63,7 @@ class ImmichClient(
         }
 
         // Bygg videre på ApiClient sin egen defaultClient (som er en OkHttpClient)
-        return (ApiClient.defaultClient as OkHttpClient).newBuilder()
+        return ApiClient.defaultClient.newBuilder()
             .addInterceptor(authInterceptor)
             .build()
     }
@@ -287,6 +288,11 @@ class ImmichClient(
         return tryImmich {
             client.addAssetsToAlbums(AlbumsAddAssetsDto(listOf(albumId), assetIds)).success
         }
+    }
+
+    override fun getFileInfo(apiKey: String, assetId: UUID): AssetResponseDto {
+        val client = AssetsApi(serverUrl, apiKeyClient(apiKey))
+        return tryImmich { client.getAssetInfo(assetId) }
     }
 
 

@@ -4,10 +4,15 @@ import no.iktdev.kammich.database.models.PersistedImportedFile
 import no.iktdev.kammich.database.models.PersistedImportedFileWithDevice
 import no.iktdev.kammich.database.tables.DevicesTable.toPersistedDevice
 import no.iktdev.kammich.models.FileType
+import no.iktdev.kammich.models.shared.deletion.DeleteState
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.LongIdTable
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import java.util.UUID
 
@@ -25,8 +30,13 @@ object ImportedFilesTable : LongIdTable("IMPORTED_FILES") {
 
 
     fun getWhere(predicate: () -> Op<Boolean>): List<PersistedImportedFile> {
-        return ImportedFilesTable.selectAll()
-            .where(predicate) // Kan nå også skrives direkte som .where { ... }
+        return leftJoin(DeleteFilesTable)
+            .selectAll()
+            .where {
+                (DeleteFilesTable.id.isNull() or
+                        (DeleteFilesTable.localState neq DeleteState.Deleted)) and
+                        predicate()
+            }
             .orderBy(id, SortOrder.DESC)
             .map { it.toPersisted() }
     }

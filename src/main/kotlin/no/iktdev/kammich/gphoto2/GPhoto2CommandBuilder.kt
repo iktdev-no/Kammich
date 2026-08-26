@@ -50,11 +50,11 @@ class GPhoto2CommandBuilder {
         args.add(destination.absolutePath)
     }
 
-    fun delete(file: GPhoto2File) = apply {
+    fun delete(path: String, name: String) = apply {
         args.add("--folder")
-        args.add(file.folderPath)
+        args.add(path)
         args.add("--delete-file")
-        args.add(file.name)
+        args.add(name)
     }
 
     fun build(): Array<String> {

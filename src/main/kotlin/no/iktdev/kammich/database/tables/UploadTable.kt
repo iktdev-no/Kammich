@@ -2,6 +2,7 @@ package no.iktdev.kammich.database.tables
 
 import no.iktdev.kammich.database.models.PersistedUploadFile
 import no.iktdev.kammich.models.shared.UploadState
+import no.iktdev.kammich.models.shared.Verification
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -16,8 +17,8 @@ object UploadFilesTable : LongIdTable("UPLOAD_FILES") {
     val immichUserId = varchar("IMMICH_USER_ID", 36)
 
     val immichAssetId = varchar("IMMICH_ASSET_ID", 36).nullable()
-
-    val state = enumerationByName<UploadState>("STATE", 50).default(UploadState.Pending)
+    val verified = enumerationByName<Verification>("VERIFIED", 50).default(Verification.NotVerified).clientDefault { Verification.NotVerified }
+    val state = enumerationByName<UploadState>("STATE", 50).default(UploadState.Pending).clientDefault { UploadState.Pending }
     val retryCount = integer("RETRY_COUNT").default(0)
     val errorMessage = text("ERROR_MESSAGE").nullable()
     val updatedAt = text("UPDATED_AT").clientDefault { (Instant.now().toString()) }
@@ -38,7 +39,8 @@ object UploadFilesTable : LongIdTable("UPLOAD_FILES") {
             state = this[state],
             retryCount = this[retryCount],
             errorMessage = this[errorMessage],
-            updatedAt = this[updatedAt].let { Instant.parse(it) }
+            updatedAt = this[updatedAt].let { Instant.parse(it) },
+            verified = this[verified]
         )
     }
 }

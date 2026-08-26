@@ -34,10 +34,10 @@ class DeviceManagerService(
         return activeDevices.values.toList()
     }
 
-    fun getDevice(deviceId: String): RemovableDevice? {
-        val active = activeDevices.values.find { it.id == deviceId }
+    fun getDevice(deviceSN: String): RemovableDevice? {
+        val active = activeDevices.values.find { it.id == deviceSN }
         if (active == null) {
-            log.info("Device not found: $deviceId in ${activeDevices.values.map { it.id }}")
+            log.info("Device not found: $deviceSN in ${activeDevices.values.map { it.id }}")
         }
         return active
     }
