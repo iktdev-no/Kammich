@@ -55,7 +55,6 @@ export default function Settings() {
 }
 
 function MadeInNorwayBadge() {
-    const theme = useTheme();
 
     return (
         <Box
