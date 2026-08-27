@@ -63,6 +63,8 @@ jobs:
 
       - name: Build Spring Boot executable jar (bootJar)
         run: ./gradlew bootJar
+        env:
+          VERSION: ${{ github.ref_name }}
 
       - name: Rename Jar file
         run: |

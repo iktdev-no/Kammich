@@ -11,7 +11,9 @@ plugins {
 }
 
 group = "no.iktdev"
-version = "0.0.1-SNAPSHOT"
+version = System.getenv("VERSION")
+	?.removePrefix("v")
+	?: "0.0.1-SNAPSHOT"
 description = "Kammich"
 
 java {

@@ -93,16 +93,25 @@ sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install pykiosk -U
 # 6. Last ned siste versjon av Kammich (Kammich.jar)
 ###############################################
 echo "[*] Laster ned siste versjon av Kammich fra GitHub Releases..."
-LATEST_JAR_URL=$(curl -sL \
+RELEASES_JSON=$(curl -fsSL \
   -H "Accept: application/vnd.github+json" \
   -H "X-GitHub-Api-Version: 2026-03-10" \
-  https://api.github.com/repos/iktdev-no/Kammich/releases \
-  | grep -o '"browser_download_url": "[^"]*\.jar"' | head -n 1 | cut -d '"' -f 4)
+  "https://api.github.com/repos/iktdev-no/Kammich/releases") || {
+    echo "[!] Kritisk: Klarte ikke hente releases fra GitHub API!"
+    exit 1
+}
+
+LATEST_JAR_URL=$(printf '%s' "$RELEASES_JSON" \
+  | grep -o '"browser_download_url": "[^"]*\.jar"' \
+  | head -n 1 \
+  | cut -d '"' -f 4)
 
 if [ -z "$LATEST_JAR_URL" ]; then
-    echo "[!] Kritisk: Fant ikke JAR-fil automatisk via GitHub API!"
+    echo "[!] Kritisk: GitHub API svarte, men ingen JAR-fil ble funnet!"
     exit 1
 fi
+
+echo "[+] Fant JAR: $LATEST_JAR_URL"
 
 sudo -u "$TARGET_USER" curl -sL "$LATEST_JAR_URL" -o "$APP_DATA_ROOT/Kammich.jar"
 echo "[+] Kammich.jar er lastet ned til $APP_DATA_ROOT/"
