@@ -112,7 +112,7 @@ class ImmichService(
         immichServerContext.setServerUrl(baseUrl)
         immichUserContext.setCurrentUser(me, apiKeyResponse.secret)
         sseManager.send(SSEImmichApiKeyInUse(apiKeyResponse.apiKey))
-
+        immichVerificationService.verifyActiveConnectionAndNotify()
         return me
     }
 
