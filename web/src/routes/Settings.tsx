@@ -1,19 +1,48 @@
-import { Box, Chip, Typography } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, LinearProgress, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
-import { getKammichBackendVersion } from "../api/requests/system";
-
-interface Version {
-    kammichVersion: string;
-    kammichGithubVersion: string;
-    updateAvailable: boolean;
-}
+import { getKammichBackendVersion, requestKammichBackendUpdate } from "../api/requests/system";
+import { useSseSelector } from "../sse/useSseSelector";
+import type { AppUpdateProgress, Version } from "../types/types";
+import MadeInNorwayBadge from "../components/icons/MadeInNorway";
 
 export default function Settings() {
     const [version, setVersion] = useState<Version | null>(null);
+    const [updateRequested, setUpdateRequested] = useState(false);
+
+    const appUpdate: AppUpdateProgress =
+        useSseSelector((state) => state.appUpdate);
 
     useEffect(() => {
-        getKammichBackendVersion().then((v) => setVersion(v));
+        getKammichBackendVersion()
+            .then(setVersion);
     }, []);
+
+    useEffect(() => {
+        if (
+            appUpdate.status === "None" &&
+            updateRequested
+        ) {
+            getKammichBackendVersion()
+                .then(setVersion)
+                .finally(() => setUpdateRequested(false));
+        }
+    }, [appUpdate.status, updateRequested]);
+
+    const isUpdating =
+        appUpdate.status !== "None" &&
+        appUpdate.status !== "UpdateAvailable" &&
+        appUpdate.status !== "Failed";
+
+    const canUpdate =
+        version?.updateAvailable &&
+        version?.updatable &&
+        !isUpdating &&
+        !updateRequested;
+
+    const requestUpdate = () => {
+        setUpdateRequested(true);
+        requestKammichBackendUpdate();
+    };
 
     return (
         <Box
@@ -27,13 +56,17 @@ export default function Settings() {
             <Box
                 sx={{
                     pt: 5,
+                    width: "100%",
+                    maxWidth: 400,
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: 0.5,
+                    gap: 1,
                 }}
             >
-                <Typography variant="body1">Version</Typography>
+                <Typography variant="body1">
+                    Version
+                </Typography>
 
                 <Typography variant="body1">
                     {version?.kammichVersion ?? "..."}
@@ -47,6 +80,89 @@ export default function Settings() {
                         sx={{ mt: 1 }}
                     />
                 )}
+
+                {!version?.updatable && (
+                    <Typography
+                        variant="caption"
+                        color="text.secondary"
+                    >
+                        Automatisk oppdatering er ikke tilgjengelig
+                    </Typography>
+                )}
+
+                {appUpdate.status === "Downloading" && (
+                    <Box
+                        sx={{
+                            width: "100%",
+                            mt: 2
+                        }}
+                    >
+                        <Typography
+                            variant="body2"
+                            sx={{ mb: 1 }}
+                        >
+                            {appUpdate.message ??
+                                "Laster ned oppdatering..."}
+                        </Typography>
+
+                        <LinearProgress
+                            variant={
+                                appUpdate.progress != null
+                                    ? "determinate"
+                                    : "indeterminate"
+                            }
+                            value={appUpdate.progress ?? undefined}
+                        />
+
+                        {appUpdate.progress != null && (
+                            <Typography
+                                variant="caption"
+                                color="text.secondary"
+                            >
+                                {appUpdate.progress} %
+                            </Typography>
+                        )}
+                    </Box>
+                )}
+
+                {isUpdating &&
+                    appUpdate.status !== "Downloading" && (
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                                mt: 2
+                            }}
+                        >
+                            <CircularProgress size={18} />
+
+                            <Typography variant="body2">
+                                {appUpdate.message ??
+                                    getStatusText(appUpdate.status)}
+                            </Typography>
+                        </Box>
+                    )}
+
+                {appUpdate.status === "Failed" && (
+                    <Typography
+                        variant="body2"
+                        color="error"
+                        sx={{ mt: 2 }}
+                    >
+                        {appUpdate.error ?? "Oppdateringen feilet."}
+                    </Typography>
+                )}
+
+                {canUpdate && (
+                    <Button
+                        variant="contained"
+                        sx={{ mt: 2 }}
+                        onClick={requestUpdate}
+                    >
+                        Oppdater til {version.kammichGithubVersion}
+                    </Button>
+                )}
             </Box>
 
             <MadeInNorwayBadge />
@@ -54,63 +170,22 @@ export default function Settings() {
     );
 }
 
-function MadeInNorwayBadge() {
+function getStatusText(status: AppUpdateProgress["status"]) {
+    switch (status) {
+        case "Checking":
+            return "Sjekker etter oppdateringer..."
 
-    return (
-        <Box
-            component="footer"
-            sx={{
-                mt: "auto",
-                pt: 4,
-                pb: 2,
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center"
-            }}
-        >
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 130 45"
-                height="30"
-                style={{ display: "block" }}
-            >
-                {/* Hvit bakgrunn for hele badge-en */}
-                <rect width="130" height="45" fill="#ffffff" rx="3" />
+        case "Verifying":
+            return "Verifiserer oppdatering..."
 
-                {/* Innfelt norsk flagg på venstre side (skalert opp fra 22x16 til 47x35 for å passe formatet) */}
-                <g transform="translate(6, 5)">
-                    <rect width="47" height="35" fill="#ba0c2f" rx="1" />
-                    <path d="M0,17.5h47M17.5,0v35" stroke="#fff" stroke-width="8.75" />
-                    <path d="M0,17.5h47M17.5,0v35" stroke="#00205b" stroke-width="4.375" />
-                </g>
+        case "Replacing":
+            return "Installerer oppdatering..."
 
-                {/* Typografi: "MADE IN" */}
-                <text
-                    x="64"
-                    y="19"
-                    fontFamily="Inter, Roboto, sans-serif"
-                    fontWeight="800"
-                    fontSize="11"
-                    fill="#00205b"
-                    letterSpacing="1.5"
-                >
-                    MADE IN
-                </text>
+        case "Restarting":
+            return "Starter Kammich på nytt..."
 
-                {/* Typografi: "NORWAY" */}
-                <text
-                    x="64"
-                    y="33"
-                    fontFamily="Inter, Roboto, sans-serif"
-                    fontWeight="800"
-                    fontSize="11"
-                    fill="#00205b"
-                    letterSpacing="1.5"
-                >
-                    NORWAY
-                </text>
-            </svg>
-        </Box>
-
-    )
+        default:
+            return null
+    }
 }
+

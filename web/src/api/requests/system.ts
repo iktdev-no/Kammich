@@ -15,5 +15,9 @@ export function executeReboot() {
 }
 
 export function getKammichBackendVersion() {
-    return apiGet<Version>(`/v1/version`)
+    return apiGet<Version>(`/v1/update`)
+}
+
+export function requestKammichBackendUpdate() {
+    return apiPost<null, never>(`/v1/update`, null)
 }

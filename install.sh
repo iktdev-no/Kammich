@@ -220,6 +220,7 @@ $DEV_USER ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK
 EOF
 
 chmod 0440 /etc/sudoers.d/kammich
+visudo -cf /etc/sudoers.d/kammich
 echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-kammich-forwarding.conf
 sysctl -p /etc/sysctl.d/99-kammich-forwarding.conf
 

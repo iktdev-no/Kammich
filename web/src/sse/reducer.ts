@@ -154,6 +154,12 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
         immichAvailability: event.payload
       };
 
+    case "app-updater":
+      return {
+        ...state,
+        appUpdate: event.payload
+      }
+
     default:
       console.log("Ingen tok seg av ", event);
       return state;

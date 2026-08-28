@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // Version: 0.0.1-SNAPSHOT
-// Time: 2026-08-26T22:40:49.572385014Z
+// Time: 2026-08-28T21:12:16.060135144Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -59,6 +59,7 @@ export type NotificationType = "Alert"
 export interface Version {
   kammichGithubVersion: string;
   kammichVersion: string;
+  updatable: boolean;
   updateAvailable: boolean;
 }
 
@@ -339,6 +340,16 @@ export interface WifiInterfaceTether extends SharedWifiInterfaceInstance {
 export type WifiInterfaceClientError = "WrongPassword" | "NetworkNotFound" | "Unknown"
 
 export interface EthernetNetworkInterface extends NetworkInterface {
+}
+
+export type AppUpdateStatus = "None" | "Checking" | "UpdateAvailable" | "Downloading" | "Verifying" | "Replacing" | "Restarting" | "Failed"
+
+export interface AppUpdateProgress {
+  error: string | null;
+  message: string | null;
+  progress: number | null;
+  status: AppUpdateStatus;
+  version: string | null;
 }
 
 export interface RemoteFile {

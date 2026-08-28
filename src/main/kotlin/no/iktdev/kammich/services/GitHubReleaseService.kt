@@ -23,8 +23,29 @@ class GitHubReleaseService {
     data class GitHubRelease(
         @JsonProperty("tag_name")
         val tagName: String,
+
         val name: String,
+
         val prerelease: Boolean,
-        val draft: Boolean
+
+        val draft: Boolean,
+
+        @JsonProperty("assets")
+        val assets: List<GitHubReleaseAsset> = emptyList()
+    ) {
+        fun findAsset(name: String): GitHubReleaseAsset? {
+            return assets.firstOrNull {
+                it.name == name
+            }
+        }
+    }
+
+    data class GitHubReleaseAsset(
+        val name: String,
+
+        @JsonProperty("browser_download_url")
+        val downloadUrl: String,
+
+        val size: Long
     )
 }

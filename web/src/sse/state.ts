@@ -15,6 +15,7 @@ import type {
   WifiTether,
   WifiInterfaceTether,
   UploadProgressEvent,
+  AppUpdateProgress,
 } from "../types/types";
 
 export interface SseState {
@@ -43,6 +44,8 @@ export interface SseState {
   immichUserMe: ImmichUserMe | undefined;
   immichApiKeyInUse: ImmichApiKeyPostResponseDto | undefined;
   immichAvailability: ImmichAvailability | undefined;
+
+  appUpdate: AppUpdateProgress
 }
 
 export const initialSseState: SseState = {
@@ -68,5 +71,13 @@ export const initialSseState: SseState = {
 
   immichUserMe: undefined,
   immichApiKeyInUse: undefined,
-  immichAvailability: undefined
+  immichAvailability: undefined,
+
+  appUpdate: {
+    status: "None",
+    error: null,
+    message: null,
+    progress: null,
+    version: null
+  }
 };
