@@ -14,6 +14,7 @@ import no.iktdev.kammich.services.ThumbnailService
 import no.iktdev.kammich.storage.Thumbnail
 import no.iktdev.kammich.whereLocalFilesOnly
 import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.notInList
@@ -109,6 +110,7 @@ class PhotoService(
             val total = baseQuery.count()
 
             val data = baseQuery
+                .orderBy(ImportedFilesTable.importedAt, SortOrder.DESC)
                 .limit(size)
                 .offset((page * size).toLong())
                 .map { row ->

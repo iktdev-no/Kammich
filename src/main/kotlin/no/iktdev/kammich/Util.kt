@@ -195,6 +195,25 @@ fun File.toSha1(): FileHash {
     )
 }
 
+fun File.toSha256(): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+
+    inputStream().use { input ->
+        val buffer = ByteArray(1024 * 1024)
+
+        while (true) {
+            val bytesRead = input.read(buffer)
+
+            if (bytesRead == -1) break
+
+            digest.update(buffer, 0, bytesRead)
+        }
+    }
+
+    return digest.digest()
+        .joinToString("") { "%02x".format(it) }
+}
+
 fun Instant.asOffsetDateTime(): OffsetDateTime = this.atZone(ZoneId.systemDefault()).toOffsetDateTime()
 
 fun File.getExifTimestamp(): Instant? {

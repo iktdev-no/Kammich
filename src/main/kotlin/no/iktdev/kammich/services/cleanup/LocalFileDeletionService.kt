@@ -15,6 +15,7 @@ import no.iktdev.kammich.models.shared.deletion.DeleteState
 import no.iktdev.kammich.services.ConfigService
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.jdbc.select
@@ -25,6 +26,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.io.File
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 @Service
 class LocalFileDeletionService(
@@ -71,6 +73,7 @@ class LocalFileDeletionService(
 
     private fun getFilesReadyToDelete(): List<DeleteFileItem> {
         val mediaPath = configService.getConfig().mediaPath
+        val cutoff = Instant.now().minus(1, ChronoUnit.DAYS)
 
         return withTransaction {
             DeleteFilesTable
@@ -85,6 +88,7 @@ class LocalFileDeletionService(
                 .where {
                     (UploadFilesTable.verified eq Verification.Verified)
                         .and(DeleteFilesTable.localState neq DeleteState.Deleted)
+                        .and(ImportedFilesTable.importedAt lessEq cutoff.toString())
                 }
                 .map {
                     DeleteFileItem(

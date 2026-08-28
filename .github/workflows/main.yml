@@ -12,6 +12,7 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
 
@@ -30,12 +31,13 @@ jobs:
           node-version: '20'
 
       - name: Extract version from Git Tag
-        id: tag
         run: |
           TAG=${{ github.ref_name }}
           VERSION=${TAG#v}
+
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "TAG=$TAG" >> $GITHUB_ENV
+
           echo "Extracted version: $VERSION from tag $TAG"
 
       - name: Set executable permissions for gradlew
@@ -44,10 +46,10 @@ jobs:
       - name: Generate OpenAPI Kotlin client
         run: ./gradlew openApiGenerate
 
-      - name: Generate TypeScript types (tsGenerator)
+      - name: Generate TypeScript types
         run: ./gradlew generateTs
 
-      - name: Build React frontend (SPA)
+      - name: Build React frontend
         env:
           CI: false
         run: |
@@ -61,7 +63,7 @@ jobs:
           mkdir -p src/main/resources/static
           cp -r web/dist/* src/main/resources/static/
 
-      - name: Build Spring Boot executable jar (bootJar)
+      - name: Build Spring Boot executable jar
         run: ./gradlew bootJar
         env:
           VERSION: ${{ github.ref_name }}
@@ -69,14 +71,31 @@ jobs:
       - name: Rename Jar file
         run: |
           cd build/libs
-          JAR_FILE=$(ls *-boot.jar 2>/dev/null || ls *.jar | head -n 1)
-          mv "$JAR_FILE" "Kammich-v${{ env.VERSION }}.jar"
-          echo "Renamed $JAR_FILE to Kammich-v${{ env.VERSION }}.jar"
 
-      - name: Create GitHub Release & Upload Jar
+          JAR_FILE=$(ls *-boot.jar 2>/dev/null || ls *.jar | head -n 1)
+          FINAL_NAME="Kammich-v${VERSION}.jar"
+
+          mv "$JAR_FILE" "$FINAL_NAME"
+
+          echo "JAR_FILE=$FINAL_NAME" >> $GITHUB_ENV
+
+          echo "Renamed $JAR_FILE to $FINAL_NAME"
+
+      - name: Generate SHA-256 checksum
+        run: |
+          cd build/libs
+
+          sha256sum "${JAR_FILE}" > "${JAR_FILE}.sha256"
+
+          echo "Generated checksum:"
+          cat "${JAR_FILE}.sha256"
+
+      - name: Create GitHub Release & Upload files
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           name: Release Kammich ${{ env.TAG }}
-          files: build/libs/Kammich-v*.jar
+          files: |
+            build/libs/Kammich-v*.jar
+            build/libs/Kammich-v*.jar.sha256
           generate_release_notes: true
