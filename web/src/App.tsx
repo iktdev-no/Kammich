@@ -17,6 +17,7 @@ import ImportOwnership from './routes/ImportOwnership';
 import ImmichProfiles from './routes/immich/ImmichProfiles';
 import ImmichMe from './routes/immich/ImmichMe';
 import { System } from './routes/System';
+import { useEffect } from 'react';
 
 const router = createBrowserRouter([
   {
@@ -47,5 +48,22 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
+
+  useEffect(() => {
+    const splash = document.getElementById("splash");
+
+    if (!splash) {
+      return;
+    }
+
+    splash.classList.add("hidden");
+
+    const timeout = setTimeout(() => {
+      splash.remove();
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, []);
+
   return <RouterProvider router={router} />;
 }
