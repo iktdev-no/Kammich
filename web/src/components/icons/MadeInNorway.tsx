@@ -26,8 +26,8 @@ export default function MadeInNorwayBadge() {
                 {/* Innfelt norsk flagg på venstre side (skalert opp fra 22x16 til 47x35 for å passe formatet) */}
                 <g transform="translate(6, 5)">
                     <rect width="47" height="35" fill="#ba0c2f" rx="1" />
-                    <path d="M0,17.5h47M17.5,0v35" stroke="#fff" stroke-width="8.75" />
-                    <path d="M0,17.5h47M17.5,0v35" stroke="#00205b" stroke-width="4.375" />
+                    <path d="M0,17.5h47M17.5,0v35" stroke="#fff" strokeWidth="8.75" />
+                    <path d="M0,17.5h47M17.5,0v35" stroke="#00205b" strokeWidth="4.375" />
                 </g>
 
                 {/* Typografi: "MADE IN" */}
