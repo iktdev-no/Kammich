@@ -56,7 +56,7 @@ class CameraFileDeletionService(
             )
             return
         }
-        val allowDeletion = deviceManager.getSettings(deviceSN).autoImport ?: false
+        val allowDeletion = deviceManager.getSettings(deviceSN).deleteWhenVerifiedBackedup ?: false
         if (!allowDeletion) {
             return
         }
