@@ -90,6 +90,39 @@ sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install --upgrade pip
 sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install pykiosk -U
 
 ###############################################
+# 5.1 Oppdateringsskript for PyKiosk
+###############################################
+
+cat <<'EOF' > /usr/local/bin/update-pykiosk
+#!/bin/bash
+
+if [[ $EUID -ne 0 ]]; then
+    echo "Dette scriptet må kjøres som root (sudo)"
+    exit 1
+fi
+
+TARGET_USER="kammich"
+VENV_DIR="/var/lib/kammich/kiosk-env"
+
+echo "[+] Stopper Kammich kiosk..."
+systemctl stop kammich-kiosk.service
+
+echo "[+] Oppdaterer pip..."
+sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install --upgrade pip
+
+echo "[+] Oppdaterer PyKiosk..."
+sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install --upgrade pykiosk
+
+echo "[+] Starter Kammich kiosk..."
+systemctl start kammich-kiosk.service
+
+echo "[+] PyKiosk er oppdatert!"
+EOF
+
+chmod +x /usr/local/bin/update-pykiosk
+
+
+###############################################
 # 6. Last ned siste versjon av Kammich (Kammich.jar)
 ###############################################
 echo "[*] Laster ned siste versjon av Kammich fra GitHub Releases..."
