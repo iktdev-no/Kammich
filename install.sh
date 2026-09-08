@@ -316,8 +316,6 @@ WorkingDirectory=/var/lib/kammich
 ExecStart=/usr/bin/java -jar /var/lib/kammich/Kammich.jar
 Restart=always
 RestartSec=5
-StandardOutput=append:/var/lib/kammich/logs/backend.log
-StandardError=append:/var/lib/kammich/logs/backend_error.log
 
 [Install]
 WantedBy=multi-user.target

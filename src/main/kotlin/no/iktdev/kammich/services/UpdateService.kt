@@ -196,6 +196,7 @@ class UpdateService(
             val result = exec.sudo(
                 "systemctl",
                 "restart",
+                "--no-block",
                 "kammich-backend.service"
             )
 
