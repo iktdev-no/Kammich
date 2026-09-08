@@ -1,6 +1,5 @@
 package no.iktdev.kammich.immich.services
 
-import com.google.gson.Gson // Eventuell avhengighet for gson, tilpass om du har den injisert
 import no.iktdev.kammich.database.tables.ImmichAuthenticationTable
 import no.iktdev.kammich.database.tables.ImmichAuthenticationTable.toPersistedApiKey
 import no.iktdev.kammich.database.tables.ImmichUsersTable
@@ -24,7 +23,10 @@ import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.util.UUID
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+@OptIn(ExperimentalAtomicApi::class)
 @Service
 class ImmichContextService(
     private val immichClientFactory: ImmichClientFactory,
@@ -34,6 +36,8 @@ class ImmichContextService(
     private val immichVerificationService: ImmichVerificationService,
     private val sseManager: SseManager,
 ) {
+    @OptIn(ExperimentalAtomicApi::class)
+    private val immichResponseTimeMs: AtomicLong = AtomicLong(-1)
     private val log = LoggerFactory.getLogger(this.javaClass)
 
     data class SavedSession(
@@ -129,13 +133,41 @@ class ImmichContextService(
     }
 
 
+    private fun isServerReachable(): Boolean {
+        val session = findActiveSessionInDb() ?: run {
+            immichResponseTimeMs.store(-1)
+            return false
+        }
+
+        val client = immichClientFactory.create(session.serverUrl)
+        return isServerReachable(client)
+    }
+
     private fun isServerReachable(client: ImmichApi): Boolean {
-        val success = client.getServerPing()
+        val start = System.nanoTime()
+
+        val success = try {
+            client.getServerPing()
+        } catch (e: Exception) {
+            log.debug("Immich ping feilet: ${e.message}")
+            false
+        }
+
+        val responseTimeMs =
+            if (success) {
+                (System.nanoTime() - start) / 1_000_000
+            } else {
+                -1
+            }
+
+        immichResponseTimeMs.store(responseTimeMs)
+
         if (success) {
             immichServerContext.recordSuccess()
         } else {
             immichServerContext.recordFailure()
         }
+
         return success
     }
 

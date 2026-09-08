@@ -75,10 +75,11 @@ class Uploader(
         }
     }
 
-    private fun updateUploadTable(uploadId: Long, assetId: UUID?, state: UploadState) {
+    private fun updateUploadTable(uploadId: Long, assetId: UUID?, state: UploadState, uploadError: String? = null) {
         withTransaction {
             UploadFilesTable.update({ UploadFilesTable.id eq uploadId }) {
                 it[UploadFilesTable.state] = state
+                it[UploadFilesTable.errorMessage] = uploadError
                 it[UploadFilesTable.immichAssetId] = assetId?.toString()
                 it[UploadFilesTable.updatedAt] = Instant.now().toString()
             }
@@ -90,16 +91,20 @@ class Uploader(
             updateProgress(JobStatus.Failed, job)
             return UploadJobFailed(job, "Could not find sessions for ${job.userId}")
         }
+        val client = session.toClient()
         try {
             job.items.forEach { item ->
-                val result = session.toClient().performUpload(session.apiKey, File(item.absolutePath))
+                log.info("Starting upload of ${item.absolutePath}")
+                val result = client.performUpload(session.apiKey, File(item.absolutePath))
                 if (result is UploadSuccess) {
                     updateUploadTable(item.uploadId, result.assetId, UploadState.Success)
                     item.uploadState = UploadState.Success
                 } else {
-                    updateUploadTable(item.uploadId, null, UploadState.Failure)
+                    val uploadError = result as UploadFailed
+                    updateUploadTable(item.uploadId, null, UploadState.Failure, uploadError = uploadError.reason)
                     item.uploadState = UploadState.Failure
                 }
+                log.info("Upload ended for file ${item.absolutePath}")
                 updateProgress(JobStatus.Running, job)
             }
         } catch (e: Exception) {

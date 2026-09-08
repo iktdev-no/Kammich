@@ -1,7 +1,6 @@
 package no.iktdev.kammich.immich.client
 
 import com.google.gson.Gson
-import kotlinx.datetime.toLocalDateTime
 import no.iktdev.kammich.asOffsetDateTime
 import no.iktdev.kammich.immich.ImmichApi
 import no.iktdev.kammich.immich.api.APIKeysApi // Eller ApiKeysApi / KeyApi
@@ -18,7 +17,6 @@ import no.iktdev.kammich.immich.mapper.toDomain
 import no.iktdev.kammich.immich.models.AlbumResponseDto
 import no.iktdev.kammich.immich.models.AlbumsAddAssetsDto
 import no.iktdev.kammich.immich.models.AssetResponseDto
-import no.iktdev.kammich.immich.models.BulkIdsDto
 import no.iktdev.kammich.immich.models.CreateAlbumDto
 import no.iktdev.kammich.immich.models.LoginCredentialDto
 import no.iktdev.kammich.immich.models.LoginResponseDto
@@ -37,7 +35,6 @@ import no.iktdev.kammich.models.shared.immich.api.ImmichUserMe
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import org.openapitools.client.infrastructure.ApiClient
-import org.openapitools.client.infrastructure.ApiResponse
 import org.openapitools.client.infrastructure.ClientError
 import org.openapitools.client.infrastructure.ClientException
 import org.openapitools.client.infrastructure.ResponseType
@@ -48,13 +45,14 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.net.ConnectException
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class ImmichClient(
-    private val serverUrl: String
+    private val serverUrl: String,
+    private val roundTripMS: Long? = null
 ) : ImmichApi {
     private val log = LoggerFactory.getLogger(javaClass)
-
-    private fun createClient(headerName: String, headerValue: String): OkHttpClient {
+    private fun buildClient(headerName: String, headerValue: String): OkHttpClient.Builder {
         val authInterceptor = Interceptor { chain ->
             val authenticatedRequest = chain.request().newBuilder()
                 .header(headerName, headerValue)
@@ -64,9 +62,56 @@ class ImmichClient(
 
         // Bygg videre på ApiClient sin egen defaultClient (som er en OkHttpClient)
         return ApiClient.defaultClient.newBuilder()
+            .retryOnConnectionFailure(false)
             .addInterceptor(authInterceptor)
-            .build()
     }
+    private fun createClient(headerName: String, headerValue: String): OkHttpClient {
+        return buildClient(headerName, headerValue).build()
+    }
+    private fun buildClient(): OkHttpClient.Builder =
+        ApiClient.defaultClient.newBuilder()
+            .retryOnConnectionFailure(false)
+
+    private fun OkHttpClient.Builder.withApiKey(
+        apiKey: String
+    ): OkHttpClient.Builder =
+        addInterceptor { chain ->
+            val request = chain.request()
+                .newBuilder()
+                .header("x-api-key", apiKey)
+                .build()
+
+            chain.proceed(request)
+        }
+
+    private fun OkHttpClient.Builder.withSessionToken(
+        token: String
+    ): OkHttpClient.Builder =
+        addInterceptor { chain ->
+            val request = chain.request()
+                .newBuilder()
+                .header("x-immich-user-token", token)
+                .build()
+
+            chain.proceed(request)
+        }
+
+    private fun OkHttpClient.Builder.withUploadTimeout(
+        fileSizeBytes: Long,
+        roundTripMs: Long
+    ): OkHttpClient.Builder {
+        val assumedUploadBytesPerSecond = 250_000L
+        val safetyFactor = 2.0
+
+        val estimatedUploadMs =
+            fileSizeBytes * 1_000L / assumedUploadBytesPerSecond
+
+        val timeoutMs =
+            (estimatedUploadMs * safetyFactor + roundTripMs).toLong()
+
+        return callTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+    }
+
 
     private fun sessionClient(token: String) = createClient("x-immich-user-token", token)
     private fun apiKeyClient(key: String) = createClient("x-api-key", key)
@@ -237,7 +282,15 @@ class ImmichClient(
 
 
     override fun uploadFile(apiKey: String, upload: UploadAssetRequest): UUID {
-        val client = ExtensiveImmichAssetUploadClient(serverUrl, apiKeyClient(apiKey))
+        val icli = buildClient()
+            .withApiKey(apiKey)
+        roundTripMS?.let { ms ->
+            icli
+                .withUploadTimeout(upload.file.length(), ms)
+        }
+        val client = ExtensiveImmichAssetUploadClient(serverUrl,
+            icli.build()
+        )
         return try {
             log.info("""
                 Upload file exists: ${upload.file.exists()}

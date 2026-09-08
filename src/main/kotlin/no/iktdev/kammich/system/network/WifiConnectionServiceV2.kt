@@ -1,5 +1,7 @@
 package no.iktdev.kammich.system.network
 
+import no.iktdev.kammich.immich.services.ImmichContextService
+import no.iktdev.kammich.immich.services.ImmichVerificationService
 import no.iktdev.kammich.models.shared.network.*
 import no.iktdev.kammich.sse.SseManager
 import no.iktdev.kammich.sse.events.networking.SSEWifiConnection
@@ -14,7 +16,8 @@ class WifiConnectionServiceV2(
     private val interfaceRegistry: NetworkInterfaceRegistryV2,
     private val strategies: List<WifiConnectionStrategy>,
     private val scanServiceV2: WifiScanServiceV2,
-    private val captivePortal: CaptivePortal
+    private val captivePortal: CaptivePortal,
+    private val immichContextService: ImmichContextService
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -29,6 +32,7 @@ class WifiConnectionServiceV2(
 
         CompletableFuture.runAsync {
             connect(interfaceName, bssid, password)
+            immichContextService.initializeAndVerifyContext()
         }
     }
 
@@ -123,6 +127,7 @@ class WifiConnectionServiceV2(
         }
 
         send(WifiConnection(ifName = interfaceName, state = WifiConnectionStateType.Disconnected, null))
+        immichContextService.initializeAndVerifyContext()
         return success
     }
 
