@@ -11,6 +11,7 @@ import {
     Tooltip,
     LinearProgress,
 } from "@mui/material";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import PhotoAlbumIcon from '@mui/icons-material/PhotoAlbum';
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
@@ -18,7 +19,7 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlined";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import { useSseSelector } from "../sse/useSseSelector";
 import type { UploadSummary, UploadJobSummary } from "../types/types";
-import { getJobs, getStats, resetJobQueue, resetUserQueue } from "../api/requests/upload";
+import { getJobs, getStats, resetJobQueue, resetUserQueue, startUpload } from "../api/requests/upload";
 
 export default function Home() {
     const immichUser = useSseSelector((state) => state.immichUserMe);
@@ -62,6 +63,12 @@ export default function Home() {
     const handleResetJob = async (jobId: string) => {
         if (!userId) return;
         await resetJobQueue(userId, jobId);
+        fetchData();
+    };
+
+    const handleStartUpload = async (jobId: string) => {
+        if (!userId) return;
+        await startUpload(userId, jobId);
         fetchData();
     };
 
@@ -143,6 +150,7 @@ export default function Home() {
                             const failed = liveProgress ? liveProgress.failedFiles : job.totalFailure;
 
                             const processed = success + failed;
+                            const pending = total - processed;
                             const progressPercent = total > 0 ? (processed / total) * 100 : 0;
 
                             // Vis kun reset-knapp dersom jobben ikke er helt ferdig (totalt avvik fra suksess)
@@ -153,7 +161,7 @@ export default function Home() {
                                     <Card sx={{ backgroundColor: "background.paper", borderRadius: 2, border: "1px solid rgba(255,255,255,0.06)", height: "100%", display: "flex", flexDirection: "column" }}>
                                         <CardContent sx={{ p: 2.5, flexGrow: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
 
-                                            {/* Topptekst med Jobb ID og betinget restart-knapp */}
+                                            {/* Topptekst med Jobb ID og betingede handlingsknapper */}
                                             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                                                 <Box>
                                                     <Typography variant="caption" color="textSecondary" sx={{ display: "block" }} >
@@ -163,13 +171,55 @@ export default function Home() {
                                                         {job.jobId}
                                                     </Typography>
                                                 </Box>
-                                                {showResetButton && (
-                                                    <Tooltip title="Nullstill og kjør jobb på nytt">
-                                                        <IconButton size="small" onClick={() => handleResetJob(job.jobId)} color="primary" sx={{ ml: 1 }}>
-                                                            <RefreshIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
+
+                                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: 1 }}>
+                                                    {job.isRunning ? (
+                                                        <Tooltip title="Laster opp">
+                                                            <Box
+                                                                sx={{
+                                                                    width: 10,
+                                                                    height: 10,
+                                                                    borderRadius: "50%",
+                                                                    bgcolor: "success.main",
+                                                                    boxShadow: "0 0 0 0 rgba(76, 175, 80, 0.7)",
+                                                                    animation: "uploadPulse 1.5s ease-in-out infinite",
+                                                                    "@keyframes uploadPulse": {
+                                                                        "0%": {
+                                                                            transform: "scale(0.9)",
+                                                                            boxShadow: "0 0 0 0 rgba(76, 175, 80, 0.7)",
+                                                                        },
+                                                                        "50%": {
+                                                                            transform: "scale(1.15)",
+                                                                            boxShadow: "0 0 0 6px rgba(76, 175, 80, 0)",
+                                                                        },
+                                                                        "100%": {
+                                                                            transform: "scale(0.9)",
+                                                                            boxShadow: "0 0 0 0 rgba(76, 175, 80, 0)",
+                                                                        },
+                                                                    },
+                                                                }}
+                                                            />
+                                                        </Tooltip>
+                                                    ) : pending > 0 ? (
+                                                        <Tooltip title="Start opplasting">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleStartUpload(job.jobId)}
+                                                                color="primary"
+                                                            >
+                                                                <PlayArrowIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    ) : null}
+
+                                                    {showResetButton && (
+                                                        <Tooltip title="Nullstill og kjør jobb på nytt">
+                                                            <IconButton size="small" onClick={() => handleResetJob(job.jobId)} color="primary" sx={{ ml: 1 }}>
+                                                                <RefreshIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
+                                                </Box>
                                             </Box>
 
                                             {/* Statistikk for jobben */}

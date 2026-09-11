@@ -2,15 +2,20 @@ package no.iktdev.kammich.services.upload
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import no.iktdev.kammich.database.tables.DevicesTable
 import no.iktdev.kammich.database.tables.ImportedFilesTable
 import no.iktdev.kammich.database.tables.UploadFilesTable
 import no.iktdev.kammich.database.withTransaction
+import no.iktdev.kammich.immich.context.ImmichUserContext
+import no.iktdev.kammich.immich.services.ImmichContextService
+import no.iktdev.kammich.immich.services.ImmichVerificationService
 import no.iktdev.kammich.models.internal.events.ImportJobClaimedEvent
 import no.iktdev.kammich.models.internal.events.UploadCompletedEvent
 import no.iktdev.kammich.models.internal.events.UploadedAssets
+import no.iktdev.kammich.models.internal.events.WifiEvent
 import no.iktdev.kammich.models.shared.UploadState
 import no.iktdev.kammich.services.ConfigService
 import org.jetbrains.exposed.v1.core.and
@@ -30,10 +35,14 @@ import java.util.UUID
 class UploaderService(
     private val configService: ConfigService,
     private val uploader: Uploader,
+    private val immichContextService: ImmichContextService,
+    private val immichUserContext: ImmichUserContext,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private val uploadJobs: HashMap<UUID, Job> = hashMapOf()
 
     private fun getFileWithId(fileIds: List<Long>): Map<Long, File> {
         val mediaPath = configService.getConfig().mediaPath
@@ -63,23 +72,71 @@ class UploaderService(
     @EventListener
     fun onImportJobClaimed(event: ImportJobClaimedEvent) {
         log.info("Incoming JobClaimedEvent")
+        onUploadImports(event.jobId, event.userId)
+    }
+
+    @EventListener
+    fun onWifiConnected(event: WifiEvent) {
+        if (!event.connected) {
+            log.warn("No wifi connected, returning")
+            return
+        }
+        val userId = immichUserContext.getCurrentUserId() ?: run {
+            log.error("No user found, doing nothing")
+            return
+        }
+        startUploadFor(userId)
+
+    }
+
+    fun startUploadFor(userId: UUID) {
+        val jobIds = withTransaction {
+            UploadFilesTable
+                .select(UploadFilesTable.uploadJobId)
+                .where {
+                    (UploadFilesTable.immichUserId eq userId.toString()) and
+                            (UploadFilesTable.state eq UploadState.Pending)
+                }
+                .map { UUID.fromString(it[UploadFilesTable.uploadJobId]) }
+                .distinct()
+        }.getOrDefault(emptyList())
+
+        if (jobIds.isEmpty()) {
+            log.info("No pending upload jobs found for user $userId")
+            return
+        }
+
+        jobIds.forEach { jobId ->
+            log.info("Starting upload for job $jobId")
+            onUploadImports(jobId, userId)
+        }
+    }
+
+    fun startUploadFor(userId: UUID, jobId: UUID) {
+        onUploadImports(jobId, userId)
+    }
+
+    /**
+     * jobId = Import job id
+     */
+    private fun onUploadImports(jobId: UUID, userId: UUID) {
         val importIds = withTransaction {
-            ImportedFilesTable.getWhere { ImportedFilesTable.importJob eq event.jobId.toString() }
+            ImportedFilesTable.getWhere { ImportedFilesTable.importJob eq jobId.toString() }
         }.getOrThrow().map { it -> it.id }
 
         if (importIds.isEmpty())
-            log.error("No imported files found for job ID: ${event.jobId}")
+            log.error("No imported files found for job ID: ${jobId}")
 
         val filtered = withTransaction {
             UploadFilesTable.select(UploadFilesTable.importedFileId)
-                .where(UploadFilesTable.uploadJobId eq event.jobId.toString())
+                .where(UploadFilesTable.uploadJobId eq jobId.toString())
                 .map { it[UploadFilesTable.importedFileId].value }
         }.getOrDefault(emptyList())
 
         val usableImportedIds = importIds.filter { it !in filtered }
         val filing = getFileWithId(usableImportedIds)
 
-        insertInitialStateAndUpload(event.userId, event.jobId, filing)
+        insertInitialStateAndUpload(userId, jobId, filing)
     }
 
     fun uploadSingleFile(fileId: Long, userId: UUID) {
@@ -89,7 +146,11 @@ class UploaderService(
 
     private fun insertInitialStateAndUpload(userId: UUID, jobId: UUID, filing: Map<Long, File>) {
         log.info("Incoming upload on $jobId")
-        serviceScope.launch {
+        val isUsable = immichContextService.initializeAndVerifyContext()
+        if (!isUsable) {
+            log.error("Can't perform upload when there is no connection to immich")
+        }
+        uploadJobs[jobId] = serviceScope.launch {
             val uploadItems = withTransaction {
                 filing.map { (fileId, file) ->
                     val uploadId = UploadFilesTable.insertAndGetId {
@@ -179,6 +240,9 @@ private fun getUploadCompleted(userId: UUID, items: List<UploadJobItem>): Upload
     return UploadCompletedEvent(userId, uploads)
 }
 
+    fun isRunning(jobId: UUID): Boolean {
+        return uploadJobs[jobId]?.isActive ?: false
+    }
 
 
 

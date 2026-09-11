@@ -24,6 +24,11 @@ class UploadController(
         uploadService.getCheckForRemainingFiles(userId)
     }
 
+    @PostMapping("/user/{userId}/start/{jobId}")
+    fun startUpload(@PathVariable userId: UUID, @PathVariable jobId: UUID) {
+        uploadService.startUpload(userId, jobId)
+    }
+
     @PostMapping("/user/{userId}/reset")
     fun resetUploadQueueByUserId(@PathVariable userId: UUID) {
         uploadService.resetFailedUploadsByUser(userId)

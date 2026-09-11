@@ -7,5 +7,6 @@ data class UploadJobSummary(
     val jobId: UUID,
     val totalSuccess: Int,
     val totalFailure: Int,
-    val total: Int
+    val total: Int,
+    val isRunning: Boolean
 )

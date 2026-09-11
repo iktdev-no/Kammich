@@ -9,6 +9,10 @@ export function resetUserQueue(userId: string) {
     return apiPost<undefined, void>(`/v1/upload/user/${userId}/reset`, undefined)
 }
 
+export function startUpload(userId: string, jobId: string) {
+    return apiPost<null, void>(`/v1/upload/user/${userId}/start/${jobId}`, null);
+}
+
 export function resetJobQueue(userId: string, jobId: string) {
     return apiPost<undefined, void>(`/v1/upload/user/${userId}/reset/${jobId}`, undefined)
 }

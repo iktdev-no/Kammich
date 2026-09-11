@@ -2,17 +2,20 @@ package no.iktdev.kammich.system.network
 
 import no.iktdev.kammich.immich.services.ImmichContextService
 import no.iktdev.kammich.immich.services.ImmichVerificationService
+import no.iktdev.kammich.models.internal.events.WifiEvent
 import no.iktdev.kammich.models.shared.network.*
 import no.iktdev.kammich.sse.SseManager
 import no.iktdev.kammich.sse.events.networking.SSEWifiConnection
 import no.iktdev.kammich.system.network.strategy.connection.WifiConnectionStrategy
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import java.util.concurrent.CompletableFuture
 
 @Service
 class WifiConnectionServiceV2(
     private val sseManager: SseManager,
+    private val eventPublisher: ApplicationEventPublisher,
     private val interfaceRegistry: NetworkInterfaceRegistryV2,
     private val strategies: List<WifiConnectionStrategy>,
     private val scanServiceV2: WifiScanServiceV2,
@@ -136,6 +139,7 @@ class WifiConnectionServiceV2(
             log.error("Sending null network!")
         }
         sseManager.send(SSEWifiConnection(state.ifName,state))
+        eventPublisher.publishEvent(WifiEvent(connected = state.state == WifiConnectionStateType.Connected))
     }
 
 

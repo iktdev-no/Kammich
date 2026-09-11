@@ -153,12 +153,14 @@ class UploadService(
                     val failure = countsByState[UploadState.Failure] ?: 0
                     val total = countsByState.values.sum()
 
+                    val jobId = UUID.fromString(jobIdStr)
                     UploadJobSummary(
                         userId = userId,
-                        jobId = UUID.fromString(jobIdStr),
+                        jobId = jobId,
                         totalSuccess = success,
                         totalFailure = failure,
-                        total = total
+                        total = total,
+                        isRunning = upladingService.isRunning(jobId)
                     )
                 }
         }.getOrDefault(emptyList())
@@ -170,6 +172,9 @@ class UploadService(
 
     }
 
+    fun startUpload(userId: UUID, jobId: UUID) {
+        upladingService.startUploadFor(userId, jobId)
+    }
 
 
 }
