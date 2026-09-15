@@ -18,6 +18,8 @@ import ImmichProfiles from './routes/immich/ImmichProfiles';
 import ImmichMe from './routes/immich/ImmichMe';
 import { System } from './routes/System';
 import { useEffect } from 'react';
+import Tailscale from './routes/settings/Tailscale';
+import Ethernet from './routes/settings/Ethernet';
 
 const router = createBrowserRouter([
   {
@@ -32,10 +34,13 @@ const router = createBrowserRouter([
       { path: 'upload', element: <Upload /> },
       { path: 'import', element: <Import /> },
       { path: 'settings', element: <Settings /> },
+      { path: 'settings/info', element: <Settings /> },
       { path: 'ownership', element: <ImportOwnership /> },
       { path: 'settings/networking', element: <Networking /> },
-      { path: 'settings/wifi', element: <WifiSettings /> },
-      { path: 'settings/ap', element: <WifiApSettings /> },
+      { path: 'settings/networking/tailscale', element: <Tailscale /> },
+      { path: 'settings/networking/ethernet', element: <Ethernet /> },
+      { path: 'settings/networking/wifi', element: <WifiSettings /> },
+      { path: 'settings/networking/ap', element: <WifiApSettings /> },
       { path: 'settings/immich', element: <Immich /> },
       { path: 'settings/immich/login', element: <ImmichLogin /> },
       { path: 'settings/immich/me', element: <ImmichMe /> },

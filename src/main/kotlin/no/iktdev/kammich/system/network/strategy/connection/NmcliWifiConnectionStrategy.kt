@@ -7,11 +7,11 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 @Component
-class NmcliConnectionStrategy(
+class NmcliWifiConnectionStrategy(
     private val exec: SysCommand,
     private val nmcliAL: INmcliAL
 ) : WifiConnectionStrategy {
-    private val log = LoggerFactory.getLogger(NmcliConnectionStrategy::class.java)
+    private val log = LoggerFactory.getLogger(NmcliWifiConnectionStrategy::class.java)
 
     fun setAutoconnect(profileName: String, enable: Boolean): Boolean {
         val result = nmcliAL.setAutoConnect(profileName, enable)

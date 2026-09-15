@@ -3,9 +3,11 @@ import CableIcon from '@mui/icons-material/Cable';
 import SdStorageOutlinedIcon from '@mui/icons-material/SdStorageOutlined';
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
 import SmartphoneOutlinedIcon from '@mui/icons-material/SmartphoneOutlined';
+import NoPhotographyIcon from '@mui/icons-material/NoPhotography';
 
 import { useSseSelector } from "../sse/useSseSelector";
 import type { BlockDevice, GPhoto2Device, RemovableDevice } from "../types/types";
+import AnimatedUploadIcon from "../components/icons/AnimatedUploadIcon";
 
 export default function Devices() {
     const devices = useSseSelector(state => state.devices);
@@ -37,43 +39,50 @@ export default function Devices() {
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>Connected Devices</Typography>
-            <Grid container spacing={2}>
-                {devices.map(d => {
-                    const details = getDeviceDetails(d);
-                    return (
-                        <Grid key={d.name}>
-                            <Card variant="outlined" sx={{ height: '100%' }}>
-                                <CardContent>
-                                    <Stack direction="row" sx={{
-                                        alignItems: "center"
-                                    }} spacing={2}>
-                                        {details.icon}
-                                        <Box>
-                                            <Typography variant="h6">{d.model || "Unknown Device"}</Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {getPath(d)} • {d.id || "No SN"}
-                                            </Typography>
+            {devices && devices.length > 0 ? (
+                <Grid container spacing={2}>
+                    {devices.map(d => {
+                        const details = getDeviceDetails(d);
+                        return (
+                            <Grid key={d.name}>
+                                <Card variant="outlined" sx={{ height: '100%' }}>
+                                    <CardContent>
+                                        <Stack direction="row" sx={{
+                                            alignItems: "center"
+                                        }} spacing={2}>
+                                            {details.icon}
+                                            <Box>
+                                                <Typography variant="h6">{d.model || "Unknown Device"}</Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {getPath(d)} • {d.id || "No SN"}
+                                                </Typography>
+                                            </Box>
+                                        </Stack>
+                                        <Box sx={{ mt: 2 }}>
+                                            <Chip
+                                                label={d.interfaceType === "BLOCK" && !(d as BlockDevice).mountPoint ? "Unmounted" : "Ready"}
+                                                color={d.interfaceType === "BLOCK" && !(d as BlockDevice).mountPoint ? "default" : "success"}
+                                                size="small"
+                                            />
+                                            <Chip
+                                                label={details.label}
+                                                color={details.color}
+                                                size="small"
+                                                sx={{ ml: 1 }}
+                                            />
                                         </Box>
-                                    </Stack>
-                                    <Box sx={{ mt: 2 }}>
-                                        <Chip
-                                            label={d.interfaceType === "BLOCK" && !(d as BlockDevice).mountPoint ? "Unmounted" : "Ready"}
-                                            color={d.interfaceType === "BLOCK" && !(d as BlockDevice).mountPoint ? "default" : "success"}
-                                            size="small"
-                                        />
-                                        <Chip
-                                            label={details.label}
-                                            color={details.color}
-                                            size="small"
-                                            sx={{ ml: 1 }}
-                                        />
-                                    </Box>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                    );
-                })}
-            </Grid>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        );
+                    })}
+                </Grid>
+            ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 8, color: 'text.secondary' }}>
+                    <NoPhotographyIcon sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
+                    <Typography variant="h6">Ingen tilkoblede kameraer</Typography>
+                </Box>
+            )}
         </Box>
     );
 }

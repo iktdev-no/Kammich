@@ -1,310 +1,183 @@
 import { toast } from "react-toastify";
 
-function prepareBody(body: any): { payload: any; contentType: string } {
-  if (body === undefined || body === null) {
-    return { payload: undefined, contentType: "application/json" };
-  }
+export class ApiError extends Error {
+  readonly status: number;
+  readonly body: unknown;
 
-  // Hvis det er en rå streng, send den akkurat som den er
-  if (typeof body === "string") {
-    return { payload: body, contentType: "text/plain" };
-  }
+  constructor(
+    message: string,
+    status: number,
+    body: unknown,
+  ) {
+    super(message);
 
-  // For booleans og tall, send som ren tekst-representasjon
-  if (typeof body === "number" || typeof body === "boolean") {
-    return { payload: String(body), contentType: "text/plain" };
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
   }
-
-  // For alt annet (objekter, arrays), kjør standard JSON
-  return { payload: JSON.stringify(body), contentType: "application/json" };
 }
 
-// ------------------------------------------------------------
-// GET
-// ------------------------------------------------------------
-export async function apiGet<T>(
-  path: string,
-  params?: Record<string, any>,
-  opts?: {
-    onError?: (status: number, body: any) => void;
-  },
-): Promise<T> {
-  const queryString = params ? `?${buildQuery(params)}` : "";
+async function readResponse(res: Response): Promise<unknown> {
+  const contentType = res.headers.get("content-type") ?? "";
 
-  const res = await fetch(`/api${path}${queryString}`, {
+  if (res.status === 204) {
+    return null;
+  }
+
+  if (contentType.includes("application/json")) {
+    return res.json();
+  }
+
+  return res.text();
+}
+
+function prepareBody(body: unknown): BodyInit | undefined {
+  if (body === undefined || body === null) {
+    return undefined;
+  }
+
+  if (
+    typeof body === "string" ||
+    body instanceof FormData ||
+    body instanceof Blob ||
+    body instanceof ArrayBuffer
+  ) {
+    return body;
+  }
+
+  return JSON.stringify(body);
+}
+
+function getContentType(body: unknown): string | undefined {
+  if (
+    body === undefined ||
+    body === null ||
+    typeof body === "string" ||
+    body instanceof FormData ||
+    body instanceof Blob ||
+    body instanceof ArrayBuffer
+  ) {
+    return undefined;
+  }
+
+  return "application/json";
+}
+
+function getErrorMessage(
+  method: string,
+  path: string,
+  status: number,
+  body: unknown,
+): string {
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    "message" in body &&
+    typeof body.message === "string"
+  ) {
+    return body.message;
+  }
+
+  if (typeof body === "string" && body.trim()) {
+    return body;
+  }
+
+  return `${method} ${path} failed with ${status}`;
+}
+
+async function apiRequest<T>(
+  method: string,
+  path: string,
+  options: {
+    body?: unknown;
+    params?: Record<string, unknown>;
+    onError?: (status: number, body: unknown) => void;
+  } = {},
+): Promise<T> {
+  const query = options.params
+    ? `?${buildQuery(options.params)}`
+    : "";
+
+  const body = prepareBody(options.body);
+  const contentType = getContentType(options.body);
+
+  const res = await fetch(`/api${path}${query}`, {
+    method,
     headers: {
       Accept: "application/json",
+      ...(contentType ? { "Content-Type": contentType } : {}),
     },
+    body,
   });
 
+  const responseBody = await readResponse(res);
+
   if (!res.ok) {
-    const status = res.status;
-    let body: any = null;
+    const message = getErrorMessage(
+      method,
+      path,
+      res.status,
+      responseBody,
+    );
 
-    try {
-      body = await res.json();
-    } catch {
-      body = await res.text().catch(() => null);
+    if (options.onError) {
+      options.onError(res.status, responseBody);
+    } else {
+      toast.error(message);
     }
 
-    // Custom handler?
-    if (opts?.onError) {
-      opts.onError(status, body);
-      return Promise.reject({ status, body });
-    }
-
-    // ⭐ Automatic toast
-    const message =
-      typeof body === "object" && body?.message
-        ? body.message
-        : `GET ${path} failed with ${status}`;
-
-    toast.error(message);
-
-    const error: any = new Error(message);
-    error.status = status;
-    error.body = body;
-    throw error;
+    throw new ApiError(message, res.status, responseBody);
   }
 
-  return res.json();
+  return responseBody as T;
 }
 
-// ------------------------------------------------------------
-// POST
-// ------------------------------------------------------------
-export async function apiPost<TRequest, TResponse>(
+export function apiGet<T>(
   path: string,
-  body: TRequest,
+  params?: Record<string, unknown>,
+): Promise<T> {
+  return apiRequest<T>("GET", path, { params });
+}
+
+export function apiPost<TRequest, TResponse>(
+  path: string,
+  body?: TRequest,
 ): Promise<TResponse> {
-
-  const { payload, contentType } = prepareBody(body);
-
-  const res = await fetch(`/api${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": contentType,
-      Accept: "*/*",
-    },
-    body: payload,
-  });
-
-  if (!res.ok) {
-    let errorBody: any = null;
-    const contentTypeRead = res.headers.get("content-type") ?? "";
-
-    try {
-      if (contentTypeRead.includes("application/json")) {
-        errorBody = await res.json();
-      } else {
-        errorBody = await res.text();
-      }
-    } catch {
-      errorBody = await res.text().catch(() => null);
-    }
-
-    const message =
-      typeof errorBody === "string" && errorBody.trim().length > 0
-        ? errorBody
-        : typeof errorBody === "object" && errorBody?.message
-          ? errorBody.message
-          : `POST ${path} failed with ${res.status}`;
-
-    toast.error(message);
-
-    const error: any = new Error(message);
-    error.status = res.status;
-    error.body = errorBody;
-    throw error;
-  }
-
-  const contentTypeRead = res.headers.get("content-type") ?? "";
-
-  if (contentTypeRead.includes("application/json")) {
-    return res.json();
-  }
-
-  const text = await res.text();
-  return text as unknown as TResponse;
+  return apiRequest<TResponse>("POST", path, { body });
 }
 
-// ------------------------------------------------------------
-// DELETE
-// ------------------------------------------------------------
-export async function apiDelete<TResponse>(
+export function apiPatch<TRequest, TResponse>(
   path: string,
-  opts?: {
-    body?: any;
-    onError?: (status: number, body: any) => void;
+  body?: TRequest,
+): Promise<TResponse> {
+  return apiRequest<TResponse>("PATCH", path, { body });
+}
+
+export function apiPut<TRequest, TResponse>(
+  path: string,
+  body?: TRequest,
+): Promise<TResponse> {
+  return apiRequest<TResponse>("PUT", path, { body });
+}
+
+export function apiDelete<TResponse>(
+  path: string,
+  options?: {
+    body?: unknown;
   },
 ): Promise<TResponse> {
-
-  const { payload, contentType } = prepareBody(opts?.body);
-
-  const res = await fetch(`/api${path}`, {
-    method: "DELETE",
-    headers: {
-      Accept: "*/*",
-      ...(opts?.body ? { "Content-Type": contentType } : {}),
-    },
-    body: opts?.body ? payload : undefined,
-  });
-
-  if (!res.ok) {
-    const status = res.status;
-    let body: any = null;
-
-    try {
-      body = await res.json();
-    } catch {
-      body = await res.text().catch(() => null);
-    }
-
-    // ⭐ If caller handles error → do NOT toast
-    if (opts?.onError) {
-      opts.onError(status, body);
-      throw { status, body };
-    }
-
-    // ⭐ Automatic toast only when no handler is provided
-    const message =
-      typeof body === "object" && body?.message
-        ? body.message
-        : `DELETE ${path} failed with ${status}`;
-
-    toast.error(message);
-
-    const error: any = new Error(message);
-    error.status = status;
-    error.body = body;
-    throw error;
-  }
-
-  return res.json().catch(() => null);
+  return apiRequest<TResponse>("DELETE", path, options);
 }
 
-// ------------------------------------------------------------
-// PATCH
-// ------------------------------------------------------------
-export async function apiPatch<TRequest, TResponse>(
-  path: string,
-  body: TRequest,
-  opts?: {
-    onError?: (status: number, body: any) => void;
-  },
-): Promise<TResponse> {
-  const { payload, contentType } = prepareBody(body);
-
-
-  const res = await fetch(`/api${path}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": contentType,
-      Accept: "*/*",
-    },
-    body: payload,
-  });
-
-  if (!res.ok) {
-    const status = res.status;
-    let errorBody: any = null;
-
-    try {
-      errorBody = await res.json();
-    } catch {
-      errorBody = await res.text().catch(() => null);
-    }
-
-    // Custom error handler?
-    if (opts?.onError) {
-      opts.onError(status, errorBody);
-      throw { status, body: errorBody };
-    }
-
-    // Automatic toast
-    const message =
-      typeof errorBody === "object" && errorBody?.message
-        ? errorBody.message
-        : `PATCH ${path} failed with ${status}`;
-
-    toast.error(message);
-
-    const error: any = new Error(message);
-    error.status = status;
-    error.body = errorBody;
-    throw error;
-  }
-
-  // Handle empty body (204 No Content)
-  const contentTypeRead = res.headers.get("content-type") ?? "";
-  if (contentTypeRead.includes("application/json")) {
-    return res.json();
-  }
-
-  const text = await res.text().catch(() => null);
-  return text as unknown as TResponse;
-}
-
-// ------------------------------------------------------------
-// PUT
-// ------------------------------------------------------------
-export async function apiPut<TRequest, TResponse>(
-  path: string,
-  body: TRequest,
-): Promise<TResponse> {
-  const { payload, contentType } = prepareBody(body);
-
-
-  const res = await fetch(`/api${path}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": contentType,
-      Accept: "*/*",
-    },
-    body: payload,
-  });
-
-  if (!res.ok) {
-    let errorBody: any = null;
-
-    try {
-      errorBody = await res.json();
-    } catch {
-      errorBody = await res.text().catch(() => null);
-    }
-
-    const message =
-      typeof errorBody === "object" && errorBody?.message
-        ? errorBody.message
-        : `POST ${path} failed with ${res.status}`;
-
-    toast.error(message);
-
-    const error: any = new Error(message);
-    error.status = res.status;
-    error.body = errorBody;
-    throw error;
-  }
-
-  const contentTypeRead = res.headers.get("content-type") ?? "";
-
-  if (contentTypeRead.includes("application/json")) {
-    return res.json();
-  }
-
-  const text = await res.text();
-  return text as unknown as TResponse;
-}
-
-
-// ------------------------------------------------------------
-// Query builder
-// ------------------------------------------------------------
-export function buildQuery(params: Record<string, any>): string {
+export function buildQuery(
+  params: Record<string, unknown>,
+): string {
   const search = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null) continue;
+    if (value === undefined || value === null) {
+      continue;
+    }
 
     if (Array.isArray(value)) {
       value.forEach((v) => search.append(key, String(v)));

@@ -12,16 +12,36 @@ import { ImportIndicator } from "./ImportIndicator";
 import ImmichIcon from "../components/icons/ImmichIcon";
 import { useNavigate } from "react-router-dom";
 import { useSseSelector } from "../sse/useSseSelector";
+import { KammichFav } from "../components/icons/KammichFav";
+import { KammichIcon } from "../components/icons/Kammich";
+import FilmRollIcon from "../components/icons/FilmRoll";
+import AnimatedUploadIcon from "../components/icons/AnimatedUploadIcon";
 
 
 export default function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     const isMobile = useIsMobile();
     const theme = useTheme();
     const { mode, toggleColorMode } = useColorMode();
-    const naviage = useNavigate();
+    const navigate = useNavigate();
     const immichUser = useSseSelector(state => state.immichUserMe)
 
     const headerHeight = isMobile ? theme.layout.headerMobile : theme.layout.headerDesktop;
+
+
+    const importDevices = useSseSelector(state => state.importDevices) || {};
+
+    const isImporting = Object.values(importDevices).some(
+        device => device.state !== "Completed" && device.state !== "Canceled"
+    );
+
+    const activeUploadProgress = useSseSelector(
+        state => state.activeUploadProgress
+    );
+
+    const isUploading = Object.values(activeUploadProgress).some(
+        upload => upload.state === "Running"
+    );
+
 
     return (
         <AppBar position="fixed" elevation={0} sx={{
@@ -39,13 +59,29 @@ export default function Header({ onToggleSidebar }: { onToggleSidebar: () => voi
                 )}
 
                 {/* Logo-wrapper */}
-                <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: "-0.5px" }}>
-                        Kammich
-                    </Typography>
+                <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", gap: 1 }}>
+                    <KammichIcon sx={{ fontSize: 52 }} />
+                    <Box sx={{ display: "flex", alignItems: "center", height: 52, marginTop: 0.5 }}>
+                        <Typography
+                            variant="h6"
+                            sx={{ fontWeight: 600, letterSpacing: "-0.5px" }}
+                        >
+                            Kammich
+                        </Typography>
+                    </Box>
                 </Box>
 
-                <ImportIndicator />
+                {isUploading && (
+                    <IconButton onClick={() => navigate("/upload")}>
+                        <AnimatedUploadIcon fontSize="medium" accentColor={theme.palette.primary.main} />
+                    </IconButton>
+                )}
+
+                {isImporting && (
+                    <IconButton onClick={() => navigate("/import")}>
+                        <FilmRollIcon fontSize="medium" />
+                    </IconButton>
+                )}
 
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -59,13 +95,14 @@ export default function Header({ onToggleSidebar }: { onToggleSidebar: () => voi
 
                     <Box sx={{ display: "flex", flexDirection: "row", flexWrap: "nowrap", maxHeight: `${headerHeight}px`, alignContent: "center", alignItems: "center", ml: 1 }}>
                         {!immichUser ? (
-                            <IconButton onClick={() => naviage("/settings/immich")}>
+                            <IconButton onClick={() => navigate("/settings/immich")}>
                                 <ImmichLoginBadge />
                             </IconButton>
                         ) : (
                             <Avatar
                                 src={`/api/v1/immich/profile-image?userId=${immichUser.id}`}
-                                sx={{ width: 32, height: 32 }}
+                                sx={{ width: 32, height: 32, cursor: "pointer" }}
+                                onClick={() => navigate(`/settings/immich/me`)}
                             >
                                 {immichUser.name?.[0]}
                             </Avatar>

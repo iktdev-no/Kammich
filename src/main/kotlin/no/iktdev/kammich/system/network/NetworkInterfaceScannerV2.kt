@@ -1,8 +1,10 @@
 package no.iktdev.kammich.system.network
 
+import no.iktdev.kammich.models.internal.network.NmCliDevice
 import no.iktdev.kammich.models.internal.network.NmCliDeviceType
 import no.iktdev.kammich.models.shared.network.*
 import no.iktdev.kammich.sse.SseManager
+import no.iktdev.kammich.sse.events.networking.SSEEthernetConnection
 import no.iktdev.kammich.sse.events.networking.SSEWifiConnection
 import no.iktdev.kammich.sse.events.networking.SSEWifiInterfaceClient
 import no.iktdev.kammich.sse.events.networking.SSEWifiInterfaceTether
@@ -14,166 +16,190 @@ import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.time.Duration
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
-import kotlin.concurrent.thread
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+@OptIn(ExperimentalAtomicApi::class)
 @Service
 class NetworkInterfaceScannerV2(
     private val nmcliAL: INmcliAL,
     private val iwAL: IIwAL,
     private val reg: NetworkInterfaceRegistryV2,
-    private val connService: WifiConnectionServiceV2,
-    private val tetherServiceV2: WifiTetherServiceV2,
+    private val wifiConn: WifiConnectionServiceV2,
+    private val wifiTether: WifiTetherServiceV2,
+    private val ethernetService: EthernetConnectionService,
     private val sseManager: SseManager
-) {
+) : NmcliMonitor.NmcliMonitorListener {
     private val log = LoggerFactory.getLogger(javaClass)
     private val ignoredTypes = setOf(NmCliDeviceType.Loopback, NmCliDeviceType.Wifi_p2p)
 
-    // Cacher for å hindre duplikate meldinger ut på SSE
-    private val lastConnectionCache = ConcurrentHashMap<String, WifiInterfaceClient>()
-    private val lastTetherCache = ConcurrentHashMap<String, WifiInterfaceTether>()
+    private val lastScan = AtomicReference<Instant?>(null)
+    private val scanRunning = AtomicBoolean(false)
+
+    companion object {
+        private const val SCAN_INTERVAL_SECONDS = 30L
+        private const val ALIVE_TIMEOUT_SECONDS = SCAN_INTERVAL_SECONDS * 2
+    }
+
+    fun isAlive(): Boolean {
+        val last = lastScan.load() ?: return false
+
+        return Duration.between(last, Instant.now()).seconds <
+                ALIVE_TIMEOUT_SECONDS
+    }
+
+    fun getLastScan(): Instant? = lastScan.load()
 
     @EventListener(ApplicationReadyEvent::class)
     fun onStartup() {
-        scan()
-        startListening()
+        requestScan()
     }
 
-    private fun startListening() {
-        thread(start = true, name = "nmcli-monitor-thread") {
-            val minIntervalMs = 4000L
-            val lastScanTime = AtomicLong(0L)
+    override fun onNetworkManagerEvent(event: String) {
+        log.info("NetworkManager event: {}", event)
+        requestScan()
+    }
 
-            try {
-                val process = ProcessBuilder("nmcli", "monitor").redirectErrorStream(true).start()
-                val reader = BufferedReader(InputStreamReader(process.inputStream))
+    @Scheduled(
+        fixedRate = SCAN_INTERVAL_SECONDS * 1000,
+        initialDelay = 10_000
+    )
+    fun scheduledScan() {
+        requestScan()
+    }
 
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    if (!line.isNullOrBlank()) {
-                        val now = System.currentTimeMillis()
-                        val last = lastScanTime.get()
+    private fun requestScan() {
+        if (!scanRunning.compareAndSet(false, true)) {
+            log.info("Blocking scan, due to already running")
+            return
+        }
 
-                        if (now - last > minIntervalMs) {
-                            if (lastScanTime.compareAndSet(last, now)) {
-                                log.debug("Nmcli monitor event trigget ny scan og state-synk: $line")
-                                scan()
-                            }
-                        } else {
-                            log.trace("Nmcli monitor event ignorert (throttlet): $line")
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                log.error("Feil i nmcli monitor-lytter", e)
-            }
+        try {
+            lastScan.store(Instant.now())
+            scan()
+        } finally {
+            scanRunning.set(false)
         }
     }
 
-    @Scheduled(fixedRate = 30000)
     fun scan() {
-        //log.info("Scanning network interface og synkroniserer state")
+        log.debug("Scanning for network interface")
         val devices = nmcliAL.getDevices()
-
-        devices
             .filter { it.ifType !in ignoredTypes }
-            .forEach { device ->
-                val ifName = device.ifName
-                val mac = nmcliAL.getDeviceHWADDR(ifName) ?: "unknown"
 
-                val connName = nmcliAL.getConnectionName(ifName)
-                val wirelessMode = connName?.let { nmcliAL.getWirelessMode(it) }
+        val wifiInterfaces = devices.filter { it.ifType == NmCliDeviceType.Wifi }
+            .map { handleWifiInterfaces(it) }
+            .onEach {
+                reg.registerOrUpdate(it)
+                updateOrSetWifi(it)
+            }
 
-                val mode = when {
-                    device.isExternal -> NetworkInterfaceMode.External
-                    wirelessMode == InterfaceMode.Tether -> NetworkInterfaceMode.Tether
-                    wirelessMode == InterfaceMode.Client -> NetworkInterfaceMode.Client
-                    device.state.org == "connected" -> NetworkInterfaceMode.Client
-                    else -> NetworkInterfaceMode.Idle
-                }
-
-                val networkInterface = when (device.ifType) {
-                    NmCliDeviceType.Wifi -> {
-                        val phy = iwAL.getPhysicalInterfaces(ifName)
-                        val caps = phy?.let { iwAL.getWirelessCapabilities(it) } ?: emptySet()
-
-                        WirelessNetworkInterface(
-                            interfaceName = ifName,
-                            macAdress = mac,
-                            mode = mode,
-                            caps = caps
-                        )
-                    }
-                    NmCliDeviceType.Ethernet -> {
-                        EthernetNetworkInterface(
-                            interfaceName = ifName,
-                            macAdress = mac,
-                            mode = mode
-                        )
-                    }
-                    else -> null
-                }
-
-                if (networkInterface != null) {
-                    reg.registerOrUpdate(networkInterface)
-                    updateOrSet(networkInterface.interfaceName)
-                }
+        val ethInterfaces = devices.filter { it.ifType == NmCliDeviceType.Ethernet }
+            .map { handleEthernetInterfaces(it) }
+            .onEach {
+                reg.registerOrUpdate(it)
+                updateOrSetEthernet(it)
             }
     }
 
-    fun updateOrSet(ifaceName: String) {
-        val connectionStates = connService.getCurrentState()
-        val tetherStates = tetherServiceV2.getCurrentState()
+    private fun handleEthernetInterfaces(iface: NmCliDevice): EthernetNetworkInterface {
+        val ifName = iface.ifName
+        val mac = nmcliAL.getDeviceHWADDR(ifName) ?: "unknown"
 
-        // --- 1. Sjekk Client / Connection ---
-        val currentClient = connectionStates.find { it.name == ifaceName }
-        val cachedClient = lastConnectionCache[ifaceName]
+        val connName = nmcliAL.getConnectionName(ifName)
+        val ethernetMode = connName?.let { nmcliAL.getEthernetMode(it) }
 
-        if (currentClient != cachedClient) {
-            if (currentClient != null) {
-                lastConnectionCache[ifaceName] = currentClient
-            } else {
-                lastConnectionCache.remove(ifaceName)
-            }
-
-            sseManager.send(SSEWifiInterfaceClient(connectionStates))
-
-            // Suppress: Kun send individuell event hvis vi er Connected OG har et gyldig nettverk
-            val payload = currentClient?.let { WifiConnection(it.name, it.state, it.network) }
-            val isConnectedWithNetwork = payload?.state == WifiConnectionStateType.Connected && payload.network != null
-
-            // Hvis det ikke er Connected, eller hvis det er Connected men mangler nettverk,
-            // så sender vi den likevel dersom tilstanden har endret seg til f.eks Disconnected.
-            // Men vi unngår "tomme" connected-events.
-            if (payload?.state != WifiConnectionStateType.Connected || isConnectedWithNetwork) {
-                sseManager.send(SSEWifiConnection(ifaceName, payload))
-            }
+        val mode = when {
+            iface.isExternal -> NetworkInterfaceMode.External
+            ethernetMode == InterfaceMode.Tether -> NetworkInterfaceMode.Tether
+            ethernetMode == InterfaceMode.Client -> NetworkInterfaceMode.Client
+            iface.state.org == "connected" -> NetworkInterfaceMode.Client
+            else -> NetworkInterfaceMode.Idle
         }
 
-        // --- 2. Sjekk Tether ---
-        val currentTether = tetherStates.find { it.name == ifaceName }
-        val cachedTether = lastTetherCache[ifaceName]
+        return EthernetNetworkInterface(
+            interfaceName = ifName,
+            macAdress = mac,
+            mode = mode
+        )
+    }
 
-        if (currentTether != cachedTether) {
-            if (currentTether != null) {
-                lastTetherCache[ifaceName] = currentTether
-            } else {
-                lastTetherCache.remove(ifaceName)
+    private fun handleWifiInterfaces(iface: NmCliDevice): WirelessNetworkInterface {
+        val ifName = iface.ifName
+        val mac = nmcliAL.getDeviceHWADDR(ifName) ?: "unknown"
+
+        val connName = nmcliAL.getConnectionName(ifName)
+        val wirelessMode = connName?.let { nmcliAL.getWirelessMode(it) }
+
+        val mode = when {
+            iface.isExternal -> NetworkInterfaceMode.External
+            wirelessMode == InterfaceMode.Tether -> NetworkInterfaceMode.Tether
+            wirelessMode == InterfaceMode.Client -> NetworkInterfaceMode.Client
+            iface.state.org == "connected" -> NetworkInterfaceMode.Client
+            else -> NetworkInterfaceMode.Idle
+        }
+
+        val phy = iwAL.getPhysicalInterfaces(ifName)
+        val caps = phy?.let { iwAL.getWirelessCapabilities(it) } ?: emptySet()
+
+        return WirelessNetworkInterface(
+            interfaceName = ifName,
+            macAdress = mac,
+            mode = mode,
+            caps = caps
+        )
+    }
+
+    private fun updateOrSetWifi(iface: WirelessNetworkInterface) {
+        val ifaceName = iface.interfaceName
+
+        when (iface.mode) {
+            NetworkInterfaceMode.Client -> {
+                val states = wifiConn.getCurrentState()
+                val current = states.find { it.name == ifaceName }
+
+                sseManager.send(SSEWifiInterfaceClient(states))
+
+                val payload = current?.let {
+                    WifiConnection(it.name, it.state, it.network)
+                }
+
+                if (payload?.state != WifiConnectionStateType.Connected ||
+                    payload.network != null
+                ) {
+                    sseManager.send(SSEWifiConnection(ifaceName, payload))
+                }
             }
 
-            sseManager.send(SSEWifiInterfaceTether(tetherStates))
+            NetworkInterfaceMode.Tether -> {
+                val states = wifiTether.getCurrentState()
+                val current = states.find { it.name == ifaceName }
 
-            // Suppress: Samme logikk for Tether, kun send payload hvis vi faktisk tetherer (og har nett)
-            // eller hvis vi har gått tilbake til Idle/Error.
-            val payload = currentTether?.let { WifiTether(it.name, it.state, it.network) }
-            val isTetheringWithNetwork = payload?.state == WirelessTetheringState.Tethering && payload.network != null
+                sseManager.send(SSEWifiInterfaceTether(states))
 
-            if (payload?.state != WirelessTetheringState.Tethering || isTetheringWithNetwork) {
-                sseManager.send(SSEWifiTether(ifaceName, payload))
+                val payload = current?.let {
+                    WifiTether(it.name, it.state, it.network)
+                }
+
+                if (payload?.state != WirelessTetheringState.Tethering ||
+                    payload.network != null
+                ) {
+                    sseManager.send(SSEWifiTether(ifaceName, payload))
+                }
             }
+
+            else -> Unit
+        }
+    }
+
+    private fun updateOrSetEthernet(iface: EthernetNetworkInterface) {
+        ethernetService.evaluateInterface(iface.interfaceName)
+        ethernetService.getConnection(iface.interfaceName)?.let {
+            sseManager.send(SSEEthernetConnection(iface.interfaceName, it))
         }
     }
 }

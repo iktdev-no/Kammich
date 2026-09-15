@@ -107,6 +107,18 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
       };
     // ---------------------------------------
 
+    case 'ethernet-connect':
+      const updatedEthConnections = { ...state.ethConnection };
+      if (event.payload === undefined || event.payload === null) {
+        delete updatedEthConnections[event.ifName];
+      } else {
+        updatedEthConnections[event.ifName] = event.payload;
+      }
+      return {
+        ...state,
+        ethConnection: updatedEthConnections,
+      };
+
     case "upload-media-progress":
       return {
         ...state,

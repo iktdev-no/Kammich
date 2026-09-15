@@ -21,20 +21,26 @@ enum class NmCliDeviceType(val org: String) {
     }
 }
 
-enum class NmCliDeviceState(val org: String) {
-    Connected("connected"),
-    Connecting("connecting"),
-    Disconnecting("disconnecting"),
-    Disconnected("disconnected"),
-    Unmanaged("unmanaged"),
-    Unavailable( "unavailable"),
-    Suspending( "suspending"),
-    Suspended( "suspended"),
-    Unknown("unknown");
+enum class NmCliDeviceState(val code: Int, val org: String) {
+    Unmanaged(10, "unmanaged"),
+    Unavailable(20, "unavailable"),
+    Disconnected(30, "disconnected"),
+    Prepare(40, "prepare"),
+    Config(50, "config"),
+    NeedAuth(60, "need-auth"),
+    IpConfig(70, "ip-config"),
+    IpCheck(80, "ip-check"),
+    Secondaries(90, "secondaries"),
+    Activated(100, "activated"),
+    Deactivating(110, "deactivating"),
+    Failed(120, "failed"),
+    Unknown(-1, "unknown");
 
     companion object {
-        fun findBy(name: String): NmCliDeviceState {
-            return NmCliDeviceState.entries.find { it.org.equals(name, ignoreCase = true) } ?: NmCliDeviceState.Unknown
-        }
+        fun findByCode(code: Int): NmCliDeviceState =
+            entries.find { it.code == code } ?: Unknown
+
+        fun findByName(name: String): NmCliDeviceState =
+            entries.find { it.org.equals(name, ignoreCase = true) } ?: Unknown
     }
 }

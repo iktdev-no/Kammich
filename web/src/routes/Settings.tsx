@@ -4,6 +4,7 @@ import { getKammichBackendVersion, requestKammichBackendUpdate } from "../api/re
 import { useSseSelector } from "../sse/useSseSelector";
 import type { AppUpdateProgress, Version } from "../types/types";
 import MadeInNorwayBadge from "../components/icons/MadeInNorway";
+import { KammichIcon } from "../components/icons/Kammich";
 
 export default function Settings() {
     const [version, setVersion] = useState<Version | null>(null);
@@ -53,6 +54,7 @@ export default function Settings() {
                 height: "100%",
             }}
         >
+            <KammichIcon sx={{ fontSize: 252 }} />
             <Box
                 sx={{
                     pt: 5,

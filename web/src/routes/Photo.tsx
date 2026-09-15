@@ -3,8 +3,8 @@ import { Box, Typography, CircularProgress, keyframes, useTheme, useMediaQuery, 
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useParams } from 'react-router-dom';
-import type { RemoteFile } from "../types/types";
-import { getPhotos, getPhotoThumbUrl, getPhotoUrl } from "../api/requests/photo";
+import type { PhotoDevice, RemoteFile } from "../types/types";
+import { getPhotoDevices, getPhotos, getPhotoThumbUrl, getPhotoUrl } from "../api/requests/photo";
 import { uploadFile } from "../api/requests/upload";
 import { useSseSelector } from '../sse/useSseSelector';
 
@@ -21,6 +21,19 @@ export default function Photo() {
     const [page, setPage] = useState(0);
 
     const [selectedPhoto, setSelectedPhoto] = useState<RemoteFile | null>(null);
+    const [photoDevices, setPhotoDevices] = useState<PhotoDevice[]>([]);
+
+    useEffect(() => {
+        getPhotoDevices()
+            .then(data => setPhotoDevices(data))
+            .catch(err => console.error("Klarte ikke å hente foto-enheter:", err));
+    }, []);
+
+    const device = photoDevices.find(d => d.serialNumber === sn);
+
+    const deviceName: string = device
+        ? [device.manufacturer, device.model].filter(Boolean).join(" ") || device.name
+        : sn ?? "";
 
     // State for Context Menu
     const [contextMenu, setContextMenu] = useState<{ mouseX: number; mouseY: number } | null>(null);
@@ -164,7 +177,7 @@ export default function Photo() {
     return (
         <Box sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: 'background.default', minHeight: '100vh', position: 'relative' }}>
             <Typography variant="h4" sx={{ mb: 4, fontWeight: 600, color: 'text.primary' }}>
-                {sn ? `Bibliotek (${sn})` : "Bibliotek"}
+                {sn ? `Bibliotek (${deviceName})` : "Bibliotek"}
             </Typography>
 
             <Box sx={{ display: 'flex', gap: { xs: '8px', sm: '12px' }, alignItems: 'flex-start' }}>

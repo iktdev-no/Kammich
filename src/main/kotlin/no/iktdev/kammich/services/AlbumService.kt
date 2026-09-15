@@ -256,7 +256,7 @@ class AlbumService(
             if (fileEntry != null) {
                 val file = fileEntry.getFile(mediaPath)
                 val useCreatedTime = file.getExifTimestamp() ?: Instant.ofEpochMilli(file.lastModified())
-                log.debug("${file.absolutePath} - ${file.length()} - $useCreatedTime")
+                //log.debug("${file.absolutePath} - ${file.length()} - $useCreatedTime")
                 upload.id to useCreatedTime
             } else {
                 null

@@ -1,4 +1,4 @@
-import type { StorageInfo, Notification, MediaStats, ImportProgressEvent, DeviceImportSummary, ImmichUserMe, ImmichApiKeyPostResponseDto, ImmichAvailability, WifiScanStatus, WifiScanResult, WifiConnection, WifiInterfaceTether, WifiTether, WifiInterfaceClient, UploadProgressEvent, AppUpdateProgress } from "../types/types";
+import type { StorageInfo, Notification, MediaStats, ImportProgressEvent, DeviceImportSummary, ImmichUserMe, ImmichApiKeyPostResponseDto, ImmichAvailability, WifiScanStatus, WifiScanResult, WifiConnection, WifiInterfaceTether, WifiTether, WifiInterfaceClient, UploadProgressEvent, AppUpdateProgress, EthernetConnection } from "../types/types";
 
 export type SseEvent =
   | { type: 'ping'; timestamp: number }
@@ -25,4 +25,5 @@ export type SseEvent =
   | { type: "immich-availability"; payload: ImmichAvailability }
   | { type: "upload-media-progress"; payload: UploadProgressEvent }
   | { type: "app-updater"; payload: AppUpdateProgress }
+  | { type: "ethernet-connect"; ifName: string; payload: EthernetConnection | undefined }
   ;

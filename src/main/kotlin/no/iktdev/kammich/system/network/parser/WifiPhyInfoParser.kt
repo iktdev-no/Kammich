@@ -1,4 +1,4 @@
-package no.iktdev.kammich.system.network.v1.wifi.parser
+package no.iktdev.kammich.system.network.parser
 
 import no.iktdev.kammich.models.shared.network.WirelessNetworkInterfaceCapability
 

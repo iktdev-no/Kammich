@@ -56,6 +56,7 @@ apt-get install -y \
 ###############################################
 echo "[*] Oppretter persistert lagringsrot..."
 mkdir -p "$MOUNT_ROOT"
+mkdir -p "$APP_DATA_ROOT"
 mkdir -p "$APP_DATA_ROOT/logs"
 
 DEV_USER=${SUDO_USER:-$TARGET_USER}
@@ -245,7 +246,20 @@ chmod +x /usr/local/bin/kammich-eject
 # 8. Sudoers & Network Forwarding
 ###############################################
 cat << EOF > /etc/sudoers.d/kammich
-Cmnd_Alias KAMMICH_ADMIN = /usr/sbin/smartctl, /usr/local/bin/kammich-eject, /usr/bin/xrandr, /usr/bin/xinput, /usr/bin/systemctl poweroff, /usr/bin/systemctl reboot, /usr/bin/systemctl restart kammich-backend.service, /usr/bin/systemctl restart kammich-backend.service --no-block
+Cmnd_Alias KAMMICH_ADMIN = \
+    /usr/sbin/smartctl, \
+    /usr/local/bin/kammich-eject, \
+    /usr/bin/xrandr, \
+    /usr/bin/xinput, \
+    /usr/bin/systemctl poweroff, \
+    /usr/bin/systemctl reboot, \
+    /usr/bin/systemctl restart kammich-backend.service, \
+    /usr/bin/systemctl stop kammich-backend.service, \
+    /usr/bin/systemctl start kammich-backend.service, \
+    /usr/bin/systemctl restart kammich-backend.service --no-block, \
+    /usr/bin/systemctl stop kammich-backend.service --no-block, \
+    /usr/bin/systemctl start kammich-backend.service --no-block
+
 Cmnd_Alias KAMMICH_NETWORK = /usr/bin/systemctl restart hostapd, /usr/bin/systemctl stop hostapd, /usr/bin/systemctl start hostapd, /usr/bin/systemctl status hostapd, /usr/bin/systemctl restart dnsmasq, /usr/sbin/iw, /usr/bin/nmcli, /usr/bin/pkill, /usr/bin/kill, /usr/sbin/ip
 
 $TARGET_USER ALL=(ALL) NOPASSWD: KAMMICH_ADMIN, KAMMICH_NETWORK

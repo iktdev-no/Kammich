@@ -4,20 +4,8 @@ import no.iktdev.kammich.immich.models.AlbumResponseDto
 import no.iktdev.kammich.immich.models.AssetResponseDto
 import no.iktdev.kammich.immich.models.LoginResponseDto
 import no.iktdev.kammich.models.internal.immich.UploadAssetRequest
-import no.iktdev.kammich.models.shared.immich.api.ImmichApiKeyPost
-import no.iktdev.kammich.models.shared.immich.api.ImmichApiKeyPostResponse
-import no.iktdev.kammich.models.shared.immich.api.ImmichApiKeyPostResponseDto
-import no.iktdev.kammich.models.shared.immich.api.ImmichAuthenticationLogin
-import no.iktdev.kammich.models.shared.immich.api.ImmichAuthenticationLoginResponse
-import no.iktdev.kammich.models.shared.immich.api.ImmichServerConfig
-import no.iktdev.kammich.models.shared.immich.api.ImmichServerFeatures
-import no.iktdev.kammich.models.shared.immich.api.ImmichServerStorage
-import no.iktdev.kammich.models.shared.immich.api.ImmichServerVersion
-import no.iktdev.kammich.models.shared.immich.api.ImmichSupportedMediaTypes
-import no.iktdev.kammich.models.shared.immich.api.ImmichUserMe
-import org.springframework.core.io.Resource
-import org.springframework.http.ResponseEntity
-import java.util.UUID
+import no.iktdev.kammich.models.shared.immich.api.*
+import java.util.*
 
 interface ImmichApi {
     fun login(payload: ImmichAuthenticationLogin): LoginResponseDto

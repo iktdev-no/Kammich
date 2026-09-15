@@ -1,8 +1,9 @@
-package no.iktdev.kammich.system.network.v1.wifi.strategy.scan
+package no.iktdev.kammich.system.network.strategy.scan
 
 import no.iktdev.kammich.models.internal.network.WifiScanState
 import no.iktdev.kammich.system.SysCommand
-import no.iktdev.kammich.system.network.v1.wifi.parser.WifiScanResultParser
+import no.iktdev.kammich.system.network.parser.WifiScanResultParser
+import no.iktdev.kammich.system.network.v1.wifi.strategy.scan.WifiScanStrategy
 import org.slf4j.LoggerFactory
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component

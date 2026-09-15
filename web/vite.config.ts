@@ -46,12 +46,12 @@ export default defineConfig({
 
     proxy: {
       '/api': {
-        target: 'http://192.168.2.22:8080',
+        target: 'http://koya.tail2f4332.ts.net:8080',
         changeOrigin: true,
         secure: false,
       },
       '/sse': {
-        target: 'http://192.168.2.22:8080',
+        target: 'http://koya.tail2f4332.ts.net:8080',
         changeOrigin: true,
         secure: false,
       }

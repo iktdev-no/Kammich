@@ -5,7 +5,9 @@ import no.iktdev.kammich.database.tables.ImmichAuthenticationTable.toPersistedAp
 import no.iktdev.kammich.database.tables.ImmichUsersTable
 import no.iktdev.kammich.database.tables.ImmichUsersTable.toPersistedImmichUser
 import no.iktdev.kammich.database.withTransaction
+import no.iktdev.kammich.immich.IImmichApiClient
 import no.iktdev.kammich.immich.ImmichApi
+import no.iktdev.kammich.immich.ImmichApiClient
 import no.iktdev.kammich.immich.ImmichRepository
 import no.iktdev.kammich.immich.client.ImmichClientFactory
 import no.iktdev.kammich.immich.context.ImmichServerContext
@@ -257,4 +259,23 @@ class ImmichContextService(
 
         return verified
     }
+
+fun SavedSession.toClient(): ImmichApi {
+        return immichClientFactory.create(this.serverUrl)
+    }
+
+    fun getClient(userId: UUID): ImmichApi? {
+        return findSessionsByUserId(userId)?.toClient()
+    }
+
+    /**
+     * Returns an authenticated client using the user's API key.
+     */
+    fun getAKClient(userId: UUID): IImmichApiClient? =
+        findSessionsByUserId(userId)?.let {
+            ImmichApiClient(
+                client = immichClientFactory.create(it.serverUrl),
+                apiKey = it.apiKey
+            )
+        }
 }

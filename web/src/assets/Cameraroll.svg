@@ -1,0 +1,51 @@
+<svg width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink">
+    <defs>
+        <!-- Klippemaske: Skjuler filmstrimmelen bak telefonen, slik at den "trekkes ut" fra midten av skjermen -->
+        <clipPath id="phone-clip">
+            <rect x="42" y="0" width="58" height="100" />
+        </clipPath>
+
+        <!-- Myk fade-out mot høyre kant -->
+        <linearGradient id="fade-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="white" stop-opacity="1" />
+            <stop offset="65%" stop-color="white" stop-opacity="1" />
+            <stop offset="100%" stop-color="white" stop-opacity="0" />
+        </linearGradient>
+
+        <mask id="fade-mask">
+            <rect x="0" y="0" width="100" height="100" fill="url(#fade-grad)" />
+        </mask>
+
+        <!-- Din originale film-path, skalert og rotert fast 90 grader -->
+        <g id="film-unit">
+            <path transform="translate(0, 24) rotate(-90)"
+                d="M18,3L18,5L16,5L16,3L8,3L8,5L6,5L6,3L4,3L4,21L6,21L6,19L8,19L8,21L16,21L16,19L18,19L18,21L20,21L20,3L18,3ZM8,17L6,17L6,15L8,15L8,17ZM8,13L6,13L6,11L8,11L8,13ZM8,9L6,9L6,7L8,7L8,9ZM18,17L16,17L16,15L18,15L18,17ZM18,13L16,13L16,11L18,11L18,13ZM18,9L16,9L16,7L18,7L18,9Z"
+                fill="currentColor" />
+        </g>
+    </defs>
+
+    <!-- ANIMERT FILMRULL -->
+    <g clip-path="url(#phone-clip)" mask="url(#fade-mask)">
+        <g transform="translate(0, 20) scale(2.5)">
+            <g>
+                <!-- Forflytter filmkjeden eksakt én ikonbredde (18px) for perfekt endless loop -->
+                <animateTransform attributeName="transform" type="translate" from="0, 0" to="18, 0" dur="0.8s"
+                    repeatCount="indefinite" />
+
+                <!-- Sammenhengende kjede uten glipp (18px avstand mellom hver) -->
+                <use href="#film-unit" x="-18" y="0" />
+                <use href="#film-unit" x="0" y="0" />
+                <use href="#film-unit" x="18" y="0" />
+                <use href="#film-unit" x="36" y="0" />
+            </g>
+        </g>
+    </g>
+
+    <!-- DIN ORIGINALE TELEFON (Sentrert i 100x100 kvadratet) -->
+    <g transform="translate(10, 0)">
+        <path
+            d="M59.435,9.441L63.394,9.441C67.5,9.441 70.833,12.774 70.833,16.88L70.833,83.394C70.833,87.5 67.5,90.833 63.394,90.833L31.606,90.833C27.5,90.833 24.167,87.5 24.167,83.394L24.167,16.88C24.167,12.774 27.5,9.441 31.606,9.441L35.565,9.441L35.565,7.199C35.565,5.849 36.661,4.753 38.011,4.753L56.989,4.753C58.339,4.753 59.435,5.849 59.435,7.199L59.435,9.441Z"
+            fill="currentColor" />
+    </g>
+</svg>

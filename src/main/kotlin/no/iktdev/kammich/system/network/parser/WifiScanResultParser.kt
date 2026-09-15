@@ -1,4 +1,4 @@
-package no.iktdev.kammich.system.network.v1.wifi.parser
+package no.iktdev.kammich.system.network.parser
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken

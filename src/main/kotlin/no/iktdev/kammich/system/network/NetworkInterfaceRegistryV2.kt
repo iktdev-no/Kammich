@@ -201,12 +201,16 @@ class NetworkInterfaceRegistryV2() {
     }
 
     private fun isModeAllowed(iface: NetworkInterface, mode: NetworkInterfaceMode): Boolean {
-        return when (mode) {
-            NetworkInterfaceMode.Tether -> {
-                val wifi = iface as? WirelessNetworkInterface ?: return false
-                wifi.caps.any { it == WirelessNetworkInterfaceCapability.AP || it == WirelessNetworkInterfaceCapability.Concurrent }
+        return when (iface.type) {
+            NetworkInterfaceType.Wifi -> {
+                if (mode == NetworkInterfaceMode.Tether) {
+                    val wifi = iface as? WirelessNetworkInterface ?: return false
+                    wifi.caps.any { it == WirelessNetworkInterfaceCapability.AP || it == WirelessNetworkInterfaceCapability.Concurrent }
+                } else true
             }
-            else -> true
+            NetworkInterfaceType.Ethernet -> {
+                true
+            }
         }
     }
 

@@ -1,4 +1,4 @@
-package no.iktdev.kammich.controller
+package no.iktdev.kammich.controller.networking.wifi
 
 import no.iktdev.kammich.models.shared.network.WifiInterfaceTether
 import no.iktdev.kammich.models.shared.network.WifiTetherAP

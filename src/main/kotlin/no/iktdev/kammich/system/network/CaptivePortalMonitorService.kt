@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalAtomicApi::class)
+
 package no.iktdev.kammich.system.network
 
 import com.google.gson.Gson
@@ -7,6 +9,11 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.net.HttpURLConnection
 import java.net.URI
+import java.time.Duration.between
+import java.time.Instant
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.time.Duration
 
 @Service
 class CaptivePortalMonitorService(
@@ -15,9 +22,16 @@ class CaptivePortalMonitorService(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val gson = Gson()
+    private val lastCheck = AtomicReference<Instant?>(null)
+
+    companion object {
+        private const val CHECK_INTERVAL_SECONDS = 30L
+        private const val ALIVE_TIMEOUT_SECONDS = CHECK_INTERVAL_SECONDS * 2
+    }
 
     @Scheduled(fixedRate = 30000, initialDelay = 10000)
     fun checkActiveClientInterfaces() {
+        lastCheck.store(Instant.now())
         val clientInterfaces = registryV2.listNetworkInterfaces().filter {
             it.mode == NetworkInterfaceMode.Client
         }
@@ -40,6 +54,15 @@ class CaptivePortalMonitorService(
             }
         }
     }
+
+    fun isAlive(): Boolean {
+        val last = lastCheck.load() ?: return false
+        return between(last, Instant.now()).seconds < ALIVE_TIMEOUT_SECONDS
+    }
+
+    fun getLastCheck(): Instant? { return lastCheck.load() }
+
+
 
     private data class OverlayStatusResponse(val active: Boolean)
 

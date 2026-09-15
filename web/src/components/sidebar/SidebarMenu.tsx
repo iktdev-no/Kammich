@@ -27,6 +27,10 @@ import type { ImmichUserAccesses, PhotoDevice } from "../../types/types";
 import ImmichIcon from "../icons/ImmichIcon";
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
+import TailscaleIcon from "../icons/TailscaleIcon";
+import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet';
+import InfoIcon from '@mui/icons-material/Info';
+
 
 export interface SidebarMenuProps {
     width: number;
@@ -108,7 +112,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
         {
             label: "Settings",
             icon: SettingsIcon,
-            to: "/settings",
+            to: "/settings/info",
             sx: { marginTop: "auto" }
         },
 
@@ -120,6 +124,11 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             label: "Back",
             icon: ArrowBackRoundedIcon,
             to: "/",
+        },
+        {
+            label: "Info",
+            icon: InfoIcon,
+            to: "/settings/info",
         },
         {
             label: "Immich",
@@ -156,12 +165,22 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
                 {
                     label: "Wifi",
                     icon: WifiIcon,
-                    to: "/settings/wifi"
+                    to: "/settings/networking/wifi"
                 },
                 {
                     label: "Tether",
                     icon: WifiTetheringIcon,
-                    to: "/settings/ap"
+                    to: "/settings/networking/ap"
+                },
+                {
+                    label: "Ethernet",
+                    icon: SettingsEthernetIcon,
+                    to: "/settings/networking/ethernet"
+                },
+                {
+                    label: "Tailscale",
+                    icon: TailscaleIcon,
+                    to: "/settings/networking/tailscale"
                 }
             ]
         },

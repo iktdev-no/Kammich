@@ -2,7 +2,7 @@ package no.iktdev.kammich.system.network.al
 
 import no.iktdev.kammich.models.shared.network.WirelessNetworkInterfaceCapability
 import no.iktdev.kammich.system.SysCommand
-import no.iktdev.kammich.system.network.v1.wifi.parser.WifiPhyInfoParser
+import no.iktdev.kammich.system.network.parser.WifiPhyInfoParser
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 

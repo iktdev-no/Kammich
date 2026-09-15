@@ -6,6 +6,9 @@ import no.iktdev.kammich.models.shared.Verification
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * @param id Long ID from database table
+ */
 data class PersistedUploadFile(
     val id: Long,
     val uploadJobId: UUID?,

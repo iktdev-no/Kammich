@@ -8,13 +8,14 @@ data class UploadProgressEvent(
     val successfulFiles: Int,
     val failedFiles: Int,
     val items: List<UploadMediaItem>,
-    val state: JobStatus // f.eks. RUNNING, COMPLETED, FAILED
+    val state: UploadJobStatus // f.eks. RUNNING, COMPLETED, FAILED
 )
 
 data class UploadMediaItem(
     val fileName: String,
     val fileSize: Long,
-    val state: UploadState,
+    val upload: UploadState,
+    val verification: Verification
 )
 
 enum class UploadState {
@@ -25,12 +26,18 @@ enum class UploadState {
 }
 
 
-enum class JobStatus {
-    Running, Completed, Failed
+enum class UploadJobStatus {
+    Queued,
+    Running,
+    Stopped,
+    Completed,
+    Failed,
+    Cancelled
 }
 
 enum class Verification {
     Verified,
+    Verifying,
     NotVerified,
     Failed
 }

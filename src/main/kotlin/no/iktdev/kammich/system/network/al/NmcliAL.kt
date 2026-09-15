@@ -20,7 +20,7 @@ class NmcliAL(private val exec: SysCommand) : INmcliAL {
 
     private fun toState(state: String): NmCliDeviceState {
         val useState = state.split(" ").first()
-        return NmCliDeviceState.findBy(useState)
+        return NmCliDeviceState.findByName(useState)
     }
 
     private fun isExternal(state: String): Boolean {
@@ -29,12 +29,24 @@ class NmcliAL(private val exec: SysCommand) : INmcliAL {
     }
 
 
+    override fun isDeviceManaged(ifName: String): Boolean {
+        val out = exec.nonSudo(
+            "nmcli", "-t", "-f", "GENERAL.NM-MANAGED",
+            "device", "show", ifName
+        ).getOrNull() ?: return false
+
+        return out
+            .substringAfter("GENERAL.NM-MANAGED:", "")
+            .trim()
+            .equals("yes", ignoreCase = true)
+    }
+
     override fun getDevices(): List<NmCliDevice> {
         val out = exec.nonSudo("nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device").getOrNull() ?: run {
             log.error("Could not get devices")
             return emptyList()
         }
-        return out.lines().filter { it.isNotBlank() }.map { it.split(":") }
+        return out.lines().asSequence().filter { it.isNotBlank() }.map { it.split(":") }
             .filter { it.size >= 3 }
             .map { (name, type, state) ->
                 NmCliDevice(
@@ -44,6 +56,7 @@ class NmcliAL(private val exec: SysCommand) : INmcliAL {
                     isExternal(state),
                 )
             }
+            .filter { !it.ifName.startsWith("veth") }.toList()
     }
 
     override fun getDeviceHWADDR(ifName: String): String? {
@@ -80,6 +93,40 @@ class NmcliAL(private val exec: SysCommand) : INmcliAL {
         }
     }
 
+    override fun getEthernetMode(connectionName: String): InterfaceMode? {
+        val out = exec.nonSudo(
+            "nmcli",
+            "-t",
+            "-f", "ipv4.method",
+            "connection",
+            "show",
+            connectionName
+        ).getOrNull() ?: run {
+            log.error("Could not get Ethernet connection mode")
+            return null
+        }
+
+        val method = out
+            .substringAfter("ipv4.method:")
+            .trim()
+            .lowercase()
+
+        return when (method) {
+            "auto" -> InterfaceMode.Client
+            "shared" -> InterfaceMode.Tether
+            "manual", "disabled", "link-local" -> InterfaceMode.Idle
+            else -> {
+                log.warn(
+                    "Unknown Ethernet IPv4 method '{}' for connection '{}'",
+                    method,
+                    connectionName
+                )
+                InterfaceMode.Idle
+            }
+        }
+    }
+
+
     override fun deleteConnection(connectionName: String): Boolean {
         return exec.sudo("nmcli", "con", "delete", connectionName).isSuccess()
     }
@@ -87,6 +134,78 @@ class NmcliAL(private val exec: SysCommand) : INmcliAL {
     override fun setAutoConnect(connectionName: String, autoConnect: Boolean): Boolean {
         val useValue = if (autoConnect) "yes" else "no"
         return exec.sudo("nmcli", "con", "modify", connectionName, "connection.autoconnect", useValue).isSuccess()
+    }
+
+    override fun getConnectionIpv4Address(
+        connectionName: String
+    ): String? {
+        val out = exec.nonSudo(
+            "nmcli",
+            "-t",
+            "-f", "ipv4.addresses",
+            "connection",
+            "show",
+            connectionName
+        ).getOrNull() ?: return null
+
+        return out
+            .substringAfter("ipv4.addresses:", "")
+            .trim()
+            .takeIf { it.isNotBlank() }
+    }
+
+    override fun getDeviceIpv4Address(interfaceName: String): String? {
+        val result = exec.sudo("nmcli", "-t", "-f", "IP4.ADDRESS", "device", "show", interfaceName)
+        if (!result.isSuccess()) return null
+
+        return result.getOrNull()
+            ?.lineSequence()
+            ?.map { it.trim() }
+            ?.firstOrNull { it.startsWith("IP4.ADDRESS") }
+            ?.substringAfter(":")
+            ?.substringBefore("/")
+            ?.takeIf { it.isNotBlank() }
+    }
+
+    override fun createEthernetHostConnection(
+        ifName: String,
+        connectionName: String,
+        ipAddress: String,
+        prefix: Int,
+        autoConnect: Boolean
+    ): SysCommand.Result {
+        val autoConnectValue = if (autoConnect) "yes" else "no"
+
+        val command = mutableListOf(
+            "nmcli", "con", "add",
+            "type", "ethernet",
+            "ifname", ifName,
+            "con-name", connectionName,
+            "ipv4.method", "shared",
+            "ipv4.addresses", "$ipAddress/$prefix",
+            "connection.autoconnect", autoConnectValue
+        )
+
+        return exec.sudo(*command.toTypedArray())
+    }
+
+    override fun createEthernetClientConnection(
+        ifName: String,
+        connectionName: String,
+        autoConnect: Boolean
+    ): SysCommand.Result {
+        val autoConnectValue = if (autoConnect) "yes" else "no"
+
+        val command = listOf(
+            "nmcli", "con", "add",
+            "type", "ethernet",
+            "ifname", ifName,
+            "con-name", connectionName,
+            "ipv4.method", "auto",
+            "connection.autoconnect", autoConnectValue
+        )
+
+        return exec.sudo(*command.toTypedArray())
     }
 
     override fun createWifiClientConnection(
@@ -160,7 +279,7 @@ class NmcliAL(private val exec: SysCommand) : INmcliAL {
     }
 
     override fun connect(connectionName: String): SysCommand.Result {
-        return exec.sudo("nmcli", "con", "up", connectionName)
+        return exec.sudo("nmcli", "--wait", "0" , "con", "up", connectionName)
     }
 
     override fun dropConnection(connectionName: String): Boolean {
@@ -233,6 +352,53 @@ class NmcliAL(private val exec: SysCommand) : INmcliAL {
             log.error("Kunne ikke parse wifi-linje: :$line:", e)
             null
         }
+    }
+
+    override fun hasEthernetCarrier(ifName: String): Boolean {
+        val out = exec.nonSudo(
+            "nmcli",
+            "-t",
+            "-f", "WIRED-PROPERTIES.CARRIER",
+            "device",
+            "show",
+            ifName
+        ).getOrNull() ?: run {
+            log.error("Unable to get wired carrier prop")
+            return false
+        }
+
+        return when (
+            out.substringAfter("WIRED-PROPERTIES.CARRIER:", "")
+                .trim()
+                .lowercase()
+        ) {
+            "on", "yes", "true", "1" -> true
+            "off", "no", "false", "0" -> false
+            else -> run {
+                log.error("Unable to identify wired carrier prop state")
+                false
+            }
+        }
+    }
+
+    override fun getDeviceState(ifName: String): NmCliDeviceState {
+        val out = exec.nonSudo(
+            "nmcli",
+            "-t",
+            "-f", "GENERAL.STATE",
+            "device",
+            "show",
+            ifName
+        ).getOrNull() ?: return NmCliDeviceState.Unknown
+
+        val code = out
+            .substringAfter("GENERAL.STATE:", "")
+            .substringBefore(" ")
+            .trim()
+            .toIntOrNull()
+            ?: return NmCliDeviceState.Unknown
+
+        return NmCliDeviceState.findByCode(code)
     }
 
 }

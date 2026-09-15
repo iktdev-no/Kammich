@@ -1,4 +1,4 @@
-package no.iktdev.kammich.controller
+package no.iktdev.kammich.controller.networking
 
 import no.iktdev.kammich.models.shared.network.NetworkInterface
 import no.iktdev.kammich.system.network.NetworkInterfaceRegistryV2
