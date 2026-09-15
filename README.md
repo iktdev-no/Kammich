@@ -1,6 +1,8 @@
 # Kammich
 
-![Project Logo](web/public/kammich.svg)
+<p align="center">
+  <img src="web/public/kammich.svg" width="200" alt="Kammich">
+</p>
 
 **A dedicated camera-to-Immich ingest station.**
 
