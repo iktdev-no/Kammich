@@ -1,0 +1,190 @@
+{
+    "common": {
+        "photos": "Bilder",
+        "library": "Bibliotek",
+        "albums": "Album",
+        "devices": "Enheter",
+        "import": "Importering",
+        "ownership": "Eierskap",
+        "upload": "Opplastning",
+        "settings": "Innstillinger",
+        "info": "Info",
+        "back": "Tilbake",
+        "me": "Meg",
+        "users": "Brukere",
+        "access": "Tilgang",
+        "network": "Nettverk",
+        "wifi": "Wifi",
+        "tether": "Tilgangspunkt",
+        "ethernet": "Kablet tilkobling",
+        "tailscale": "Tailscale",
+        "system": "System",
+        "cancel": "Avbryt",
+        "delete": "Slett",
+        "unexpected_error": "En uventet feil oppstod",
+        "system_permission_error1": "Klarte ikke å hente systemtillatelser.",
+        "save": "Lagre",
+        "save_changes": "Lagre endringer",
+        "use": "Bruk",
+        "upload_image": "Last opp bilde"
+    },
+    "notifications": {
+        "title": "Notifikasjoner",
+        "empty": "Ingen nye varsler",
+        "dismiss_all": "Fjern alle",
+        "notificationKeys": {
+            "ImportCompleted": {
+                "title": "Import ferdig",
+                "message": "Importerte {{ImportedCount}} filer fra {{ModelManufacturer}} ({{DeviceName}}). {{ImportFailedCount}} feilet."
+            },
+            "ImportFailed": {
+                "title": "Import feilet",
+                "message": "Ingen filer ble importert fra {{ModelManufacturer}} ({{DeviceName}}). {{ImportFailedCount}} filer feilet."
+            },
+            "ImportNoNewFiles": {
+                "title": "Ingen nye filer",
+                "message": "Alle filer fra {{ModelManufacturer}} ({{DeviceName}}) er allerede importert."
+            },
+            "ImportDeviceNotFullyAdded": {
+                "title": "Enhet ikke konfigurert",
+                "message": "Enheten {{ModelManufacturer}} ({{DeviceName}}) er ikke registrert i systemet. Koble enheten fra og prøv på nytt."
+            },
+            "CameraDisconnected": {
+                "title": "Kamera frakoblet",
+                "message": "{{ModelManufacturer}} ({{DeviceName}}) ble frakoblet under import. {{ExceptionMessageRaw}}"
+            },
+            "CameraCleanupCompleted": {
+                "title": "Kameraopprydding ferdig",
+                "message": "Slettet {{DeletedCount}} filer fra {{ModelManufacturer}} ({{DeviceName}})."
+            },
+            "CameraCleanupFailed": {
+                "title": "Kameraopprydding feilet",
+                "message": "Slettet {{DeletedCount}} av {{TotalCount}} filer fra {{ModelManufacturer}} ({{DeviceName}}). {{FailedCount}} feilet og {{RemainingCount}} gjenstår."
+            },
+            "CameraConnected": {
+                "title": "Kamera tilkoblet",
+                "message": "{{ModelManufacturer}} ({{DeviceName}}) er tilkoblet."
+            },
+            "CameraCleanupNoFiles": {
+                "title": "Ingen filer å slette",
+                "message": "Ingen filer ventet på sletting fra {{ModelManufacturer}} ({{DeviceName}})."
+            },
+            "CameraCleanupDisconnected": {
+                "title": "Kamera frakoblet",
+                "message": "{{ModelManufacturer}} ({{DeviceName}}) ble frakoblet under sletting."
+            },
+            "CameraDCIMMissing": {
+                "title": "DCIM-mappe mangler",
+                "message": "Fant ikke DCIM-mappen på {{ModelManufacturer}} ({{DeviceName}})."
+            },
+            "SystemCreationFailureFolder": {
+                "title": "Kunne ikke opprette mappe",
+                "message": "Kunne ikke opprette mappen {{Path}}."
+            },
+            "SystemWriteFailureFolder": {
+                "title": "Mappe kan ikke skrives til",
+                "message": "Mappen {{Path}} kan ikke skrives til."
+            },
+            "SystemUnknownFailureFolder": {
+                "title": "Ukjent mappefeil",
+                "message": "Det oppstod en ukjent feil med mappen {{Path}}."
+            },
+            "ImportJobClaimFailed": {
+                "title": "Kunne ikke ta eierskap av import-jobb",
+                "message": "Klarte ikke å registrere eierskap for import-jobb {{JobId}}."
+            }
+        }
+    },
+    "settings": {
+        "info": {
+            "version": "Versjon",
+            "new_version": "Ny versjon tilgjengelig",
+            "update_to": "Oppdater til",
+            "update_failed": "Oppdateringen feilet",
+            "auto_update_na": "Automatisk oppdatering er ikke tilgjengelig",
+            "downloading_update": "Laster ned oppdatering...",
+            "update_checking": "Sjekker setter oppdateringer..",
+            "verify_checking": "Verifiserer oppdatering",
+            "replacing_checking": "Installerer oppdateringen",
+            "reboot_startfromScratch": "Starter Kammich på nytt"
+        },
+        "language": {
+            "title": "Language",
+            "current": "English",
+            "norwegian": "Norwegian",
+            "english": "English"
+        }
+    },
+    "network": {
+        "wifi_title": "WiFi Innstillinger",
+        "searching": "Søker...",
+        "search": "Søk",
+        "wifi_available": "Tilgjengelige trådløse nettverk",
+        "wifi_no_network": "Ingen andre trådløse nettverk ble funnet.",
+        "hidden_show": "Vis skjulte nettverk",
+        "hidden_hide": "Skjul skjulte nettverk",
+        "tether_title": "Tilgangspunkt Innstillinger",
+        "tether_no_configured": "Ingen grensesnitt konfigurert",
+        "tether_wifi_settings": {
+            "title": "Wifi Nettverks innstillinger",
+            "password": "Passord",
+            "security": "Sikkerhet"
+        },
+        "tether_modes": "AP Mode: Declares if we found support to host a wifi network from this device.\n\nConcurrent mode: Declares if we found support to host a wifi network from this device as well as being able to connect to a separate wifi network simultaneously."
+    },
+    "immich": {
+        "my_profile": "Min profil"
+    },
+    "album": {
+        "title": "Albums",
+        "dialog": {
+            "new": "Nytt album",
+            "edit": "Rediger album",
+            "title_input": "Tittel",
+            "description_input": "Beskrivelse",
+            "startdate_input": "Startdato",
+            "enddate_input": "Sluttdato",
+            "create": "Opprett",
+            "create_album": "Opprett album"
+        },
+        "no_albums": "Ingen album..",
+        "fetching": "Henter album"
+    },
+    "devices": {
+        "title": "Tilkoblede enheter",
+        "no_devices_connected": "Ingen tilkoblede enheter eller kameraer"
+    },
+    "import": {
+        "title": "Media importering",
+        "active": "Aktive pågående importeringer",
+        "no_active": "Ingen aktive importeringer for øyeblikket"
+    },
+    "ownership": {
+        "title": "Eierskap & Administrasjon",
+        "body": "Knytt enheter og import-jobber til din brukerprofil for å administere tilgang og opplastning",
+        "available_devices": "Tilgjengelige enheter",
+        "import_jobs": "Import-jobber",
+        "owned": "Eies",
+        "available": "Tilgjengelig",
+        "no_devices_found": "Ingen enheter ble funnet"
+    },
+    "system": {
+        "title": "Systemstyring",
+        "body": "Administrer maskinens strømtilstand (omstart og avslutning)",
+        "actions": {
+            "title": "Handlinger",
+            "body": "Disse handlingene påvirker hele serveren/maskinen. Vær forsiktig",
+            "shutdown": "Slå av maskinen",
+            "shutdown_confirm": "Bekreft avslutning",
+            "reboot": "Start på nytt",
+            "reboot_confirm": "Bekreft omstart",
+            "confirm": {
+                "title": "Bekreft",
+                "reboot": "Er du sikker på at du vil starte maskinen på nytt?\n Alle aktive tjenester vil bli avbrutt midlertidig.",
+                "shutdown": "Er du sikker på at du vil slå av maskinen?\n Maskinen vil bli utilgjengelig til den startes fysisk igjen.",
+                "executes": "Utfører.."
+            },
+            "not_permitted": "Du har ikke tilstrekkelige tillatelser til å utføre strømhandlinger på denne maskinen."
+        }
+    }
+}

@@ -16,6 +16,8 @@ import no.iktdev.kammich.models.FileType.OTHER
 import no.iktdev.kammich.models.FileType.VIDEO
 import no.iktdev.kammich.models.NotificationDismissed
 import no.iktdev.kammich.models.shared.Notification
+import no.iktdev.kammich.models.shared.NotificationKey
+import no.iktdev.kammich.models.shared.NotificationMessageArgKey
 import no.iktdev.kammich.models.shared.NotificationType
 import no.iktdev.kammich.models.shared.Severity
 import no.iktdev.kammich.models.shared.deletion.DeleteState
@@ -35,6 +37,9 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.util.UUID
 
+fun UUID.short(): String {
+    return this.toString().substring(0, 8)
+}
 
 fun String.toMD5(): String {
     return this.toByteArray().let {
@@ -54,19 +59,18 @@ fun File.ensureWritable(eventPublisher: ApplicationEventPublisher, notificationI
 
     System.out.println("Created $created writable: $writable")
 
-
-    val errorMessage = when {
-        !created -> Pair("Unable to create", "Unable to create folder at ${this.absolutePath}")
-        !writable -> Pair("Unusable folder", "Unable to write to folder at ${this.absolutePath}")
+    val errorKey = when {
+        !created -> NotificationKey.SystemCreationFailureFolder
+        !writable -> NotificationKey.SystemWriteFailureFolder
         true -> return this
-        else -> Pair("Unknown failure", "Unable to work at or with folder at ${this.absolutePath}")
+        else -> NotificationKey.SystemUnknownFailureFolder
     }
 
     eventPublisher.publishEvent(
         Notification(
             id = notificationId,
-            title = errorMessage.first,
-            message = errorMessage.second,
+            key = errorKey,
+            messageArgs = mapOf(NotificationMessageArgKey.Path to this.absolutePath),
             severity = Severity.Error,
             dismissable = false,
             type = NotificationType.Alert
@@ -85,15 +89,15 @@ fun File.getFileType(): FileType {
 
 fun ApplicationEventPublisher.infoNotification(
     id: String,
-    title: String,
-    message: String,
+    key: NotificationKey,
+    messageArgs: Map<NotificationMessageArgKey, String>,
     type: NotificationType = NotificationType.Alert
 ) {
     this.publishEvent(
         Notification(
             id = id,
-            title = title,
-            message = message,
+            key = key,
+            messageArgs = messageArgs,
             severity = Severity.Info,
             dismissable = true,
             type = type
@@ -103,15 +107,16 @@ fun ApplicationEventPublisher.infoNotification(
 
 fun ApplicationEventPublisher.warningNotification(
     id: String,
-    title: String,
-    message: String,
+    key: NotificationKey,
+    messageArgs: Map<NotificationMessageArgKey, String>,
+
     type: NotificationType = NotificationType.Alert
 ) {
     this.publishEvent(
         Notification(
             id = id,
-            title = title,
-            message = message,
+            key = key,
+            messageArgs = messageArgs,
             severity = Severity.Warning,
             dismissable = true,
             type = type
@@ -121,15 +126,15 @@ fun ApplicationEventPublisher.warningNotification(
 
 fun ApplicationEventPublisher.errorNotification(
     id: String,
-    title: String,
-    message: String,
+    key: NotificationKey,
+    messageArgs: Map<NotificationMessageArgKey, String>,
     type: NotificationType = NotificationType.Alert
 ) {
     this.publishEvent(
         Notification(
             id = id,
-            title = title,
-            message = message,
+            key = key,
+            messageArgs = messageArgs,
             severity = Severity.Error,
             dismissable = true,
             type = type

@@ -11,6 +11,7 @@ import { cancelImportFor, getHistoricalImports } from "../api/requests/importer"
 import { ImportHistoryList } from "../components/importer/ImportHistory";
 import { useSseSelector } from "../sse/useSseSelector";
 import ImportFileStream from "../components/importer/ImportFileStream";
+import { useTranslation } from "react-i18next";
 
 // --- DELKOMPONENT: Enhetskort ---
 function DeviceImportCard({ deviceId, summary, progressEvent, onCancel }: {
@@ -80,6 +81,7 @@ export function ActiveImportsList({ activeDevices, activeImportsMap, onCancel }:
     activeImportsMap: Record<string, ImportProgressEvent>;
     onCancel: (deviceId: string) => void;
 }) {
+    const { t } = useTranslation()
     const [recentCompleted, setRecentCompleted] = useState<Array<DeviceImportSummary & { totalFiles?: number }>>([]);
 
     const deviceEntries = Object.entries(activeDevices);
@@ -104,7 +106,7 @@ export function ActiveImportsList({ activeDevices, activeImportsMap, onCancel }:
     if (deviceEntries.length === 0 && recentCompleted.length === 0) {
         return (
             <Paper sx={{ p: 3, textAlign: "center", color: "text.secondary", mb: 3 }}>
-                Ingen aktive importer for øyeblikket.
+                {t('import.no_active')}
             </Paper>
         );
     }
@@ -129,6 +131,7 @@ export function ActiveImportsList({ activeDevices, activeImportsMap, onCancel }:
 
 // --- HOVEDKOMPONENT ---
 export function Import() {
+    const { t } = useTranslation()
     const activeImportDevices = useSseSelector(state => state.importDevices || {}) as Record<string, DeviceImportSummary>;
     const activeImportsMap = useSseSelector(state => state.activeMediaImports || {}) as Record<string, ImportProgressEvent>;
 
@@ -156,9 +159,9 @@ export function Import() {
 
     return (
         <Box sx={{ p: 3, maxWidth: 900, mx: "auto" }}>
-            <Typography variant="h4" gutterBottom>Media Import</Typography>
+            <Typography variant="h4" gutterBottom>{t('import.title')}</Typography>
 
-            <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>Aktive pågående importer</Typography>
+            <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>{t('import.active')}</Typography>
             <ActiveImportsList
                 activeDevices={activeImportDevices}
                 activeImportsMap={activeImportsMap}

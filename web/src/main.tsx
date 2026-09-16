@@ -6,6 +6,7 @@ import { SseProvider } from './sse/SseProvider.tsx'
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify'
 import { ColorModeProvider } from './context/ColorModeContext.tsx'
+import './i18n/config';
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>

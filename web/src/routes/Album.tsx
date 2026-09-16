@@ -19,6 +19,7 @@ import { getPhotoUrl } from "../api/requests/photo";
 import { toast } from "react-toastify";
 import { AlbumDialog } from "../components/album/CreateAndEditAlbumDialog";
 import { useSseSelector } from "../sse/useSseSelector";
+import { useTranslation } from "react-i18next";
 
 // --- HOVEDKOMPONENT ---
 export function Album() {
@@ -34,6 +35,8 @@ export function Album() {
 
     // Holder styr på hvilke album som synkroniseres akkurat nå (for animasjons-spinner på knappen)
     const [syncingId, setSyncingId] = useState<number | null>(null);
+
+    const { t } = useTranslation()
 
     const fetchAlbums = async () => {
         try {
@@ -128,7 +131,7 @@ export function Album() {
 
     return (
         <Box sx={{ p: 3, position: 'relative', minHeight: '80vh' }}>
-            <Typography variant="h4" sx={{ mb: 3, fontWeight: 600 }}>Albums</Typography>
+            <Typography variant="h4" sx={{ mb: 3, fontWeight: 600 }}>{t('album.title')}</Typography>
 
             {loading ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 12, color: 'text.secondary' }}>
@@ -149,15 +152,15 @@ export function Album() {
                             <PhotoAlbumIcon color="action" />
                         </Box>
                     </Box>
-                    <Typography variant="h6">Laster inn album...</Typography>
+                    <Typography variant="h6">{t('album.fetching')}</Typography>
                 </Box>
             ) : albums.length === 0 ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 8, color: 'text.secondary' }}>
                     <PhotoAlbumIcon sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
-                    <Typography variant="h6">Ingen album ennå</Typography>
+                    <Typography variant="h6">{t('album.no_albums')}</Typography>
                     {user && (
                         <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditingAlbum(null); setOpenDialog(true); }} sx={{ mt: 3 }}>
-                            Opprett album
+                            {t('album.dialog.create_album')}
                         </Button>
                     )}
                 </Box>
@@ -224,10 +227,10 @@ export function Album() {
                 </DialogContent>
                 <DialogActions sx={{ p: 2, pt: 0 }}>
                     <Button onClick={() => setDeleteModalOpen(false)} color="inherit">
-                        Avbryt
+                        {t('common.cancel')}
                     </Button>
                     <Button onClick={confirmDelete} variant="contained" color="error">
-                        Slett
+                        {t('common.delete')}
                     </Button>
                 </DialogActions>
             </Dialog>

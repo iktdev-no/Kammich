@@ -10,7 +10,6 @@ import Networking from './routes/settings/Networking';
 import { Import } from './routes/Import';
 import Device from './routes/devices/Device';
 import Immich from './routes/Immich';
-import ImmichAccess from './routes/immich/ImmichAccess';
 import ImmichLogin from './components/immich/ImmichLogin';
 import { Album } from './routes/Album';
 import ImportOwnership from './routes/ImportOwnership';
@@ -44,7 +43,6 @@ const router = createBrowserRouter([
       { path: 'settings/immich', element: <Immich /> },
       { path: 'settings/immich/login', element: <ImmichLogin /> },
       { path: 'settings/immich/me', element: <ImmichMe /> },
-      { path: 'settings/immich/access', element: <ImmichAccess /> },
       { path: 'settings/immich/users', element: <ImmichProfiles /> },
       { path: 'settings/system', element: <System /> },
 

@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
-// Version: 0.0.1-SNAPSHOT
-// Time: 2026-09-15T18:29:02.330896603Z
+// TSGenerator Version: 0.0.1-SNAPSHOT
+// Time: 2026-09-16T14:53:11.042450130Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -14,6 +14,8 @@ export interface ServiceStatus {
   captivePortalMonitor: CaptivePortalMonitorStatus;
   networkInterfaceScannerStatus: NetworkInterfaceScannerStatus;
 }
+
+export type NotificationKey = "ImportCompleted" | "ImportFailed" | "ImportNoNewFiles" | "ImportDeviceNotFullyAdded" | "CameraDisconnected" | "CameraCleanupCompleted" | "CameraCleanupFailed" | "CameraConnected" | "CameraCleanupNoFiles" | "CameraCleanupDisconnected" | "CameraDCIMMissing" | "SystemCreationFailureFolder" | "SystemWriteFailureFolder" | "SystemUnknownFailureFolder" | "ImportJobClaimFailed"
 
 export interface ImportProgressEvent {
   completedFiles: number;
@@ -59,6 +61,8 @@ export interface PowerPermissionsDto {
   canPowerOff: boolean;
   canReboot: boolean;
 }
+
+export type NotificationMessageArgKey = "Path" | "SerialNumber" | "DeviceName" | "ModelManufacturer" | "TotalCount" | "FailedCount" | "DeletedCount" | "RemainingCount" | "ImportedCount" | "ImportFailedCount" | "JobId" | "ExceptionMessageRaw"
 
 export type NotificationType = "Alert"
 
@@ -134,9 +138,9 @@ export interface Notification {
   dismissable: boolean;
   dismissed: boolean;
   id: string;
-  message: string;
+  key: NotificationKey;
+  messageArgs: Partial<Record<NotificationMessageArgKey, string>>;
   severity: Severity;
-  title: string;
   type: NotificationType;
 }
 

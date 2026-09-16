@@ -18,8 +18,11 @@ import {
 import { VerifiedUser as VerifiedUserIcon } from "@mui/icons-material"
 import { DeviceClaimCard } from "../components/claim/DeviceClaimCard"
 import { JobClaimCard } from "../components/claim/JobClaimCard"
+import { useTranslation } from "react-i18next"
 
 export default function ImportOwnership() {
+    const { t } = useTranslation()
+
     const [devices, setDevices] = useState<DeviceOwnershipSummary[]>([])
     const [importJobs, setImportJobs] = useState<ImportJobOwnershipSummary[]>([])
     const [loading, setLoading] = useState(true)
@@ -96,10 +99,10 @@ export default function ImportOwnership() {
             <Box>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <VerifiedUserIcon color="primary" fontSize="large" />
-                    Eierskap & Administrasjon
+                    {t('ownership.title')}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                    Knytt enheter og import-jobber til din brukerprofil for å administrere tilgang og opplasting.
+                    {t('ownership.body')}
                 </Typography>
             </Box>
 
@@ -107,14 +110,16 @@ export default function ImportOwnership() {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        Tilgjengelige enheter
+                        {t('ownership.available_devices')}
                     </Typography>
                     <Chip label={`${devices.length} enheter`} size="small" variant="outlined" />
                 </Box>
 
                 {devices.length === 0 ? (
                     <Card variant="outlined" sx={{ p: 4, textAlign: 'center', bgcolor: 'background.default', borderRadius: 3 }}>
-                        <Typography variant="body2" color="text.secondary">Ingen enheter funnet.</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            {t('ownership.no_devices_found')}
+                        </Typography>
                     </Card>
                 ) : (
                     <Grid container spacing={3}>
@@ -134,7 +139,7 @@ export default function ImportOwnership() {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        Import-jobber
+                        {t('ownership.import_jobs')}
                     </Typography>
                     <Chip label={`${importJobs.length} jobber`} size="small" variant="outlined" />
                 </Box>

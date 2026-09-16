@@ -7,6 +7,7 @@ import type { PhotoDevice, RemoteFile } from "../types/types";
 import { getPhotoDevices, getPhotos, getPhotoThumbUrl, getPhotoUrl } from "../api/requests/photo";
 import { uploadFile } from "../api/requests/upload";
 import { useSseSelector } from '../sse/useSseSelector';
+import { t } from 'i18next';
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(8px); }
@@ -177,7 +178,7 @@ export default function Photo() {
     return (
         <Box sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: 'background.default', minHeight: '100vh', position: 'relative' }}>
             <Typography variant="h4" sx={{ mb: 4, fontWeight: 600, color: 'text.primary' }}>
-                {sn ? `Bibliotek (${deviceName})` : "Bibliotek"}
+                {sn ? `${t('common.library')} (${deviceName})` : t('common.library')}
             </Typography>
 
             <Box sx={{ display: 'flex', gap: { xs: '8px', sm: '12px' }, alignItems: 'flex-start' }}>
@@ -243,7 +244,7 @@ export default function Photo() {
                         <ListItemIcon>
                             <CloudUploadIcon fontSize="small" />
                         </ListItemIcon>
-                        <ListItemText>Last opp bilde</ListItemText>
+                        <ListItemText>{t('common.upload_image')}</ListItemText>
                     </MenuItem>
                 </Menu>
             )}

@@ -220,21 +220,6 @@ class MockImportService(
         importStartedMap.remove(deviceIdStr)
         importDeviceNameMap.remove(deviceIdStr)
 
-
-        if (successCount > 0) {
-            eventPublisher.infoNotification(
-                "ImportService-Success-$deviceIdStr",
-                "Import ferdig",
-                "Importerte $successCount filer fra enhet $deviceIdStr. ${if (failCount > 0) "($failCount feilet)" else ""}"
-            )
-            log.info("Import fullført for $deviceIdStr: $successCount suksesser, $failCount feil.")
-        } else if (finalFiles.isNotEmpty()) {
-            eventPublisher.warningNotification(
-                "ImportService-Failed-$deviceIdStr",
-                "Import feilet",
-                "Ingen filer ble importert. $failCount feilet."
-            )
-        }
     }
 
 }

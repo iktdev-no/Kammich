@@ -8,7 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import StorageIcon from '@mui/icons-material/Storage';
 import type { ImmichUserAccesses, ImmichUserMe } from "../../types/types";
-import { immichAccessAll, immichChangeUser } from "../../api/requests/immich";
+import { immichApi } from "../../api/requests/immich";
 import { getAvatarColor } from "../../utils/immichColor";
 import ImmichLogin from "../../components/immich/ImmichLogin";
 import React from "react";
@@ -38,7 +38,7 @@ export default function ImmichProfiles({ }: ImmichProfilesProps) {
     const loadProfiles = async () => {
         try {
             setLoading(true);
-            const data = await immichAccessAll();
+            const data = await immichApi.getAccessAll();
             setProfiles(data || []);
         } catch (err) {
             console.error("Klarte ikke å hente profiler:", err);
@@ -50,7 +50,7 @@ export default function ImmichProfiles({ }: ImmichProfilesProps) {
     const handleSelectUser = async (userId: string) => {
         try {
             setSwappingId(userId);
-            const success = await immichChangeUser(userId); // Bruker din definerte funksjon
+            const success = await immichApi.changeUser(userId); // Bruker din definerte funksjon
 
             if (success) {
                 loadProfiles();

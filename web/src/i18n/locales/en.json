@@ -1,0 +1,184 @@
+{
+    "common": {
+        "photos": "Photos",
+        "library": "Library",
+        "albums": "Albums",
+        "devices": "Devices",
+        "import": "Import",
+        "ownership": "Ownership",
+        "upload": "Upload",
+        "settings": "Settings",
+        "info": "Info",
+        "back": "Back",
+        "me": "Me",
+        "users": "Users",
+        "access": "Access",
+        "network": "Network",
+        "wifi": "Wi-Fi",
+        "tether": "Tethering",
+        "ethernet": "Wired connection",
+        "tailscale": "Tailscale",
+        "system": "System",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "unexpected_error": "An unexpected error occurred",
+        "system_persmission_error1": "Failed to retrieve system permissions.",
+        "save": "Save",
+        "save_changes": "Save changes",
+        "use": "Use",
+        "upload_image": "Upload image"
+    },
+    "notifications": {
+        "title": "Notifications",
+        "empty": "No new notifications",
+        "dismiss_all": "Dismiss all",
+        "notificationKeys": {
+            "ImportCompleted": {
+                "title": "Import completed",
+                "message": "Imported {{ImportedCount}} files from {{ModelManufacturer}} ({{DeviceName}}). {{ImportFailedCount}} failed."
+            },
+            "ImportFailed": {
+                "title": "Import failed",
+                "message": "No files were imported from {{ModelManufacturer}} ({{DeviceName}}). {{ImportFailedCount}} files failed."
+            },
+            "ImportNoNewFiles": {
+                "title": "No new files",
+                "message": "All files from {{ModelManufacturer}} ({{DeviceName}}) have already been imported."
+            },
+            "ImportDeviceNotFullyAdded": {
+                "title": "Device not configured",
+                "message": "The device {{ModelManufacturer}} ({{DeviceName}}) is not registered in the system. Disconnect the device and try again."
+            },
+            "CameraDisconnected": {
+                "title": "Camera disconnected",
+                "message": "{{ModelManufacturer}} ({{DeviceName}}) was disconnected during import. {{ExceptionMessageRaw}}"
+            },
+            "CameraCleanupCompleted": {
+                "title": "Camera cleanup completed",
+                "message": "Deleted {{DeletedCount}} files from {{ModelManufacturer}} ({{DeviceName}})."
+            },
+            "CameraCleanupFailed": {
+                "title": "Camera cleanup failed",
+                "message": "Deleted {{DeletedCount}} of {{TotalCount}} files from {{ModelManufacturer}} ({{DeviceName}}). {{FailedCount}} failed and {{RemainingCount}} remain."
+            },
+            "CameraConnected": {
+                "title": "Camera connected",
+                "message": "{{ModelManufacturer}} ({{DeviceName}}) is connected."
+            },
+            "CameraCleanupNoFiles": {
+                "title": "No files to delete",
+                "message": "There were no files waiting to be deleted from {{ModelManufacturer}} ({{DeviceName}})."
+            },
+            "CameraCleanupDisconnected": {
+                "title": "Camera disconnected",
+                "message": "{{ModelManufacturer}} ({{DeviceName}}) was disconnected during deletion."
+            },
+            "CameraDCIMMissing": {
+                "title": "DCIM folder missing",
+                "message": "The DCIM folder could not be found on {{ModelManufacturer}} ({{DeviceName}})."
+            },
+            "SystemCreationFailureFolder": {
+                "title": "Failed to create folder",
+                "message": "Failed to create folder {{Path}}."
+            },
+            "SystemWriteFailureFolder": {
+                "title": "Folder is not writable",
+                "message": "Folder {{Path}} is not writable."
+            },
+            "SystemUnknownFailureFolder": {
+                "title": "Unknown folder error",
+                "message": "An unknown error occurred with folder {{Path}}."
+            },
+            "ImportJobClaimFailed": {
+                "title": "Failed to claim import job",
+                "message": "Failed to register ownership for import job {{JobId}}."
+            }
+        }
+    },
+    "settings": {
+        "info": {
+            "version": "Version",
+            "new_version": "New version available",
+            "update_to": "Update to",
+            "update_failed": "Update failed",
+            "auto_update_na": "Automatic update is not available",
+            "downloading_update": "Downloading update...",
+            "update_checking": "Checking for updates...",
+            "verify_checking": "Verifying update",
+            "replacing_checking": "Installing update",
+            "reboot_startfromScratch": "Restarting Kammich"
+        }
+    },
+    "network": {
+        "wifi_title": "Wi-Fi Settings",
+        "searching": "Searching...",
+        "search": "Search",
+        "wifi_available": "Available wireless networks",
+        "wifi_no_network": "No other wireless networks were found.",
+        "hidden_show": "Show hidden networks",
+        "hidden_hide": "Hide hidden networks",
+        "tether_title": "Tethering Settings",
+        "tether_no_configured": "No interfaces configured",
+        "tether_wifi_settings": {
+            "title": "Wi-Fi Network Settings",
+            "password": "Password",
+            "security": "Security"
+        },
+        "tether_modes": "AP Mode: Indicates whether this device supports hosting a Wi-Fi network.\n\nConcurrent mode: Indicates whether this device supports hosting a Wi-Fi network while simultaneously connecting to a separate Wi-Fi network."
+    },
+    "immich": {
+        "my_profile": "My profile"
+    },
+    "album": {
+        "title": "Albums",
+        "dialog": {
+            "new": "New album",
+            "edit": "Edit album",
+            "title_input": "Title",
+            "description_input": "Description",
+            "startdate_input": "Start date",
+            "enddate_input": "End date",
+            "create": "Create",
+            "create_album": "Create album"
+        },
+        "no_albums": "No albums...",
+        "fetching": "Fetching albums"
+    },
+    "devices": {
+        "title": "Connected devices",
+        "no_devices_connected": "No connected devices or cameras"
+    },
+    "import": {
+        "title": "Media import",
+        "active": "Active imports",
+        "no_active": "No active imports at the moment"
+    },
+    "ownership": {
+        "title": "Ownership & Administration",
+        "body": "Link devices and import jobs to your user profile to manage access and uploads.",
+        "available_devices": "Available devices",
+        "import_jobs": "Import jobs",
+        "owned": "Owned",
+        "available": "Available",
+        "no_devices_found": "No devices found"
+    },
+    "system": {
+        "title": "System management",
+        "body": "Manage the machine's power state (restart and shutdown).",
+        "actions": {
+            "title": "Actions",
+            "body": "These actions affect the entire server/machine. Use caution.",
+            "shutdown": "Shut down the machine",
+            "shutdown_confirm": "Confirm shutdown",
+            "reboot": "Restart",
+            "reboot_confirm": "Confirm restart",
+            "confirm": {
+                "title": "Confirm",
+                "reboot": "Are you sure you want to restart the machine?\nAll active services will be temporarily interrupted.",
+                "shutdown": "Are you sure you want to shut down the machine?\nThe machine will be unavailable until it is physically started again.",
+                "executes": "Executing..."
+            },
+            "not_permitted": "You do not have sufficient permissions to perform power actions on this machine."
+        }
+    }
+}

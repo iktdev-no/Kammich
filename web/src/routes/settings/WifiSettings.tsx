@@ -18,8 +18,10 @@ import type { NetworkInterfaceMode, WifiConnectionStateType, WifiInterfaceClient
 import { getInterfaces, getNetworks, startNetworkScan, stopNetworkScan } from "../../api/requests/networking/connection";
 import WifiNetworkCard from "../../components/network/WifiNetwork";
 import { VisibilityIcon } from "../../components/icons/VisibilityIcon";
+import { useTranslation } from "react-i18next";
 
 export default function WifiSettings() {
+    const { t } = useTranslation()
     const [expandedInterface, setExpandedInterface] = useState<string | false>(false);
     const [showHiddenMap, setShowHiddenMap] = useState<Record<string, boolean>>({});
 
@@ -112,7 +114,7 @@ export default function WifiSettings() {
                                 </Typography>
 
                                 {iface.isUsable && (
-                                    <Tooltip title={showHidden ? "Skjul skjulte nettverk" : "Vis skjulte nettverk"} arrow>
+                                    <Tooltip title={showHidden ? t('network.hidden_hide') : t('network.hidden_show')} arrow>
                                         <Box component="span" sx={{ display: 'inline-flex' }}>
                                             <VisibilityIcon
                                                 visible={showHidden}
@@ -335,24 +337,25 @@ const AvailableNetworksSection = ({
     setExpandedBssid,
     allNetworks
 }: AvailableNetworksSectionProps) => {
+    const { t } = useTranslation()
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 1 }}>
-                <Typography variant="overline" sx={{ color: 'text.secondary' }}>Available Networks</Typography>
+                <Typography variant="overline" sx={{ color: 'text.secondary' }}>{t('network.wifi_available')}</Typography>
                 <Button
                     size="small"
                     onClick={() => getNetworks(interfaceName)}
                     disabled={isScanning}
                     startIcon={isScanning ? <CircularProgress size={14} color="inherit" /> : null}
                 >
-                    {isScanning ? "Scanning..." : "Scan"}
+                    {isScanning ? t('network.searching') : t('network.search')}
                 </Button>
             </Box>
 
             <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {!isScanning && sortedNetworks.length === 0 && (
                     <Box sx={{ textAlign: 'center', p: 3, color: 'text.secondary' }}>
-                        <Typography variant="body2">No other networks found.</Typography>
+                        <Typography variant="body2">{t('network.wifi_no_network')}</Typography>
                     </Box>
                 )}
 

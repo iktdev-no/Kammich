@@ -5,6 +5,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import type { Album } from "../../types/types";
 import { nb } from 'date-fns/locale';
+import { useTranslation } from "react-i18next";
 
 interface AlbumDialogProps {
     open: boolean;
@@ -36,6 +37,7 @@ const formatDateOnly = (dateObj: Date | null): string | null => {
 };
 
 export function AlbumDialog({ open, onClose, onSave, editAlbum }: AlbumDialogProps) {
+    const { t } = useTranslation()
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
 
@@ -93,19 +95,19 @@ export function AlbumDialog({ open, onClose, onSave, editAlbum }: AlbumDialogPro
                 }}
             >
                 <DialogTitle sx={{ fontWeight: 700, pb: 1, fontSize: '1.25rem' }}>
-                    {editAlbum ? "Rediger album" : "Nytt album"}
+                    {editAlbum ? t('album.dialog.edit') : t('album.dialog.new')}
                 </DialogTitle>
 
                 <DialogContent sx={{ pt: '10px !important' }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
                         <TextField
-                            label="Tittel"
+                            label={t('album.dialog.title_input')}
                             fullWidth
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                         />
                         <TextField
-                            label="Beskrivelse"
+                            label={t('album.dialog.description_input')}
                             fullWidth
                             multiline
                             rows={3}
@@ -115,7 +117,7 @@ export function AlbumDialog({ open, onClose, onSave, editAlbum }: AlbumDialogPro
 
                         {/* Startdato */}
                         <DatePicker
-                            label="Startdato"
+                            label={t('album.dialog.startdate_input')}
                             value={startDateObj}
                             onChange={(newValue) => handleStartDateChange(newValue)}
                             slotProps={{ textField: { fullWidth: true } }}
@@ -123,7 +125,7 @@ export function AlbumDialog({ open, onClose, onSave, editAlbum }: AlbumDialogPro
 
                         {/* Sluttdato */}
                         <DatePicker
-                            label="Sluttdato"
+                            label={t('album.dialog.enddate_input')}
                             value={endDateObj}
                             onChange={(newValue) => setEndDateObj(newValue)}
                             slotProps={{ textField: { fullWidth: true } }}
@@ -137,7 +139,7 @@ export function AlbumDialog({ open, onClose, onSave, editAlbum }: AlbumDialogPro
                         color="inherit"
                         sx={{ textTransform: 'none', color: 'text.secondary' }}
                     >
-                        Avbryt
+                        {t('common.cancel')}
                     </Button>
                     <Button
                         onClick={handleSave}
@@ -145,7 +147,7 @@ export function AlbumDialog({ open, onClose, onSave, editAlbum }: AlbumDialogPro
                         disabled={!title.trim()}
                         sx={{ textTransform: 'none', borderRadius: 2, px: 3 }}
                     >
-                        {editAlbum ? "Lagre endringer" : "Opprett"}
+                        {editAlbum ? t('common.save_changes') : t('album.dialog.create')}
                     </Button>
                 </DialogActions>
             </Dialog>

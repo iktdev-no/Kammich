@@ -1,46 +1,41 @@
 import type { ImmichLoginRequest, ImmichServerConfig, ImmichServerConnection, ImmichServerFeatures, ImmichServerStorage, ImmichServerVersion, ImmichSupportedMediaTypes, ImmichUserAccesses, ImmichUserMe } from "../../types/types";
 import { apiDelete, apiGet, apiPost } from "../client";
 
-export function immichLoginNormalFLow(loginRequest: ImmichLoginRequest) {
-    return apiPost<ImmichLoginRequest, ImmichUserMe>(`/v1/immich/login`, loginRequest)
-}
 
-export function immichAccessAll() {
-    return apiGet<Array<ImmichUserAccesses>>(`/v1/immich/access/all`)
-}
+export const immichApi = {
+    login: (loginRequest: ImmichLoginRequest) =>
+        apiPost<ImmichLoginRequest, ImmichUserMe>("/v1/immich/login", loginRequest),
 
-export function immichDeleteApiKey(apiKeyId: string) {
-    return apiDelete(`/v1/immich/api-keys/${apiKeyId}`)
-}
+    getAccessMe: () =>
+        apiGet<ImmichUserAccesses | null>("/v1/immich/access/me"),
 
-export function immichUrl() {
-    return apiGet<ImmichServerConnection>("/v1/immich/server/url")
-}
+    getAccessAll: () =>
+        apiGet<ImmichUserAccesses[]>("/v1/immich/access/all"),
 
-export function immichVersion() {
-    return apiGet<ImmichServerVersion>("/v1/immich/server/version")
-}
+    deleteApiKey: (apiKeyId: string) =>
+        apiDelete(`/v1/immich/api-keys/${apiKeyId}`),
 
-export function immichMediaTypes() {
-    return apiGet<ImmichSupportedMediaTypes>("/v1/immich/server/supported-media-types")
-}
+    getServerUrl: () =>
+        apiGet<ImmichServerConnection>("/v1/immich/server/url"),
 
-export function immichFeatures() {
-    return apiGet<ImmichServerFeatures>("/v1/immich/server/features")
-}
+    getServerVersion: () =>
+        apiGet<ImmichServerVersion>("/v1/immich/server/version"),
 
-export function immichConfig() {
-    return apiGet<ImmichServerConfig>("/v1/immich/server/config")
-}
+    getServerMediaTypes: () =>
+        apiGet<ImmichSupportedMediaTypes>("/v1/immich/server/supported-media-types"),
 
-export function immichStorage() {
-    return apiGet<ImmichServerStorage>("/v1/immich/server/storage")
-}
+    getServerFeatures: () =>
+        apiGet<ImmichServerFeatures>("/v1/immich/server/features"),
 
-export function immichUsers() {
-    return apiGet<Array<ImmichUserMe>>("/v1/immich/users")
-}
+    getServerConfig: () =>
+        apiGet<ImmichServerConfig>("/v1/immich/server/config"),
 
-export function immichChangeUser(userId: string) {
-    return apiPost<null, boolean>(`/v1/immich/change/user/${userId}`, null)
-}
+    getServerStorage: () =>
+        apiGet<ImmichServerStorage>("/v1/immich/server/storage"),
+
+    getUsers: () =>
+        apiGet<ImmichUserMe[]>("/v1/immich/users"),
+
+    changeUser: (userId: string) =>
+        apiPost<null, boolean>(`/v1/immich/change/user/${userId}`, null),
+};

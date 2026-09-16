@@ -13,6 +13,8 @@ import no.iktdev.kammich.database.withTransaction
 import no.iktdev.kammich.errorNotification
 import no.iktdev.kammich.infoNotification
 import no.iktdev.kammich.models.internal.events.ImportJobCompletedEvent
+import no.iktdev.kammich.models.shared.NotificationKey
+import no.iktdev.kammich.models.shared.NotificationMessageArgKey
 import no.iktdev.kammich.models.shared.Verification
 import no.iktdev.kammich.models.shared.deletion.DeleteState
 import no.iktdev.kammich.storage.DeviceManagerService
@@ -51,8 +53,10 @@ class CameraFileDeletionService(
         val device = deviceManager.getDevice(deviceSN) ?: run {
             eventPublisher.errorNotification(
                 "FileDeletionService-DeviceMissing-$deviceSN",
-                "Kamera ikke funnet",
-                "Fant ikke kameraet $deviceSN under opprydding."
+                NotificationKey.CameraCleanupDisconnected,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.SerialNumber to deviceSN,
+                )
             )
             return
         }
@@ -66,8 +70,12 @@ class CameraFileDeletionService(
         val dcim = provider.getDCIM(device) ?: run {
             eventPublisher.errorNotification(
                 "FileDeletionService-NoDCIM-$deviceSN",
-                "Fant ikke DCIM",
-                "Fant ikke DCIM-mappen på kameraet $deviceSN."
+                key = NotificationKey.CameraDCIMMissing,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.SerialNumber to device.id,
+                    NotificationMessageArgKey.DeviceName to device.name,
+                    NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}",
+                    )
             )
             return
         }
@@ -85,8 +93,12 @@ class CameraFileDeletionService(
         if (pending.isEmpty()) {
             eventPublisher.infoNotification(
                 "FileDeletionService-NoFiles-$deviceSN",
-                "Kameraopprydding ferdig",
-                "Ingen filer ventet på sletting fra kameraet $deviceSN."
+                NotificationKey.CameraCleanupNoFiles,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.SerialNumber to device.id,
+                    NotificationMessageArgKey.DeviceName to device.name,
+                    NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}",
+                    )
             )
             return
         }
@@ -109,8 +121,12 @@ class CameraFileDeletionService(
                 log.warn("Device {} became unavailable during cleanup", deviceSN)
                 eventPublisher.errorNotification(
                     "FileDeletionService-Disconnected-$deviceSN",
-                    "Kamera frakoblet",
-                    "Kameraet $deviceSN ble frakoblet under sletting."
+                    NotificationKey.CameraCleanupDisconnected,
+                    messageArgs = mapOf(
+                        NotificationMessageArgKey.SerialNumber to device.id,
+                        NotificationMessageArgKey.DeviceName to device.name,
+                        NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}",
+                        )
                 )
                 return
             } catch (e: Exception) {
@@ -128,15 +144,27 @@ class CameraFileDeletionService(
         if (failed > 0 || remaining > 0) {
             eventPublisher.errorNotification(
                 "FileDeletionService-Failed-$deviceSN",
-                "Kameraopprydding feilet",
-                "Slettet $deleted av ${pending.size} filer fra kameraet ${device.model}. " +
-                        "$failed feilet og $remaining gjenstår."
+                NotificationKey.CameraCleanupFailed,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.SerialNumber to device.id,
+                    NotificationMessageArgKey.DeviceName to device.name,
+                    NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}",
+                    NotificationMessageArgKey.DeletedCount to deleted.toString(),
+                    NotificationMessageArgKey.TotalCount to pending.size.toString(),
+                    NotificationMessageArgKey.FailedCount to failed.toString(),
+                    NotificationMessageArgKey.RemainingCount to remaining.toString()
+                    )
             )
         } else {
             eventPublisher.infoNotification(
                 "FileDeletionService-Completed-$deviceSN",
-                "Kameraopprydding ferdig",
-                "Slettet $deleted filer fra kameraet ${device.model}."
+                NotificationKey.CameraCleanupCompleted,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.DeletedCount to deleted.toString(),
+                    NotificationMessageArgKey.SerialNumber to device.id,
+                    NotificationMessageArgKey.DeviceName to device.name,
+                    NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}",
+                )
             )
         }
     }

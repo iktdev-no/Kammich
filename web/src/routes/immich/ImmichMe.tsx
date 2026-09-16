@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSseSelector } from "../../sse/useSseSelector";
 import { alpha, Avatar, Box, Card, CardContent, Chip, LinearProgress, Stack, Typography, useTheme } from "@mui/material";
-import type { ImmichUserMe, ImmichUserStatus, ImmichServerStorage } from "../../types/types";
+import type { ImmichUserMe, ImmichUserStatus, ImmichServerStorage, ImmichUserAccesses } from "../../types/types";
 import { formatBytes } from "../../utils/format";
 import InfinityIcon from '@mui/icons-material/AllInclusive';
 import DiscFullIcon from '@mui/icons-material/DiscFull';
@@ -12,11 +12,13 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import EmailIcon from '@mui/icons-material/Email';
 import PersonIcon from '@mui/icons-material/Person';
 import { getAvatarColor } from "../../utils/immichColor";
-import { immichStorage } from "../../api/requests/immich";
+import { immichApi } from '../../api/requests/immich';
+
 
 export default function ImmichMe() {
     const theme = useTheme();
 
+    const [accesses, setAccesses] = useState<ImmichUserAccesses | null>(null);
     // Henter innlogget bruker fra SSE state
     const me: ImmichUserMe | undefined = useSseSelector(
         (state) => state.immichUserMe
@@ -27,12 +29,20 @@ export default function ImmichMe() {
 
     useEffect(() => {
         let isMounted = true;
-        immichStorage()
-            .then((data) => {
-                if (isMounted) setServerStorage(data);
+
+        Promise.all([
+            immichApi.getServerStorage(),
+            immichApi.getAccessMe()
+        ])
+            .then(([storage, access]) => {
+                if (!isMounted) return;
+                setServerStorage(storage);
+                setAccesses(access);
             })
             .catch(() => {
-                if (isMounted) setServerStorage(null);
+                if (!isMounted) return;
+                setServerStorage(null);
+                setAccesses(null);
             });
 
         return () => {
@@ -354,6 +364,43 @@ export default function ImmichMe() {
                     )}
                 </CardContent>
             </Card>
+            {accesses && (
+                <Card elevation={2} sx={{ borderRadius: 4, p: 2 }}>
+                    <CardContent>
+                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                            Immich-tilganger
+                        </Typography>
+
+                        <Stack spacing={1}>
+                            {accesses.servers.map(server => (
+                                <Stack
+                                    key={server.keyId}
+                                    direction="row"
+                                    spacing={1}
+                                    sx={{ alignItems: "center" }}
+                                >
+                                    <StorageIcon fontSize="small" />
+
+                                    <Box>
+                                        <Typography variant="body2">
+                                            {server.serverUrl}
+                                        </Typography>
+                                        {server.keyName && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                API-nøkkel: {server.keyName}
+                                            </Typography>
+                                        )}
+                                    </Box>
+
+                                    {server.isActive && (
+                                        <Chip label="Aktiv" size="small" color="success" />
+                                    )}
+                                </Stack>
+                            ))}
+                        </Stack>
+                    </CardContent>
+                </Card>
+            )}
         </Box>
     );
 }

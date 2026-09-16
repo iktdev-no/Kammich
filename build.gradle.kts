@@ -7,7 +7,7 @@ plugins {
 	id("org.springframework.boot") version "4.1.0"
 	id("io.spring.dependency-management") version "1.1.7"
 	id("org.openapi.generator") version "7.24.0"
-	id("no.iktdev.ts-gen") version "1.0-rc2"
+	id("no.iktdev.ts-gen") version "1.0-rc7"
 }
 
 group = "no.iktdev"
@@ -63,6 +63,7 @@ dependencies {
 	implementation("org.lz4:lz4-java:1.8.0")
 
 	implementation("net.coobird:thumbnailator:0.4.20")
+	implementation("no.iktdev:ts-gen:1.0-rc7")
 
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")

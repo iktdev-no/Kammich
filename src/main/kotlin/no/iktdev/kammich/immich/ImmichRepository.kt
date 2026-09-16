@@ -21,6 +21,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
+import java.util.UUID
 
 
 @Repository
@@ -119,6 +120,42 @@ class ImmichRepository {
                 ImmichUserAccesses(user = userMe, isActive = p.isActive, servers = servers)
             }
         }.getOrDefault(emptyList())
+    }
+
+    fun getMyAccesses(userId: UUID): ImmichUserAccesses? {
+        return withTransaction {
+            ImmichUsersTable
+                .selectAll()
+                .where { ImmichUsersTable.userId eq userId.toString() }
+                .map { it.toPersistedImmichUser() }
+                .map { user ->
+                    val userMe = gson.fromJson(user.data, ImmichUserMe::class.java)
+
+                    val servers = ImmichAuthenticationTable
+                        .selectAll()
+                        .where { ImmichAuthenticationTable.userId eq user.userId }
+                        .map { it.toPersistedApiKey() }
+                        .map { auth ->
+                            val keyDets =
+                                gson.fromJson(auth.data, ImmichApiKeyPostResponseDto::class.java)
+
+                            ImmichServerAccess(
+                                keyName = keyDets.name,
+                                keyId = keyDets.id.toString(),
+                                serverUrl = auth.serverUrl,
+                                isActive = auth.isActive,
+                                createdAt = auth.createdAt,
+                            )
+                        }
+
+                    ImmichUserAccesses(
+                        user = userMe,
+                        isActive = user.isActive,
+                        servers = servers
+                    )
+                }
+                .singleOrNull()
+        }.getOrNull()
     }
 
     fun deleteApiKey(apiKeyId: String): Int {

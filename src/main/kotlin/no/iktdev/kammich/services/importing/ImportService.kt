@@ -16,6 +16,8 @@ import no.iktdev.kammich.models.shared.ImportFile as SharedImportFile
 import no.iktdev.kammich.models.shared.ImportProgressEvent
 import no.iktdev.kammich.models.shared.FileImportState
 import no.iktdev.kammich.models.shared.ImportState
+import no.iktdev.kammich.models.shared.NotificationKey
+import no.iktdev.kammich.models.shared.NotificationMessageArgKey
 import no.iktdev.kammich.models.shared.device.RemovableDevice
 import no.iktdev.kammich.repository.FileRepository
 import no.iktdev.kammich.sse.SseManager
@@ -130,14 +132,21 @@ class ImportService(
             deviceContentIndexing.getNewFilesToImport(device)
         } catch (e: Exception) {
             log.error("Feil under indeksering av enhet {}", deviceSN, e)
-            finishImport(deviceSN, device.model)
+            finishImport(device)
             return
         }
 
         if (filesToImport.isEmpty()) {
             log.info("No new files to import for ${device.name}")
-            eventPublisher.infoNotification("ImportService-NoFiles-${device.id}", "No files to import", "All files have already been imported for ${device.model}")
-            finishImport(device.id, device.model)
+            eventPublisher.infoNotification(
+                "ImportService-NoFiles-${device.id}",
+                NotificationKey.ImportNoNewFiles,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.SerialNumber to deviceSN,
+                    NotificationMessageArgKey.DeviceName to device.name,
+                    NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}",)
+            )
+            finishImport(device)
             return
         }
 
@@ -145,7 +154,7 @@ class ImportService(
         val config = configService.getConfig().deviceSettings[device.id]
         if (config?.autoImport != true) {
             log.error("Device ${device.id} has auto-import disabled")
-            finishImport(device.id, device.model)
+            finishImport(device)
             return
         }
         startImportForDevice(device, filesToImport)
@@ -153,9 +162,13 @@ class ImportService(
 
     private fun getDeviceIdToImport(device: RemovableDevice): Long? {
         return DevicesTable.getDeviceId(device.id) ?: run {
-            eventPublisher.warningNotification("ImportService-Device-not-present-${device.id}",
-                "Device ${device.id} missing",
-                "Device ${device.id} is not stored in database!\nCan't import files untill this is resolved",
+            eventPublisher.warningNotification(
+                "ImportService-Device-not-present-${device.id}",
+                key = NotificationKey.ImportDeviceNotFullyAdded,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.SerialNumber to device.id,
+                    NotificationMessageArgKey.DeviceName to device.name,
+                    NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}")
             )
             return null
         }
@@ -301,7 +314,15 @@ class ImportService(
                 }
             }
         } catch (e: DeviceUnavailableException) {
-            eventPublisher.errorNotification("ImportService-Disconnected-${device.id}", "${device.model} frakoblet", e.message ?: e.localizedMessage)
+            eventPublisher.errorNotification(
+                "ImportService-Disconnected-${device.id}",
+                key = NotificationKey.CameraDisconnected,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.SerialNumber to device.id,
+                    NotificationMessageArgKey.DeviceName to device.name,
+                    NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}",
+                    NotificationMessageArgKey.ExceptionMessageRaw to (e.message ?: e.localizedMessage))
+            )
             throw e
         } catch (e: CancellationException) {
             log.info("Import job ble avbrutt for enhet {}", deviceIdStr)
@@ -310,7 +331,7 @@ class ImportService(
             log.error("Uventet feil under import-loop for enhet {}", deviceIdStr, e)
         } finally {
             activeImportJobs.remove(deviceIdStr)
-            finishImport(deviceSN = deviceIdStr, importJobId = importJobId, deviceModel = device.model)
+            finishImport(device, importJobId = importJobId)
         }
     }
 
@@ -336,34 +357,45 @@ class ImportService(
         log.warn("Kansellerte import for enhet {}", deviceIdStr)
     }
 
-    private fun finishImport(deviceSN: String, deviceModel: String, importJobId: UUID? = null) {
-        val finalFiles = importList[deviceSN] ?: emptyList()
+    private fun finishImport(device: RemovableDevice, importJobId: UUID? = null) {
+        val finalFiles = importList[device.id] ?: emptyList()
         val successCount = finalFiles.count { it.state == FileImportState.Success }
         val failedFiles = finalFiles.filter { it.state == FileImportState.Failure }
         val failCount = failedFiles.size
 
         broadcastDeviceState(ImportState.Completed)
 
-        importList.remove(deviceSN)
-        importStartedMap.remove(deviceSN)
-        importDeviceNameMap.remove(deviceSN)
+        importList.remove(device.id)
+        importStartedMap.remove(device.id)
+        importDeviceNameMap.remove(device.id)
 
         if (successCount > 0) {
             eventPublisher.infoNotification(
-                "ImportService-Success-$deviceSN",
-                "Import ferdig",
-                "Importerte $successCount filer fra enhet $deviceModel. ${if (failCount > 0) "($failCount feilet)" else ""}"
+                "ImportService-Success-$device.id",
+                key = NotificationKey.ImportCompleted,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.SerialNumber to device.id,
+                    NotificationMessageArgKey.DeviceName to device.name,
+                    NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}",
+                    NotificationMessageArgKey.ImportedCount to successCount.toString(),
+                    NotificationMessageArgKey.ImportFailedCount to failCount.toString())
             )
-            log.info("Import fullført for $deviceSN: $successCount suksesser, $failCount feil.")
+            log.info("Import fullført for ${device.id}: $successCount suksesser, $failCount feil.")
         } else if (finalFiles.isNotEmpty()) {
             eventPublisher.warningNotification(
-                "ImportService-Failed-$deviceSN",
-                "Import feilet",
-                "Ingen filer ble importert. $failCount feilet."
+                "ImportService-Failed-${device.id}",
+                NotificationKey.ImportFailed,
+                messageArgs = mapOf(
+                    NotificationMessageArgKey.SerialNumber to device.id,
+                    NotificationMessageArgKey.DeviceName to device.name,
+                    NotificationMessageArgKey.ModelManufacturer to "${device.manufacturer} ${device.model}",
+                    NotificationMessageArgKey.ImportedCount to successCount.toString(),
+                    NotificationMessageArgKey.ImportFailedCount to failCount.toString()
+                )
             )
         }
         importJobId?.let { jobId ->
-            eventPublisher.publishEvent(ImportJobCompletedEvent(jobId, deviceSN))
+            eventPublisher.publishEvent(ImportJobCompletedEvent(jobId, device.id))
         }
     }
 }

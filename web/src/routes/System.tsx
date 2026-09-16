@@ -20,8 +20,10 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import type { PowerPermissionsDto } from "../types/types";
 import { executePowerOff, executeReboot, getPowerPermissions } from "../api/requests/system";
+import { useTranslation } from "react-i18next";
 
 export function System() {
+    const { t } = useTranslation()
     const [permissions, setPermissions] = useState<PowerPermissionsDto | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [actionLoading, setActionLoading] = useState<boolean>(false);
@@ -36,7 +38,7 @@ export function System() {
             .then(res => setPermissions(res))
             .catch(err => {
                 console.error("Klarte ikke å hente strømtillatelser", err);
-                setFeedback({ message: "Klarte ikke å hente systemtillatelser.", severity: "error" });
+                setFeedback({ message: t('common.system_permission_error1'), severity: "error" });
             })
             .finally(() => setLoading(false));
     };
@@ -59,7 +61,7 @@ export function System() {
             setFeedback({ message: res.message, severity: res.success ? "success" : "error" });
         } catch (err: any) {
             console.error("Feil ved utførelse av strømkommando", err);
-            setFeedback({ message: err.message || "En uventet feil oppstod.", severity: "error" });
+            setFeedback({ message: err.message || t('common.unexpected_error'), severity: "error" });
         } finally {
             setActionLoading(false);
             setConfirmAction(null);
@@ -70,10 +72,10 @@ export function System() {
         <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
             <Box sx={{ mb: 4 }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                    Systemstyring
+                    {t('system.title')}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                    Administrer maskinens strømtilstand (omstart og avslutning).
+                    {t('system.body')}
                 </Typography>
             </Box>
 
@@ -99,10 +101,10 @@ export function System() {
                         <Stack spacing={3}>
                             <Box>
                                 <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 600 }}>
-                                    Strømactions
+                                    {t('system.actions.title')}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    Disse handlingene påvirker hele serveren/maskinen. Vær forsiktig.
+                                    {t('system.actions.body')}
                                 </Typography>
                             </Box>
 
@@ -116,7 +118,7 @@ export function System() {
                                     fullWidth
                                     sx={{ py: 1.5 }}
                                 >
-                                    Start på nytt
+                                    {t('system.actions.reboot')}
                                 </Button>
 
                                 <Button
@@ -128,13 +130,13 @@ export function System() {
                                     fullWidth
                                     sx={{ py: 1.5 }}
                                 >
-                                    Slå av maskinen
+                                    {t('system.actions.shutdown')}
                                 </Button>
                             </Stack>
 
                             {(!permissions?.canReboot && !permissions?.canPowerOff) && (
                                 <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic", textAlign: "center" }}>
-                                    Du har ikke tilstrekkelige tillatelser til å utføre strømhandlinger på denne maskinen.
+                                    {t('system.actions.not_permitted')}
                                 </Typography>
                             )}
                         </Stack>
@@ -146,17 +148,16 @@ export function System() {
             <Dialog open={confirmAction !== null} onClose={() => setConfirmAction(null)}>
                 <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                     <WarningAmberIcon color="warning" />
-                    {confirmAction === "poweroff" ? "Bekreft avslutning" : "Bekreft omstart"}
+                    {confirmAction === "poweroff" ? t('system.actions.shutdown_confirm') : t('system.actions.reboot_confirm')}
                 </DialogTitle>
                 <DialogContent>
                     <DialogContentText>
-                        Er du sikker på at du vil {confirmAction === "poweroff" ? "slå av" : "starte på nytt"} maskinen?
-                        {confirmAction === "poweroff" ? " Maskinen vil bli utilgjengelig til den startes fysisk igjen." : " Alle aktive tjenester vil bli avbrutt midlertidig."}
+                        {confirmAction === "poweroff" ? t('system.actions.confirm.shutdown') : t('system.actions.confirm.reboot')}
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions sx={{ p: 2, pt: 0 }}>
                     <Button onClick={() => setConfirmAction(null)} color="inherit" disabled={actionLoading}>
-                        Avbryt
+                        {t('common.cancel')}
                     </Button>
                     <Button
                         onClick={handleExecute}
@@ -165,7 +166,7 @@ export function System() {
                         disabled={actionLoading}
                         autoFocus
                     >
-                        {actionLoading ? "Utfører..." : "Bekreft"}
+                        {actionLoading ? t('system.actions.confirm.executes') : t('system.actions.confirm.title')}
                     </Button>
                 </DialogActions>
             </Dialog>

@@ -7,9 +7,10 @@ import NoPhotographyIcon from '@mui/icons-material/NoPhotography';
 
 import { useSseSelector } from "../sse/useSseSelector";
 import type { BlockDevice, GPhoto2Device, RemovableDevice } from "../types/types";
-import AnimatedUploadIcon from "../components/icons/AnimatedUploadIcon";
+import { useTranslation } from "react-i18next";
 
 export default function Devices() {
+    const { t } = useTranslation()
     const devices = useSseSelector(state => state.devices);
 
     const getPath = (d: RemovableDevice) => {
@@ -38,7 +39,7 @@ export default function Devices() {
 
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom>Connected Devices</Typography>
+            <Typography variant="h4" gutterBottom>{t('devices.title')}</Typography>
             {devices && devices.length > 0 ? (
                 <Grid container spacing={2}>
                     {devices.map(d => {
@@ -80,7 +81,7 @@ export default function Devices() {
             ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 8, color: 'text.secondary' }}>
                     <NoPhotographyIcon sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
-                    <Typography variant="h6">Ingen tilkoblede kameraer</Typography>
+                    <Typography variant="h6">{t('devices.no_devices_connected')}</Typography>
                 </Box>
             )}
         </Box>

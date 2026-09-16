@@ -8,7 +8,7 @@ import ImmichLogin from "../components/immich/ImmichLogin";
 import { useSseSelector } from "../sse/useSseSelector";
 import { useEffect, useState } from "react";
 import type { ImmichServerConnection, ImmichServerConfig, ImmichServerFeatures, ImmichServerStorage, ImmichSupportedMediaTypes } from "../types/types";
-import { immichConfig, immichFeatures, immichMediaTypes, immichStorage, immichUrl, immichVersion } from "../api/requests/immich";
+import { immichApi } from "../api/requests/immich";
 
 // --- Underkomponenter for hvert enkelt kort for renere kode ---
 
@@ -266,7 +266,7 @@ export default function Immich() {
                 setLoading(true);
 
                 // 1. Endre hvordan du henter og formaterer versjonen i useEffect / fetchServerData:
-                const vRes = await immichVersion().catch(err => {
+                const vRes = await immichApi.getServerVersion().catch(err => {
                     console.error("Feil på version:", err);
                     return null;
                 });
@@ -277,11 +277,11 @@ export default function Immich() {
                     : "Ukjent";
 
                 setVersion(formattedVersion);
-                const mt = await immichMediaTypes().catch(() => null);
-                const f = await immichFeatures().catch(() => null);
-                const c = await immichConfig().catch(() => null);
-                const s = await immichStorage().catch(() => null);
-                const url = await immichUrl().catch(() => null);
+                const mt = await immichApi.getServerMediaTypes().catch(() => null);
+                const f = await immichApi.getServerFeatures().catch(() => null);
+                const c = await immichApi.getServerConfig().catch(() => null);
+                const s = await immichApi.getServerStorage().catch(() => null);
+                const url = await immichApi.getServerUrl().catch(() => null);
 
                 setVersion(formattedVersion ?? "Ukjent");
                 setMediaTypes(mt);

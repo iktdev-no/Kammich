@@ -18,6 +18,7 @@ import no.iktdev.kammich.models.shared.immich.api.ImmichServerVersion
 import no.iktdev.kammich.models.shared.immich.api.ImmichSupportedMediaTypes
 import no.iktdev.kammich.models.shared.immich.api.ImmichUserMe
 import no.iktdev.kammich.models.shared.immich.api.defaultPermissions
+import no.iktdev.kammich.short
 import no.iktdev.kammich.sse.SseManager
 import no.iktdev.kammich.sse.events.SSEImmichApiKeyInUse
 import org.jetbrains.exposed.v1.core.eq
@@ -140,9 +141,9 @@ class ImmichService(
 
     private fun createNewApiKey(url: String, accessToken: String): ImmichApiKeyPostResponse {
         val immichClient = immichClientFactory.create(url)
-
+        val apiUUID = UUID.randomUUID().short()
         val apiKeyPayload = ImmichApiKeyPost(
-            name = "Kammich Ingest Service",
+            name = "Kammich $apiUUID",
             permissions = defaultPermissions
         )
 
@@ -152,6 +153,10 @@ class ImmichService(
 
     fun getUsersWithAccesses(): List<ImmichUserAccesses> {
         return immichRepository.getAllUsersWithAccesses()
+    }
+
+    fun getMyAccesses(userId: UUID): ImmichUserAccesses? {
+        return immichRepository.getMyAccesses(userId)
     }
 
     fun getUsers(): List<ImmichUserMe> {

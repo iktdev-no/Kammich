@@ -30,6 +30,7 @@ import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
 import TailscaleIcon from "../icons/TailscaleIcon";
 import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet';
 import InfoIcon from '@mui/icons-material/Info';
+import { useTranslation } from "react-i18next";
 
 
 export interface SidebarMenuProps {
@@ -38,6 +39,7 @@ export interface SidebarMenuProps {
 }
 
 export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
+    const { t } = useTranslation();
     const theme = useTheme();
     const sx = sidebarStyles(theme);
     const navigate = useNavigate();
@@ -70,7 +72,7 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
     // Bruk useMemo slik at menyen oppdateres kun når 'devices' endres
     const mainMenuItems: SidebarItem[] = useMemo(() => [
         {
-            label: "Photos",
+            label: t('common.photos'),
             icon: PhotoLibraryIcon,
             to: "/",
             action: fetchPhotoDevices,
@@ -81,12 +83,12 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             })),
         },
         {
-            label: "Album",
+            label: t('common.albums'),
             icon: PhotoAlbumIcon,
             to: "/album"
         },
         {
-            label: "Devices",
+            label: t('common.devices'),
             icon: CableIcon,
             to: "/devices",
             children: devices.map(d => ({
@@ -96,21 +98,21 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             })),
         },
         {
-            label: "Import",
+            label: t('common.import'),
             icon: ImportIcon,
             to: "/import",
             children: [
                 {
-                    label: "Ownership",
+                    label: t('common.ownership'),
                     icon: SupervisedUserCircleIcon,
                     to: "/ownership"
                 }
             ]
         },
-        { label: "Upload", icon: CloudUploadOutlinedIcon, to: "/upload" },
+        { label: t('common.upload'), icon: CloudUploadOutlinedIcon, to: "/upload" },
 
         {
-            label: "Settings",
+            label: t('common.settings'),
             icon: SettingsIcon,
             to: "/settings/info",
             sx: { marginTop: "auto" }
@@ -121,12 +123,12 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
 
     const settingsMenuItems: SidebarItem[] = useMemo(() => [
         {
-            label: "Back",
+            label: t('common.back'),
             icon: ArrowBackRoundedIcon,
             to: "/",
         },
         {
-            label: "Info",
+            label: t('common.info'),
             icon: InfoIcon,
             to: "/settings/info",
         },
@@ -137,55 +139,49 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             // Bruk en ternary eller short-circuit for å slå av/på barna
             children: immichAccesses && immichAccesses.length > 0 ? [
                 {
-                    label: "Me",
+                    label: t('common.me'),
                     icon: PersonIcon,
                     to: "/settings/immich/me",
                     activeColor: "secondary"
                 },
                 {
-                    label: "Users",
+                    label: t('common.users'),
                     icon: PeopleIcon,
                     to: "/settings/immich/users",
-                    activeColor: "secondary"
-                },
-                {
-                    label: "Access",
-                    icon: VpnKeyIcon,
-                    to: `/settings/immich/access`,
                     activeColor: "secondary"
                 },
 
             ] : undefined // eller [] avhengig av hva Sidebar-komponenten din liker best
         },
         {
-            label: "Network",
+            label: t('common.network'),
             icon: PublicIcon,
             to: "/settings/networking",
             children: [
                 {
-                    label: "Wifi",
+                    label: t('common.wifi'),
                     icon: WifiIcon,
                     to: "/settings/networking/wifi"
                 },
                 {
-                    label: "Tether",
+                    label: t('common.tether'),
                     icon: WifiTetheringIcon,
                     to: "/settings/networking/ap"
                 },
                 {
-                    label: "Ethernet",
+                    label: t('common.ethernet'),
                     icon: SettingsEthernetIcon,
                     to: "/settings/networking/ethernet"
                 },
                 {
-                    label: "Tailscale",
+                    label: t('common.tailscale'),
                     icon: TailscaleIcon,
                     to: "/settings/networking/tailscale"
                 }
             ]
         },
         {
-            label: "System",
+            label: t('common.system'),
             icon: MemoryIcon,
             to: "/settings/system",
             sx: { marginTop: "auto" }

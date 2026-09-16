@@ -5,8 +5,10 @@ import { useSseSelector } from "../sse/useSseSelector";
 import type { AppUpdateProgress, Version } from "../types/types";
 import MadeInNorwayBadge from "../components/icons/MadeInNorway";
 import { KammichIcon } from "../components/icons/Kammich";
+import { useTranslation } from "react-i18next";
 
 export default function Settings() {
+    const { t } = useTranslation()
     const [version, setVersion] = useState<Version | null>(null);
     const [updateRequested, setUpdateRequested] = useState(false);
 
@@ -67,7 +69,7 @@ export default function Settings() {
                 }}
             >
                 <Typography variant="body1">
-                    Version
+                    {t('settings.info.version')}
                 </Typography>
 
                 <Typography variant="body1">
@@ -76,7 +78,7 @@ export default function Settings() {
 
                 {version?.updateAvailable && (
                     <Chip
-                        label={`Ny versjon tilgjengelig: ${version.kammichGithubVersion}`}
+                        label={`${t('settings.info.new_version')}: ${version.kammichGithubVersion}`}
                         color="primary"
                         size="small"
                         sx={{ mt: 1 }}
@@ -88,7 +90,7 @@ export default function Settings() {
                         variant="caption"
                         color="text.secondary"
                     >
-                        Automatisk oppdatering er ikke tilgjengelig
+                        {t('settings.info.auto_update_na')}
                     </Typography>
                 )}
 
@@ -104,7 +106,7 @@ export default function Settings() {
                             sx={{ mb: 1 }}
                         >
                             {appUpdate.message ??
-                                "Laster ned oppdatering..."}
+                                t('settings.info.downloading_update')}
                         </Typography>
 
                         <LinearProgress
@@ -152,7 +154,7 @@ export default function Settings() {
                         color="error"
                         sx={{ mt: 2 }}
                     >
-                        {appUpdate.error ?? "Oppdateringen feilet."}
+                        {appUpdate.error ?? t('settings.info.update_failed')}
                     </Typography>
                 )}
 
@@ -162,7 +164,7 @@ export default function Settings() {
                         sx={{ mt: 2 }}
                         onClick={requestUpdate}
                     >
-                        Oppdater til {version.kammichGithubVersion}
+                        {t('settings.info.update_to')} {version.kammichGithubVersion}
                     </Button>
                 )}
             </Box>

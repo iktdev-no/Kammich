@@ -4,12 +4,14 @@ import CheckIcon from '@mui/icons-material/Check';
 import { useMemo, useState } from "react";
 import { useSseSelector } from "../sse/useSseSelector";
 import { formatNotificationTime } from "../utils/format";
-import type { Notification } from "../types/types";
+import type { Notification, NotificationKey } from "../types/types";
 import { dismissNotification, dismissNotifications } from "../api/requests/notifications";
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CircleNotificationsIcon from '@mui/icons-material/CircleNotifications';
+import { useTranslation } from "react-i18next";
 
 export default function NotificationPopover() {
+    const { t } = useTranslation()
     const theme = useTheme()
     const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
@@ -61,7 +63,7 @@ export default function NotificationPopover() {
                 slotProps={{ paper: { sx: { width: 320, mt: 1.5, borderRadius: 3, boxShadow: 3, bgcolor: theme.palette.background.default } } }}
             >
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Notifications</Typography>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{t('notifications.title')}</Typography>
                     {activeNotifications.length > 0 && (
                         <Button
                             startIcon={<DoneAllIcon />}
@@ -69,7 +71,7 @@ export default function NotificationPopover() {
                             sx={{ textTransform: 'none', pl: 1, pr: 1 }}
                             onClick={handleDismissAll}
                         >
-                            Dismiss all
+                            {t('notifications.dismiss_all')}
                         </Button>
                     )}
                 </Box>
@@ -84,7 +86,7 @@ export default function NotificationPopover() {
                                 textAlign: 'center', pt: 1,
                                 color: theme.palette.grey[400]
                             }}>
-                                Ingen nye varsler
+                                {t('notifications.empty')}
                             </Typography>
                         </Box>
                     ) : (
@@ -96,10 +98,109 @@ export default function NotificationPopover() {
     );
 }
 
+
+export interface NotificationText {
+    title: string;
+    message: string;
+}
+
+const notificationTranslations = {
+    ImportCompleted: {
+        title: "notifications.notificationKeys.ImportCompleted.title",
+        message: "notifications.notificationKeys.ImportCompleted.message",
+    },
+
+    ImportFailed: {
+        title: "notifications.notificationKeys.ImportFailed.title",
+        message: "notifications.notificationKeys.ImportFailed.message",
+    },
+
+    ImportNoNewFiles: {
+        title: "notifications.notificationKeys.ImportNoNewFiles.title",
+        message: "notifications.notificationKeys.ImportNoNewFiles.message",
+    },
+
+    ImportDeviceNotFullyAdded: {
+        title: "notifications.notificationKeys.ImportDeviceNotFullyAdded.title",
+        message: "notifications.notificationKeys.ImportDeviceNotFullyAdded.message",
+    },
+
+    CameraDisconnected: {
+        title: "notifications.notificationKeys.CameraDisconnected.title",
+        message: "notifications.notificationKeys.CameraDisconnected.message",
+    },
+
+    CameraCleanupCompleted: {
+        title: "notifications.notificationKeys.CameraCleanupCompleted.title",
+        message: "notifications.notificationKeys.CameraCleanupCompleted.message",
+    },
+
+    CameraCleanupFailed: {
+        title: "notifications.notificationKeys.CameraCleanupFailed.title",
+        message: "notifications.notificationKeys.CameraCleanupFailed.message",
+    },
+
+    CameraConnected: {
+        title: "notifications.notificationKeys.CameraConnected.title",
+        message: "notifications.notificationKeys.CameraConnected.message",
+    },
+
+    CameraCleanupNoFiles: {
+        title: "notifications.notificationKeys.CameraCleanupNoFiles.title",
+        message: "notifications.notificationKeys.CameraCleanupNoFiles.message",
+    },
+
+    CameraCleanupDisconnected: {
+        title: "notifications.notificationKeys.CameraCleanupDisconnected.title",
+        message: "notifications.notificationKeys.CameraCleanupDisconnected.message",
+    },
+
+    CameraDCIMMissing: {
+        title: "notifications.notificationKeys.CameraDCIMMissing.title",
+        message: "notifications.notificationKeys.CameraDCIMMissing.message",
+    },
+
+    SystemCreationFailureFolder: {
+        title: "notifications.notificationKeys.SystemCreationFailureFolder.title",
+        message: "notifications.notificationKeys.SystemCreationFailureFolder.message",
+    },
+
+    SystemWriteFailureFolder: {
+        title: "notifications.notificationKeys.SystemWriteFailureFolder.title",
+        message: "notifications.notificationKeys.SystemWriteFailureFolder.message",
+    },
+
+    SystemUnknownFailureFolder: {
+        title: "notifications.notificationKeys.SystemUnknownFailureFolder.title",
+        message: "notifications.notificationKeys.SystemUnknownFailureFolder.message",
+    },
+
+    ImportJobClaimFailed: {
+        title: "notifications.notificationKeys.ImportJobClaimFailed.title",
+        message: "notifications.notificationKeys.ImportJobClaimFailed.message",
+    },
+} as const satisfies Record<NotificationKey, {
+    title: string;
+    message: string;
+}>;
+
+function useNotificationText(n: Notification): NotificationText {
+    const { t } = useTranslation();
+
+    const translation = notificationTranslations[n.key];
+
+    return {
+        title: t(translation.title),
+        message: t(translation.message, n.messageArgs),
+    };
+}
+
+
 function NotificationItem({ n }: { n: Notification }) {
     const { relativeTime, exactTime } = formatNotificationTime(n.createdAt);
     const [loading, setLoading] = useState(false);
 
+    const nt = useNotificationText(n)
     const handleDismiss = async (e: React.MouseEvent) => {
         e.stopPropagation(); // Unngå at klikket bobler opp
         if (!n.dismissable) return;
@@ -129,7 +230,7 @@ function NotificationItem({ n }: { n: Notification }) {
         >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                    {n.title}
+                    {nt.title}
                 </Typography>
                 <Typography variant="subtitle2">•</Typography>
                 <Tooltip title={exactTime}>
@@ -156,7 +257,7 @@ function NotificationItem({ n }: { n: Notification }) {
                 )}
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
-                {n.message}
+                {nt.message}
             </Typography>
         </Box>
     );

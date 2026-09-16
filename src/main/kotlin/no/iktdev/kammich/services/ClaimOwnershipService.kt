@@ -18,6 +18,8 @@ import no.iktdev.kammich.immich.ImmichRepository
 import no.iktdev.kammich.immich.context.ImmichUserContext
 import no.iktdev.kammich.models.internal.events.ImportJobClaimedEvent
 import no.iktdev.kammich.models.internal.events.ImportJobCompletedEvent
+import no.iktdev.kammich.models.shared.NotificationKey
+import no.iktdev.kammich.models.shared.NotificationMessageArgKey
 import no.iktdev.kammich.models.shared.device.DeviceOwnershipSummary
 import no.iktdev.kammich.models.shared.device.DeviceType
 import no.iktdev.kammich.models.shared.device.ImportJobOwnershipSummary
@@ -112,8 +114,8 @@ class ClaimOwnershipService(
             log.error("Klarte ikke å lagre import-jobb eierskap for $jobId")
             eventPublisher.errorNotification(
                 id = "import-claim-failed-$jobId",
-                title = "Kunne ikke ta eierskap av import-jobb",
-                message = "Klarte ikke å registrere eierskap for import-jobb $jobId."
+                key = NotificationKey.ImportJobClaimFailed,
+                messageArgs = mapOf(NotificationMessageArgKey.JobId to jobId.toString()),
             )
         }
         return claimed

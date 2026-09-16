@@ -31,6 +31,7 @@ import WifiTetheringOff from '@mui/icons-material/WifiTetheringOff';
 import { useSseSelector } from "../../sse/useSseSelector";
 import type { WifiTetherAP, WifiSecurityType, WifiInterfaceTether, WirelessTetheringState, WifiTether } from "../../types/types";
 import { getAp, getInterfaces, setAp, startTethering, stopTethering, useTetherDevice, removeTetherDevice } from "../../api/requests/networking/tethering";
+import { useTranslation } from "react-i18next";
 
 export default function WifiApSettings() {
     const theme = useTheme();
@@ -175,6 +176,7 @@ export function ActiveTetherDevice({ activeInterfaceName, activeState }: { activ
 
 function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined, onUpdate: (data: WifiTetherAP) => void }) {
     const theme = useTheme();
+    const { t } = useTranslation()
     const [ssid, setSsid] = useState<string | undefined>();
     const [password, setPassword] = useState<string | undefined>();
     const [security, setSecurity] = useState<WifiSecurityType>('NONE');
@@ -200,7 +202,7 @@ function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined
             p: 1,
             borderRadius: theme.shape.borderRadius
         }}>
-            <Typography sx={{ mt: 2, ml: 2, mb: 2 }} variant="h6">Wifi Network settings</Typography>
+            <Typography sx={{ mt: 2, ml: 2, mb: 2 }} variant="h6">{t('network.tether_wifi_settings.title')}</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}>
                 <TextField
                     size="small"
@@ -214,7 +216,7 @@ function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined
 
                 <TextField
                     size="small"
-                    label="Password"
+                    label={t('network.tether_wifi_settings.password')}
                     type={showPassword ? 'text' : 'password'}
                     value={password || ""}
                     onChange={(e) => setPassword(e.target.value)}
@@ -236,7 +238,7 @@ function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined
                 />
 
                 <FormControl fullWidth size="small">
-                    <InputLabel id="security-label">Security</InputLabel>
+                    <InputLabel id="security-label">{t('network.tether_wifi_settings.security')}</InputLabel>
                     <Select
                         labelId="security-label"
                         value={security}
@@ -261,7 +263,7 @@ function ApTetherConfig({ config, onUpdate }: { config: WifiTetherAP | undefined
                     })}
                     disabled={!ssid}
                 >
-                    Save Configuration
+                    {t('common.save_changes')}
                 </Button>
             </Box>
         </Box>
@@ -341,6 +343,7 @@ interface InterfaceItemProps {
 }
 
 function InterfaceItem({ iface, isInUse, supportsTethering, isUsable = true, operatingMode, state = "Idle" }: InterfaceItemProps) {
+    const { t } = useTranslation()
     const [expanded, setExpanded] = useState(false);
     const [inUse, setInUse] = useState<boolean>(false);
     const theme = useTheme();
@@ -418,10 +421,8 @@ function InterfaceItem({ iface, isInUse, supportsTethering, isUsable = true, ope
                         </Button>
                     ) : (
                         <Box>
-                            <Typography variant="body2" sx={{ mb: 2 }}>
-                                AP Mode: Declares if we found support to host a wifi network from this device.
-                                <br /><br />
-                                Concurrent mode: Declares if we found support to host a wifi network from this device as well as being able to connect to a separate wifi network simultaneously.
+                            <Typography variant="body2" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
+                                {t('network.tether_modes')}
                             </Typography>
                             <Box sx={{ display: "flex", gap: 1 }}>
                                 <Button
@@ -430,7 +431,7 @@ function InterfaceItem({ iface, isInUse, supportsTethering, isUsable = true, ope
                                     onClick={() => useTetherDevice(iface)}
                                     sx={{ textTransform: 'none', px: 3 }}
                                 >
-                                    Use
+                                    {t('common.use')}
                                 </Button>
                             </Box>
                         </Box>

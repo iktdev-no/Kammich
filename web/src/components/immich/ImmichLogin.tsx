@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Box, Paper, TextField, Button, Typography, Alert } from "@mui/material";
 import { ImmichBrandLogo } from "../../components/icons/ImmichBrand";
-import { immichLoginNormalFLow } from "../../api/requests/immich";
+import { immichApi } from "../../api/requests/immich";
 import type { ImmichUserMe } from "../../types/types";
 
 interface ImmichLoginProps {
@@ -24,7 +24,7 @@ export default function ImmichLogin({ onLoginSuccess }: ImmichLoginProps) {
 
         try {
             // Bruker din nye felles-funksjon mot bakenden som rydder opp i CORS og genererer API-nøkkel
-            const response = await immichLoginNormalFLow({
+            const response = await immichApi.login({
                 address: cleanServerUrl,
                 email,
                 password,

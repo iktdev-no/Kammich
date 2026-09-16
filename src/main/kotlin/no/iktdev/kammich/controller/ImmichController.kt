@@ -1,7 +1,9 @@
 package no.iktdev.kammich.controller
 
 import no.iktdev.kammich.immich.context.ImmichServerContext
+import no.iktdev.kammich.immich.context.ImmichUserContext
 import no.iktdev.kammich.immich.exceptions.ImmichException
+import no.iktdev.kammich.immich.services.ImmichContextService
 import no.iktdev.kammich.immich.services.ImmichImageService
 import no.iktdev.kammich.immich.services.ImmichService
 import no.iktdev.kammich.models.shared.immich.ImmichLoginRequest
@@ -32,7 +34,9 @@ class ImmichController(
     private val immichService: ImmichService,
     private val imageService: ImmichImageService,
     private val immichServerContext: ImmichServerContext,
-) {
+    private val immichUserContext: ImmichUserContext,
+
+    ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
 
@@ -112,6 +116,12 @@ class ImmichController(
     @GetMapping("/access/all")
     fun getAllApiKeys(): List<ImmichUserAccesses> {
         return immichService.getUsersWithAccesses()
+    }
+
+    @GetMapping("/access/me")
+    fun getMyAccesses(): ImmichUserAccesses? {
+        val userId = immichUserContext.getCurrentUserId() ?: return null
+        return immichService.getMyAccesses(userId)
     }
 
     @GetMapping("/users")
