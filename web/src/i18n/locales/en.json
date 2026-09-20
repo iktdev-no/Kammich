@@ -22,11 +22,25 @@
         "cancel": "Cancel",
         "delete": "Delete",
         "unexpected_error": "An unexpected error occurred",
-        "system_persmission_error1": "Failed to retrieve system permissions.",
+        "system_permission_error1": "Failed to retrieve system permissions.",
         "save": "Save",
         "save_changes": "Save changes",
         "use": "Use",
-        "upload_image": "Upload image"
+        "upload_image": "Upload image",
+        "ok": "OK",
+        "confirm": "Confirm",
+        "yes": "Yes",
+        "no": "No",
+        "none": "None",
+        "refresh": "Refresh",
+        "time": {
+            "just_now": "Just now",
+            "minutes_ago": "{{count}} min ago",
+            "hours_ago": "{{count}} hours ago",
+            "days_ago": "{{count}} days ago"
+        },
+        "empty_folder": "The folder is empty",
+        "export": "Export"
     },
     "notifications": {
         "title": "Notifications",
@@ -107,17 +121,39 @@
             "verify_checking": "Verifying update",
             "replacing_checking": "Installing update",
             "reboot_startfromScratch": "Restarting Kammich"
+        },
+        "language": {
+            "title": "Language",
+            "body": "Select language",
+            "norwegian": "Norwegian",
+            "english": "English"
         }
     },
     "network": {
+        "pageTitle": "Network",
+        "start": "Start",
+        "stop": "Stop",
+        "release": "Release",
+        "operation_mode": "Operating mode",
+        "wifi": {
+            "searching": "Searching...",
+            "search": "Search",
+            "connect": "Connect",
+            "not_connected": "Not connected",
+            "connect_description": "Connect this machine to a wireless network"
+        },
+        "tether": {
+            "title": "Access Point",
+            "configure": "Configure",
+            "description": "Start a wireless network to allow devices to connect to this machine"
+        },
+        "disconnect": "Disconnect",
         "wifi_title": "Wi-Fi Settings",
-        "searching": "Searching...",
-        "search": "Search",
         "wifi_available": "Available wireless networks",
         "wifi_no_network": "No other wireless networks were found.",
         "hidden_show": "Show hidden networks",
         "hidden_hide": "Hide hidden networks",
-        "tether_title": "Tethering Settings",
+        "tether_title": "Access Point Settings",
         "tether_no_configured": "No interfaces configured",
         "tether_settings": {
             "title": "Access Point settings",
@@ -129,10 +165,23 @@
             "security_wpa3": "WPA3",
             "password_hint": "Password used when connecting to the Access Point"
         },
-        "tether_modes": "AP Mode: Indicates whether this device supports hosting a Wi-Fi network.\n\nConcurrent mode: Indicates whether this device supports hosting a Wi-Fi network while simultaneously connecting to a separate Wi-Fi network."
+        "tether_modes": "AP Mode: Indicates whether this device supports hosting a Wi-Fi network.\n\nConcurrent mode: Indicates whether this device supports hosting a Wi-Fi network while simultaneously connecting to a separate Wi-Fi network.",
+        "reset": {
+            "confirm": {
+                "title": "Reset network interface",
+                "message": "Are you sure you want to reset network interface {{interfaceName}}? This will interrupt the network connection."
+            }
+        },
+        "tailscale": {
+            "relay": "Relay",
+            "exit_node": "Exit node",
+            "netcheck": "Network check"
+        }
     },
     "immich": {
-        "my_profile": "My profile"
+        "my_profile": "My profile",
+        "dashboard": "Immich Dashboard",
+        "dasbhoard_body": "Overview of connected Immich server, version and system properties."
     },
     "album": {
         "title": "Albums",
@@ -151,7 +200,11 @@
     },
     "devices": {
         "title": "Connected devices",
-        "no_devices_connected": "No connected devices or cameras"
+        "no_devices_connected": "No connected devices or cameras",
+        "device_disconnected": "Device disconnected",
+        "unavailable": "The device with serial number <strong>{{serialNumber}}</strong> was disconnected or is unavailable.",
+        "checkConnection": "Check the cable or whether the device is still connected.",
+        "go_to_overview": "Go to overview"
     },
     "import": {
         "title": "Media import",
@@ -185,5 +238,8 @@
             },
             "not_permitted": "You do not have sufficient permissions to perform power actions on this machine."
         }
+    },
+    "upload": {
+        "title": "Upload"
     }
 }

@@ -117,7 +117,7 @@
             "update_failed": "Oppdateringen feilet",
             "auto_update_na": "Automatisk oppdatering er ikke tilgjengelig",
             "downloading_update": "Laster ned oppdatering...",
-            "update_checking": "Sjekker setter oppdateringer..",
+            "update_checking": "Sjekker etter oppdateringer...",
             "verify_checking": "Verifiserer oppdatering",
             "replacing_checking": "Installerer oppdateringen",
             "reboot_startfromScratch": "Starter Kammich på nytt"
@@ -125,7 +125,7 @@
         "language": {
             "title": "Språk",
             "body": "Velg språk",
-            "norwegian": "Norwegian",
+            "norwegian": "Norsk",
             "english": "English"
         }
     },
@@ -144,7 +144,7 @@
         },
         "tether": {
             "title": "Tilgangspunkt",
-            "configure": "Configurer",
+            "configure": "Konfigurer",
             "description": "Start et trådløst nettverk for å la enheter koble til denne maskinen"
         },
         "disconnect": "Koble fra",
@@ -165,7 +165,7 @@
             "security_wpa3": "WPA3",
             "password_hint": "Passordet som brukes ved tilkobling til tilgangspunktet"
         },
-        "tether_modes": "AP Mode: Declares if we found support to host a wifi network from this device.\n\nConcurrent mode: Declares if we found support to host a wifi network from this device as well as being able to connect to a separate wifi network simultaneously.",
+        "tether_modes": "AP Mode: Angir om denne enheten støtter å være vert for et Wi-Fi-nettverk.\n\nConcurrent mode: Angir om denne enheten støtter å være vert for et Wi-Fi-nettverk samtidig som den er koblet til et separat Wi-Fi-nettverk.",
         "reset": {
             "confirm": {
                 "title": "Tilbakestill nettverksgrensesnitt",
@@ -184,7 +184,7 @@
         "dasbhoard_body": "Oversikt over tilkoblet Immich-server, versjon og systemegenskaper."
     },
     "album": {
-        "title": "Albums",
+        "title": "Album",
         "dialog": {
             "new": "Nytt album",
             "edit": "Rediger album",
@@ -213,7 +213,7 @@
     },
     "ownership": {
         "title": "Eierskap & Administrasjon",
-        "body": "Knytt enheter og import-jobber til din brukerprofil for å administere tilgang og opplastning",
+        "body": "Knytt enheter og import-jobber til din brukerprofil for å administrere tilgang og opplastning",
         "available_devices": "Tilgjengelige enheter",
         "import_jobs": "Import-jobber",
         "owned": "Eies",
@@ -232,9 +232,9 @@
             "reboot_confirm": "Bekreft omstart",
             "confirm": {
                 "title": "Bekreft",
-                "reboot": "Er du sikker på at du vil starte maskinen på nytt?\n Alle aktive tjenester vil bli avbrutt midlertidig.",
-                "shutdown": "Er du sikker på at du vil slå av maskinen?\n Maskinen vil bli utilgjengelig til den startes fysisk igjen.",
-                "executes": "Utfører.."
+                "reboot": "Er du sikker på at du vil starte maskinen på nytt?\nAlle aktive tjenester vil bli avbrutt midlertidig.",
+                "shutdown": "Er du sikker på at du vil slå av maskinen?\nMaskinen vil bli utilgjengelig til den startes fysisk igjen.",
+                "executes": "Utfører..."
             },
             "not_permitted": "Du har ikke tilstrekkelige tillatelser til å utføre strømhandlinger på denne maskinen."
         }
