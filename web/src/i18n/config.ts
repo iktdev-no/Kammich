@@ -12,6 +12,9 @@ i18n
             no: {
                 translation: noTranslations,
             },
+            nb: {
+                translation: noTranslations,
+            },
             en: {
                 translation: enTranslations,
             },

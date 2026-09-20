@@ -197,7 +197,8 @@ function useNotificationText(n: Notification): NotificationText {
 
 
 function NotificationItem({ n }: { n: Notification }) {
-    const { relativeTime, exactTime } = formatNotificationTime(n.createdAt);
+    const { t } = useTranslation();
+    const { relativeTime, exactTime } = formatNotificationTime(n.createdAt, t);
     const [loading, setLoading] = useState(false);
 
     const nt = useNotificationText(n)

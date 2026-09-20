@@ -9,11 +9,13 @@ import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 
 import DoNotDisturbAltOutlinedIcon from '@mui/icons-material/DoNotDisturbAltOutlined';
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined';
+import { useTranslation } from "react-i18next";
 
 export default function DeviceFileView({ files, onNavigate, settings, onSettingsChange }: {
     files: Array<WFile>, onNavigate: (path: string) => void, settings: DeviceSettingsDto | null,
     onSettingsChange: (newSettings: Partial<DeviceSettingsDto>) => void
 }) {
+    const { t } = useTranslation();
     console.log(files);
 
     const [contextMenu, setContextMenu] = useState<{ mouseX: number; mouseY: number; file: WFile } | null>(null);
@@ -36,7 +38,7 @@ export default function DeviceFileView({ files, onNavigate, settings, onSettings
                 justifyContent: "center", py: 10, color: "text.secondary"
             }}>
                 <InboxOutlinedIcon sx={{ fontSize: 80, mb: 2, opacity: 0.5 }} />
-                <Typography variant="h6">Denne mappen er tom</Typography>
+                <Typography variant="h6">{t('common.empty_folder')}</Typography>
             </Box>
         );
     }
@@ -115,11 +117,11 @@ export default function DeviceFileView({ files, onNavigate, settings, onSettings
             >
                 <MenuItem onClick={() => { handleMenuAction('Include') }}>
                     <ListItemIcon><FileUploadOutlinedIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>Import</ListItemText>
+                    <ListItemText>{t('common.import')}</ListItemText>
                 </MenuItem>
                 <MenuItem onClick={() => { handleMenuAction('Exclude') }}>
                     <ListItemIcon><DoNotDisturbAltOutlinedIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>Exclude</ListItemText>
+                    <ListItemText>{t('common.export')}</ListItemText>
                 </MenuItem>
             </Menu>
         </>

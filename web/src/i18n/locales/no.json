@@ -32,7 +32,15 @@
         "yes": "Ja",
         "no": "Nei",
         "none": "Ingen",
-        "refresh": "Oppdater"
+        "refresh": "Oppdater",
+        "time": {
+            "just_now": "Akkurat nå",
+            "minutes_ago": "{{count}} min siden",
+            "hours_ago": "{{count}} timer siden",
+            "days_ago": "{{count}} dager siden"
+        },
+        "empty_folder": "Mappen er tom",
+        "export": "Eksporter"
     },
     "notifications": {
         "title": "Notifikasjoner",
@@ -115,8 +123,8 @@
             "reboot_startfromScratch": "Starter Kammich på nytt"
         },
         "language": {
-            "title": "Language",
-            "current": "English",
+            "title": "Språk",
+            "body": "Velg språk",
             "norwegian": "Norwegian",
             "english": "English"
         }
@@ -192,7 +200,11 @@
     },
     "devices": {
         "title": "Tilkoblede enheter",
-        "no_devices_connected": "Ingen tilkoblede enheter eller kameraer"
+        "no_devices_connected": "Ingen tilkoblede enheter eller kameraer",
+        "device_disconnected": "Enheten er frakoblet",
+        "unavailable": "Enheten med serienummer <strong>{{serialNumber}}</strong> ble frakoblet eller utilgjengelig.",
+        "checkConnection": "Sjekk kabelen eller om enheten fortsatt er tilkoblet.",
+        "go_to_overview": "Gå til oversikt"
     },
     "import": {
         "title": "Media importering",

@@ -1,58 +1,48 @@
 import { useEffect, useState } from "react";
-
 import {
     Alert,
     Box,
-    Button,
     Card,
     CardContent,
     Chip,
     CircularProgress,
     Container,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogContentText,
-    DialogTitle,
     Grid,
     IconButton,
     Stack,
     Typography,
 } from "@mui/material";
-
 import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import StorageIcon from "@mui/icons-material/Storage";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 
 import type {
     PowerPermissionsDto,
 } from "../types/types";
-
 import {
     executePowerOff,
     executeReboot,
     getPowerPermissions,
 } from "../api/requests/system";
-
 import { useTranslation } from "react-i18next";
-
 import { useSseSelector } from "../hooks/useSseSelector";
-
 import DiskHealthCard from "../features/system/DiskHealthCard";
-
 import PageLayout from "../components/layouts/PageLayout";
+import { useWarningDialog } from "../hooks/useWarningDialog";
+import DiskHealthOverviewCard from "../features/system/DiskHealthOverviewCard";
+import LanguageSelectionCard from "../features/system/LanguageSelectionCard";
 
 export function System() {
     const { t } = useTranslation();
 
+    const {
+        showWarning,
+        warningDialog,
+    } = useWarningDialog();
+
     const [permissions, setPermissions] =
         useState<PowerPermissionsDto | null>(null);
-
-    const [loading, setLoading] =
-        useState<boolean>(true);
 
     const [actionLoading, setActionLoading] =
         useState<boolean>(false);
@@ -62,7 +52,7 @@ export function System() {
         severity: "success" | "error";
     } | null>(null);
 
-    const [confirmAction, setConfirmAction] =
+    const [activePowerAction, setActivePowerAction] =
         useState<"poweroff" | "reboot" | null>(null);
 
     const diskHealth = useSseSelector(
@@ -70,8 +60,6 @@ export function System() {
     );
 
     const fetchPermissions = (): void => {
-        setLoading(true);
-
         getPowerPermissions()
             .then(res => {
                 setPermissions(res);
@@ -88,9 +76,6 @@ export function System() {
                     ),
                     severity: "error",
                 });
-            })
-            .finally(() => {
-                setLoading(false);
             });
     };
 
@@ -98,17 +83,16 @@ export function System() {
         fetchPermissions();
     }, []);
 
-    const handleExecute = async (): Promise<void> => {
-        if (confirmAction === null) {
-            return;
-        }
-
+    const executePowerAction = async (
+        action: "poweroff" | "reboot"
+    ): Promise<void> => {
         setActionLoading(true);
+        setActivePowerAction(action);
         setFeedback(null);
 
         try {
             const response =
-                confirmAction === "poweroff"
+                action === "poweroff"
                     ? await executePowerOff()
                     : await executeReboot();
 
@@ -135,18 +119,43 @@ export function System() {
             });
         } finally {
             setActionLoading(false);
-            setConfirmAction(null);
+            setActivePowerAction(null);
         }
     };
 
+    const confirmPowerAction = (
+        action: "poweroff" | "reboot"
+    ): void => {
+        const isPowerOff =
+            action === "poweroff";
+
+        showWarning({
+            severity: isPowerOff
+                ? "critical"
+                : "warning",
+
+            title: isPowerOff
+                ? t(
+                    "system.actions.shutdown_confirm"
+                )
+                : t(
+                    "system.actions.reboot_confirm"
+                ),
+
+            message: isPowerOff
+                ? t(
+                    "system.actions.confirm.shutdown"
+                )
+                : t(
+                    "system.actions.confirm.reboot"
+                ),
+
+            onConfirm: () =>
+                executePowerAction(action),
+        });
+    };
+
     const disks = diskHealth ?? [];
-
-    const healthyDisks = disks.filter(
-        disk => disk.isHealthy
-    ).length;
-
-    const unhealthyDisks =
-        disks.length - healthyDisks;
 
     const canReboot =
         permissions?.canReboot === true;
@@ -161,65 +170,93 @@ export function System() {
         <PageLayout
             title={t("system.title")}
             actions={
-                permissions === null ? null : (
-                    canPerformPowerAction && (
-                        <Stack
-                            direction="row"
-                            spacing={1.5}
-                            sx={{
-                                alignItems: "center",
-                            }}
-                        >
-                            {canReboot && (
-                                <IconButton
-                                    color="warning"
-                                    disabled={actionLoading}
-                                    onClick={() =>
-                                        setConfirmAction("reboot")
-                                    }
-                                    sx={{
-                                        width: 48,
-                                        height: 48,
-                                        backgroundColor:
-                                            "warning.main",
-                                        color:
-                                            "warning.contrastText",
-                                        "&:hover": {
+                permissions === null
+                    ? null
+                    : (
+                        canPerformPowerAction && (
+                            <Stack
+                                direction="row"
+                                spacing={1.5}
+                                sx={{
+                                    alignItems: "center",
+                                }}
+                            >
+                                {canReboot && (
+                                    <IconButton
+                                        color="warning"
+                                        disabled={
+                                            actionLoading
+                                        }
+                                        onClick={() =>
+                                            confirmPowerAction(
+                                                "reboot"
+                                            )
+                                        }
+                                        sx={{
+                                            width: 48,
+                                            height: 48,
                                             backgroundColor:
-                                                "warning.dark",
-                                        },
-                                    }}
-                                >
-                                    <RestartAltIcon />
-                                </IconButton>
-                            )}
+                                                "warning.main",
+                                            color:
+                                                "warning.contrastText",
+                                            "&:hover": {
+                                                backgroundColor:
+                                                    "warning.dark",
+                                            },
+                                        }}
+                                    >
+                                        {actionLoading &&
+                                            activePowerAction ===
+                                            "reboot" ? (
+                                            <CircularProgress
+                                                size={24}
+                                                color="inherit"
+                                            />
+                                        ) : (
+                                            <RestartAltIcon />
+                                        )}
+                                    </IconButton>
+                                )}
 
-                            {canPowerOff && (
-                                <IconButton
-                                    color="error"
-                                    disabled={actionLoading}
-                                    onClick={() =>
-                                        setConfirmAction("poweroff")
-                                    }
-                                    sx={{
-                                        width: 48,
-                                        height: 48,
-                                        backgroundColor:
-                                            "error.main",
-                                        color:
-                                            "error.contrastText",
-                                        "&:hover": {
+                                {canPowerOff && (
+                                    <IconButton
+                                        color="error"
+                                        disabled={
+                                            actionLoading
+                                        }
+                                        onClick={() =>
+                                            confirmPowerAction(
+                                                "poweroff"
+                                            )
+                                        }
+                                        sx={{
+                                            width: 48,
+                                            height: 48,
                                             backgroundColor:
-                                                "error.dark",
-                                        },
-                                    }}
-                                >
-                                    <PowerSettingsNewIcon />
-                                </IconButton>
-                            )}
-                        </Stack>
+                                                "error.main",
+                                            color:
+                                                "error.contrastText",
+                                            "&:hover": {
+                                                backgroundColor:
+                                                    "error.dark",
+                                            },
+                                        }}
+                                    >
+                                        {actionLoading &&
+                                            activePowerAction ===
+                                            "poweroff" ? (
+                                            <CircularProgress
+                                                size={24}
+                                                color="inherit"
+                                            />
+                                        ) : (
+                                            <PowerSettingsNewIcon />
+                                        )}
+                                    </IconButton>
+                                )}
+                            </Stack>
+                        )
                     )
-                )
             }
         >
             {!canPerformPowerAction && (
@@ -236,6 +273,7 @@ export function System() {
                     )}
                 </Alert>
             )}
+
             <Container
                 maxWidth="lg"
                 sx={{
@@ -246,7 +284,6 @@ export function System() {
                     },
                 }}
             >
-
                 <Stack spacing={3}>
                     {feedback && (
                         <Alert
@@ -259,134 +296,7 @@ export function System() {
                         </Alert>
                     )}
 
-                    <Card
-                        sx={{
-                            borderRadius: 3,
-                        }}
-                    >
-                        <CardContent
-                            sx={{
-                                p: {
-                                    xs: 2.5,
-                                    sm: 3,
-                                },
-                                "&:last-child": {
-                                    pb: {
-                                        xs: 2.5,
-                                        sm: 3,
-                                    },
-                                },
-                            }}
-                        >
-                            <Stack spacing={2}>
-                                <Typography
-                                    variant="h6"
-                                    sx={{
-                                        fontWeight: 600,
-                                    }}
-                                >
-                                    Disk health
-                                </Typography>
-
-                                <Stack
-                                    direction={{
-                                        xs: "column",
-                                        sm: "row",
-                                    }}
-                                    spacing={2}
-                                >
-                                    <Box
-                                        sx={{
-                                            flex: 1,
-                                            minWidth: 0,
-                                        }}
-                                    >
-                                        <Stack
-                                            direction="row"
-                                            spacing={1.5}
-                                            sx={{
-                                                alignItems:
-                                                    "center",
-                                            }}
-                                        >
-                                            {unhealthyDisks ===
-                                                0 ? (
-                                                <CheckCircleIcon
-                                                    color="success"
-                                                />
-                                            ) : (
-                                                <ErrorOutlineIcon
-                                                    color="warning"
-                                                />
-                                            )}
-
-                                            <Box>
-                                                <Typography
-                                                    sx={{
-                                                        fontWeight:
-                                                            600,
-                                                    }}
-                                                >
-                                                    {unhealthyDisks ===
-                                                        0
-                                                        ? "All disks healthy"
-                                                        : "Disk health warning"}
-                                                </Typography>
-
-                                                <Typography
-                                                    variant="body2"
-                                                    color="text.secondary"
-                                                >
-                                                    {disks.length}{" "}
-                                                    {disks.length ===
-                                                        1
-                                                        ? "disk"
-                                                        : "disks"}{" "}
-                                                    detected
-                                                </Typography>
-                                            </Box>
-                                        </Stack>
-                                    </Box>
-
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            alignItems:
-                                                "center",
-                                            justifyContent: {
-                                                xs: "flex-start",
-                                                sm: "flex-end",
-                                            },
-                                        }}
-                                    >
-                                        <Chip
-                                            icon={
-                                                unhealthyDisks ===
-                                                    0 ? (
-                                                    <CheckCircleIcon />
-                                                ) : (
-                                                    <ErrorOutlineIcon />
-                                                )
-                                            }
-                                            label={
-                                                unhealthyDisks ===
-                                                    0
-                                                    ? `${healthyDisks} healthy`
-                                                    : `${unhealthyDisks} warning`
-                                            }
-                                            color={
-                                                unhealthyDisks ===
-                                                    0
-                                                    ? "success"
-                                                    : "warning"
-                                            }
-                                            variant="outlined"
-                                        />
-                                    </Box>
-                                </Stack>
-                            </Stack>
-                        </CardContent>
-                    </Card>
+                    <DiskHealthOverviewCard disks={diskHealth} />
 
                     <Box>
                         <Typography
@@ -414,7 +324,8 @@ export function System() {
                                     <StorageIcon
                                         sx={{
                                             fontSize: 40,
-                                            color: "text.disabled",
+                                            color:
+                                                "text.disabled",
                                             mb: 1,
                                         }}
                                     />
@@ -454,95 +365,9 @@ export function System() {
                         )}
                     </Box>
                 </Stack>
-
-                <Dialog
-                    open={confirmAction !== null}
-                    onClose={() => {
-                        if (!actionLoading) {
-                            setConfirmAction(null);
-                        }
-                    }}
-                    fullWidth
-                    maxWidth="xs"
-                >
-                    <DialogTitle
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1.5,
-                        }}
-                    >
-                        <WarningAmberIcon color="warning" />
-
-                        {confirmAction === "poweroff"
-                            ? t(
-                                "system.actions.shutdown_confirm"
-                            )
-                            : t(
-                                "system.actions.reboot_confirm"
-                            )}
-                    </DialogTitle>
-
-                    <DialogContent>
-                        <DialogContentText>
-                            {confirmAction === "poweroff"
-                                ? t(
-                                    "system.actions.confirm.shutdown"
-                                )
-                                : t(
-                                    "system.actions.confirm.reboot"
-                                )}
-                        </DialogContentText>
-                    </DialogContent>
-
-                    <DialogActions
-                        sx={{
-                            p: 2,
-                            pt: 0,
-                            gap: 1,
-                        }}
-                    >
-                        <Button
-                            onClick={() =>
-                                setConfirmAction(null)
-                            }
-                            color="inherit"
-                            disabled={actionLoading}
-                            sx={{
-                                minHeight: 48,
-                            }}
-                        >
-                            {t("common.cancel")}
-                        </Button>
-
-                        <Button
-                            onClick={handleExecute}
-                            variant="contained"
-                            color={
-                                confirmAction === "poweroff"
-                                    ? "error"
-                                    : "warning"
-                            }
-                            disabled={actionLoading}
-                            autoFocus
-                            sx={{
-                                minHeight: 48,
-                            }}
-                        >
-                            {actionLoading ? (
-                                <CircularProgress
-                                    size={20}
-                                    color="inherit"
-                                />
-                            ) : (
-                                t(
-                                    "system.actions.confirm.title"
-                                )
-                            )}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
             </Container>
+            <LanguageSelectionCard />
+            {warningDialog}
         </PageLayout>
     );
 }
