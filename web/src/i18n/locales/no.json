@@ -26,7 +26,13 @@
         "save": "Lagre",
         "save_changes": "Lagre endringer",
         "use": "Bruk",
-        "upload_image": "Last opp bilde"
+        "upload_image": "Last opp bilde",
+        "ok": "Ok",
+        "confirm": "Bekreft",
+        "yes": "Ja",
+        "no": "Nei",
+        "none": "Ingen",
+        "refresh": "Oppdater"
     },
     "notifications": {
         "title": "Notifikasjoner",
@@ -116,24 +122,58 @@
         }
     },
     "network": {
+        "pageTitle": "Nettverk",
+        "start": "Start",
+        "stop": "Stopp",
+        "release": "Frigjør",
+        "operation_mode": "Driftsmodus",
+        "wifi": {
+            "searching": "Søker...",
+            "search": "Søk",
+            "connect": "Tilkobling",
+            "not_connected": "Ikke tilkoblet",
+            "connect_description": "Koble denne maskinen til et trådløst nettverk"
+        },
+        "tether": {
+            "title": "Tilgangspunkt",
+            "configure": "Configurer",
+            "description": "Start et trådløst nettverk for å la enheter koble til denne maskinen"
+        },
+        "disconnect": "Koble fra",
         "wifi_title": "WiFi Innstillinger",
-        "searching": "Søker...",
-        "search": "Søk",
         "wifi_available": "Tilgjengelige trådløse nettverk",
         "wifi_no_network": "Ingen andre trådløse nettverk ble funnet.",
         "hidden_show": "Vis skjulte nettverk",
         "hidden_hide": "Skjul skjulte nettverk",
         "tether_title": "Tilgangspunkt Innstillinger",
         "tether_no_configured": "Ingen grensesnitt konfigurert",
-        "tether_wifi_settings": {
-            "title": "Wifi Nettverks innstillinger",
+        "tether_settings": {
+            "title": "Tilgangspunktinnstillinger",
+            "ssid": "Nettverksnavn",
             "password": "Passord",
-            "security": "Sikkerhet"
+            "security": "Sikkerhet",
+            "security_none": "Ingen",
+            "security_wpa2": "WPA2",
+            "security_wpa3": "WPA3",
+            "password_hint": "Passordet som brukes ved tilkobling til tilgangspunktet"
         },
-        "tether_modes": "AP Mode: Declares if we found support to host a wifi network from this device.\n\nConcurrent mode: Declares if we found support to host a wifi network from this device as well as being able to connect to a separate wifi network simultaneously."
+        "tether_modes": "AP Mode: Declares if we found support to host a wifi network from this device.\n\nConcurrent mode: Declares if we found support to host a wifi network from this device as well as being able to connect to a separate wifi network simultaneously.",
+        "reset": {
+            "confirm": {
+                "title": "Tilbakestill nettverksgrensesnitt",
+                "message": "Er du sikker på at du vil tilbakestille nettverksgrensesnittet {{interfaceName}}? Dette vil avbryte nettverkstilkoblingen."
+            }
+        },
+        "tailscale": {
+            "relay": "Relé",
+            "exit_node": "Utgangsnode",
+            "netcheck": "Nettverkssjekk"
+        }
     },
     "immich": {
-        "my_profile": "Min profil"
+        "my_profile": "Min profil",
+        "dashboard": "Immich Oversikt",
+        "dasbhoard_body": "Oversikt over tilkoblet Immich-server, versjon og systemegenskaper."
     },
     "album": {
         "title": "Albums",
@@ -169,7 +209,7 @@
         "no_devices_found": "Ingen enheter ble funnet"
     },
     "system": {
-        "title": "Systemstyring",
+        "title": "System",
         "body": "Administrer maskinens strømtilstand (omstart og avslutning)",
         "actions": {
             "title": "Handlinger",
@@ -186,5 +226,8 @@
             },
             "not_permitted": "Du har ikke tilstrekkelige tillatelser til å utføre strømhandlinger på denne maskinen."
         }
+    },
+    "upload": {
+        "title": "Opplasting"
     }
 }

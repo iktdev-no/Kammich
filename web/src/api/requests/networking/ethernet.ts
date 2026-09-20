@@ -1,12 +1,12 @@
-import type { EthernetConnection } from "../../../types/types";
+import type { EthernetInterfaceState } from "../../../types/types";
 import { apiGet, apiPost, apiPut } from "../../client";
 
 export const ethernetApi = {
     getAll: () =>
-        apiGet<EthernetConnection[]>("/v1/ethernet"),
+        apiGet<EthernetInterfaceState[]>("/v1/ethernet"),
 
     get: (interfaceName: string) =>
-        apiGet<EthernetConnection>(`/v1/ethernet/${interfaceName}`),
+        apiGet<EthernetInterfaceState>(`/v1/ethernet/${interfaceName}`),
 
     startClient: (interfaceName: string) =>
         apiPost<void, void>(`/v1/ethernet/${interfaceName}/client`),

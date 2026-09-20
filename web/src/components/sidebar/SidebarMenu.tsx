@@ -6,8 +6,6 @@ import { StatusIndicator } from "./StatusIndicator";
 import { SidebarItemRenderer } from "./SidebarItemRendrer";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
-import WifiIcon from '@mui/icons-material/Wifi';
-import WifiTetheringIcon from '@mui/icons-material/WifiTethering';
 import PersonIcon from '@mui/icons-material/Person';
 import PeopleIcon from '@mui/icons-material/People';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -16,7 +14,7 @@ import PhotoAlbumIcon from '@mui/icons-material/PhotoAlbum';
 import SdStorageOutlinedIcon from '@mui/icons-material/SdStorageOutlined';
 import CableIcon from '@mui/icons-material/Cable';
 import type { SidebarItem } from "./SidebarItemTypes";
-import { useSseSelector } from "../../sse/useSseSelector";
+import { useSseSelector } from "../../hooks/useSseSelector";
 import { useEffect, useMemo, useState } from "react";
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import MemoryIcon from '@mui/icons-material/Memory';
@@ -25,10 +23,7 @@ import ImportIcon from '@mui/icons-material/SystemUpdateAlt';
 import { getPhotoDevices } from "../../api/requests/photo";
 import type { ImmichUserAccesses, PhotoDevice } from "../../types/types";
 import ImmichIcon from "../icons/ImmichIcon";
-import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
-import TailscaleIcon from "../icons/TailscaleIcon";
-import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet';
 import InfoIcon from '@mui/icons-material/Info';
 import { useTranslation } from "react-i18next";
 
@@ -157,28 +152,6 @@ export default function SidebarMenu({ width, onItemClick }: SidebarMenuProps) {
             label: t('common.network'),
             icon: PublicIcon,
             to: "/settings/networking",
-            children: [
-                {
-                    label: t('common.wifi'),
-                    icon: WifiIcon,
-                    to: "/settings/networking/wifi"
-                },
-                {
-                    label: t('common.tether'),
-                    icon: WifiTetheringIcon,
-                    to: "/settings/networking/ap"
-                },
-                {
-                    label: t('common.ethernet'),
-                    icon: SettingsEthernetIcon,
-                    to: "/settings/networking/ethernet"
-                },
-                {
-                    label: t('common.tailscale'),
-                    icon: TailscaleIcon,
-                    to: "/settings/networking/tailscale"
-                }
-            ]
         },
         {
             label: t('common.system'),

@@ -1,14 +1,15 @@
 package no.iktdev.kammich.system.network.strategy.ap
 
 
+import no.iktdev.kammich.models.shared.network.WifiInterfaceState
 import no.iktdev.kammich.models.shared.network.WifiTetherAP
 import no.iktdev.kammich.models.shared.network.WifiNetwork
 import no.iktdev.kammich.models.shared.network.WifiTether
 
 interface AccessPointStrategy {
-    fun start(interfaceName: String, tether: WifiTetherAP, autoconnect: Boolean): WifiTether
+    fun start(interfaceName: String, tether: WifiTetherAP, autoconnect: Boolean): WifiInterfaceState
     fun stop(interfaceName: String): Boolean
     fun isSupported(): Boolean
-    fun getState(interfaceName: String): WifiTether
+    fun getState(interfaceName: String): WifiInterfaceState
     fun getNetwork(interfaceName: String): WifiNetwork?
 }

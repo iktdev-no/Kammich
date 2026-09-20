@@ -119,10 +119,15 @@
         "hidden_hide": "Hide hidden networks",
         "tether_title": "Tethering Settings",
         "tether_no_configured": "No interfaces configured",
-        "tether_wifi_settings": {
-            "title": "Wi-Fi Network Settings",
+        "tether_settings": {
+            "title": "Access Point settings",
+            "ssid": "Network name",
             "password": "Password",
-            "security": "Security"
+            "security": "Security",
+            "security_none": "None",
+            "security_wpa2": "WPA2",
+            "security_wpa3": "WPA3",
+            "password_hint": "Password used when connecting to the Access Point"
         },
         "tether_modes": "AP Mode: Indicates whether this device supports hosting a Wi-Fi network.\n\nConcurrent mode: Indicates whether this device supports hosting a Wi-Fi network while simultaneously connecting to a separate Wi-Fi network."
     },

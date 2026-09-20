@@ -16,6 +16,7 @@ enum class WifiInterfaceClientError {
 }
 
 enum class WifiConnectionStateType {
+    Acquired,
     Connecting,
     Connected,
     Disconnecting,

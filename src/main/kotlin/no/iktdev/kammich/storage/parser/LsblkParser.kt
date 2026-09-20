@@ -1,93 +1,103 @@
 package no.iktdev.kammich.storage.parser
 
 import com.google.gson.Gson
-import no.iktdev.kammich.models.shared.storage.Transport
+import no.iktdev.kammich.models.internal.LsblkDevice
+import no.iktdev.kammich.models.internal.LsblkResponse
 import no.iktdev.kammich.models.shared.storage.LsblkBlockDevice
-import no.iktdev.kammich.models.LsblkResponse
+import no.iktdev.kammich.models.shared.storage.Transport
+import org.springframework.stereotype.Component
 
+@Component
 class LsblkParser {
+
     private val gson = Gson()
 
-    fun getParentDevices(json: String): List<LsblkBlockDevice> {
-        val response = gson.fromJson(json, LsblkResponse::class.java)
+    fun getPhysicalDevices(
+        json: String
+    ): List<LsblkBlockDevice> {
+        val response = gson.fromJson(
+            json,
+            LsblkResponse::class.java
+        )
+
+        return response.devices.map { device ->
+            createBlockDevice(
+                device = device,
+                modelName = device.model ?: "Unknown",
+                serialNumber = device.serial ?: "Unknown",
+                transport = Transport.fromString(
+                    device.transport
+                )
+            )
+        }
+    }
+
+    fun getAllDevices(
+        json: String
+    ): List<LsblkBlockDevice> {
+        val response = gson.fromJson(
+            json,
+            LsblkResponse::class.java
+        )
+
         val devices = mutableListOf<LsblkBlockDevice>()
 
-        for (disk in response.devices) {
-            val model = disk.model ?: "Unknown"
-            val serial = disk.serial ?: "Unknown"
-            val transport = Transport.fromString(disk.transport)
-
-            // Vi legger til disken selv om den ikke er montert
-            // Vi bruker "Not mounted" som fallback-verdi
-            devices.add(createBlockDevice(
-                name = disk.name,
-                path = disk.path ?: "/dev/${disk.name}",
-                mountPoint = disk.mountpoint ?: "Not mounted",
-                serialNumber = serial,
-                modelName = model,
-                transport = transport,
-                mounted = !disk.mountpoint.isNullOrBlank(),
-            ))
+        response.devices.forEach { device ->
+            flatten(
+                device = device,
+                modelName = device.model ?: "Unknown",
+                serialNumber = device.serial ?: "Unknown",
+                transport = Transport.fromString(
+                    device.transport
+                ),
+                output = devices
+            )
         }
+
         return devices
     }
 
-    fun getBlockDevices(json: String): List<LsblkBlockDevice> {
-        val response = gson.fromJson(json, LsblkResponse::class.java)
-        val devices = mutableListOf<LsblkBlockDevice>()
+    private fun flatten(
+        device: LsblkDevice,
+        modelName: String,
+        serialNumber: String,
+        transport: Transport,
+        output: MutableList<LsblkBlockDevice>
+    ) {
+        output.add(
+            createBlockDevice(
+                device = device,
+                modelName = modelName,
+                serialNumber = serialNumber,
+                transport = transport
+            )
+        )
 
-        for (disk in response.devices) {
-            val model = disk.model ?: "Unknown"
-            val serial = disk.serial ?: "Unknown"
-            val transport = Transport.fromString(disk.transport)
-
-            // Vi legger til disken selv om den ikke er montert
-            // Vi bruker "Not mounted" som fallback-verdi
-            devices.add(createBlockDevice(
-                name = disk.name,
-                path = disk.path ?: "/dev/${disk.name}",
-                mountPoint = disk.mountpoint ?: "Not mounted",
-                serialNumber = serial,
-                modelName = model,
+        device.children?.forEach { child ->
+            flatten(
+                device = child,
+                modelName = modelName,
+                serialNumber = serialNumber,
                 transport = transport,
-                mounted = !disk.mountpoint.isNullOrBlank(),
-            ))
-
-            // Vi går gjennom partisjonene og legger til alle, uansett om de er montert
-            disk.children?.forEach { partition ->
-                devices.add(
-                    createBlockDevice(
-                        name = partition.name,
-                        path = partition.path ?: "/dev/${partition.name}",
-                        mountPoint = partition.mountpoint ?: "Not mounted",
-                        serialNumber = serial,
-                        modelName = model,
-                        transport = transport,
-                        mounted = !partition.mountpoint.isNullOrBlank()
-                    )
-                )
-            }
+                output = output
+            )
         }
-        return devices
     }
 
     private fun createBlockDevice(
-        name: String,
-        path: String?,
-        mountPoint: String,
-        mounted: Boolean,
-        serialNumber: String,
+        device: LsblkDevice,
         modelName: String,
+        serialNumber: String,
         transport: Transport
     ): LsblkBlockDevice {
         return LsblkBlockDevice(
-            name = name,
-            path = path ?: "Unknown",
-            mountPoint = mountPoint,
+            name = device.name,
+            path = device.path ?: "/dev/${device.name}",
+            mountPoint = device.mountpoint,
             serialNumber = serialNumber,
             modelName = modelName,
             transport = transport,
-            mounted = mounted
+            mounted = !device.mountpoint.isNullOrBlank()
         )
     }
 }

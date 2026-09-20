@@ -1,6 +1,6 @@
 // AUTO-GENERATED. DO NOT EDIT.
 // TSGenerator Version: 0.0.1-SNAPSHOT
-// Time: 2026-09-16T14:53:11.042450130Z
+// Time: 2026-09-19T23:14:51.802448497Z
 // Source: no.iktdev.kammich.models.shared
 
 export interface DeviceSettingsDto {
@@ -314,17 +314,7 @@ export interface AlbumCreateRequest {
   startDate: string | null;
 }
 
-export interface SharedWifiInterfaceInstance {
-  caps: WirelessNetworkInterfaceCapability[];
-  isUsable: boolean;
-  mode: InterfaceMode;
-  name: string;
-  network: WifiNetwork | null;
-  operatingMode: NetworkInterfaceMode;
-}
-
-export interface EthernetInterfaceClient extends SharedEthernetInterfaceInstance {
-}
+export type EthernetInterfaceStateType = "Idle" | "Disconnected" | "Connected" | "Connecting" | "Emergency"
 
 export interface NetworkInterface {
   interfaceName: string;
@@ -337,13 +327,6 @@ export interface EmergencyModeRequest {
   enabled: boolean;
 }
 
-export interface SharedEthernetInterfaceInstance {
-  isUsable: boolean;
-  mode: InterfaceMode;
-  name: string;
-  operatingMode: NetworkInterfaceMode;
-}
-
 export type NetworkInterfaceType = "Ethernet" | "Wifi"
 
 export interface NetworkCaptiveStatus {
@@ -351,6 +334,16 @@ export interface NetworkCaptiveStatus {
   message: string | null;
   portalUrl: string | null;
   state: CaptivePortalState;
+}
+
+export interface WifiInterfaceState {
+  deviceState: NmCliDeviceState | null;
+  error: WifiInterfaceErrorType | null;
+  ifName: string;
+  ipv4: string | null;
+  network: WifiNetwork | null;
+  operatingMode: NetworkInterfaceMode;
+  state: WifiInterfaceStateType;
 }
 
 export interface WifiTetherAP {
@@ -361,7 +354,21 @@ export interface WifiTetherAP {
 
 export type CaptivePortalState = "Online" | "CaptivePortal" | "Offline"
 
+export interface EthernetInterfaceState {
+  carrier: boolean;
+  deviceState: NmCliDeviceState | null;
+  emergencyAllowed: boolean;
+  emergencyAt: string | null;
+  error: EthernetInterfaceClientError | null;
+  ifName: string;
+  ipv4: string | null;
+  operatingMode: NetworkInterfaceMode;
+  state: EthernetInterfaceStateType;
+}
+
 export type WirelessTetheringError = "Unknown" | "DeviceNotFound" | "StartFailed" | "StopFailed" | "PasswordTooShort" | "InvalidSettings"
+
+export type WifiInterfaceStateType = "Acquired" | "Connecting" | "Connected" | "Disconnecting" | "Disconnected" | "Starting" | "Tethering" | "Stopping" | "Idle"
 
 export type WifiSecurityType = "NONE" | "WPA2" | "WPA3"
 
@@ -397,22 +404,9 @@ export interface WirelessNetworkInterface extends NetworkInterface {
   caps: WirelessNetworkInterfaceCapability[];
 }
 
-export interface EthernetConnection {
-  carrier: boolean;
-  deviceState: NmCliDeviceState | null;
-  emergencyAllowed: boolean;
-  emergencyAt: string | null;
-  error: EthernetInterfaceClientError | null;
-  ifName: string;
-  ipv4: string | null;
-  state: EthernetConnectionStateType;
-}
-
 export type WifiScanError = "Unknown"
 
-export interface WifiInterfaceClient extends SharedWifiInterfaceInstance {
-  state: WifiConnectionStateType;
-}
+export type WifiInterfaceErrorType = "ClientWrongPassword" | "ClientNetworkNotFound" | "TetherDeviceNotFound" | "TetherStartFailed" | "TetherStopFailed" | "TetherPasswordTooShort" | "TetherInvalidSettings" | "Unknown"
 
 export interface WifiConnection {
   error: WifiInterfaceClientError | null;
@@ -423,12 +417,7 @@ export interface WifiConnection {
 
 export type WirelessNetworkInterfaceCapability = "STA" | "AP" | "Concurrent" | "Concurrent_Restricted_Same_Channel"
 
-export type WifiConnectionStateType = "Connecting" | "Connected" | "Disconnecting" | "Disconnected" | "Idle"
-
-export interface EthernetInterfaceTether extends SharedEthernetInterfaceInstance {
-}
-
-export type EthernetConnectionStateType = "Idle" | "Disconnected" | "Connected" | "Connecting" | "Emergency"
+export type WifiConnectionStateType = "Acquired" | "Connecting" | "Connected" | "Disconnecting" | "Disconnected" | "Idle"
 
 export interface WifiNetwork {
   bandwidthMhz: number;
@@ -444,10 +433,6 @@ export interface WifiNetwork {
   securityType: string;
   signalPercent: number;
   ssid: string;
-}
-
-export interface WifiInterfaceTether extends SharedWifiInterfaceInstance {
-  state: WirelessTetheringState;
 }
 
 export type WifiInterfaceClientError = "WrongPassword" | "NetworkNotFound" | "Unknown"
@@ -484,8 +469,11 @@ export interface Album {
   use: boolean;
 }
 
+export type DiskVariant = "SSD" | "HDD" | "UNKNOWN"
+
 export interface DiskHealth {
   deviceName: string;
+  diskVariant: DiskVariant;
   isHealthy: boolean;
   modelName: string;
   percentageUsed: number;
@@ -539,11 +527,8 @@ export interface SataAttribute {
 
 export interface MediaStats {
   freeBytes: number;
-  manufacturer: string | null;
-  model: string;
   percentUsed: number;
   photoCount: number;
-  serial: string;
   totalBytes: number;
   transport: string;
   usedBytes: number;

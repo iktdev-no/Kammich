@@ -10,13 +10,11 @@ import type {
   ImmichAvailability,
   WifiScanStatus,
   WifiScanResult,
-  WifiConnection,
-  WifiInterfaceClient,
-  WifiTether,
-  WifiInterfaceTether,
   UploadProgressEvent,
   AppUpdateProgress,
-  EthernetConnection,
+  EthernetInterfaceState,
+  WifiInterfaceState,
+  DiskHealth,
 } from "../types/types";
 
 export interface SseState {
@@ -32,12 +30,10 @@ export interface SseState {
   // WiFi strukturert per interface (Record<ifName, data>)
   wifiScanStatuses: Record<string, WifiScanStatus>;
   wifiScanResults: Record<string, WifiScanResult>;
-  wifiConnection: Record<string, WifiConnection>;
-  wifiConnectionInterfaces: Array<WifiInterfaceClient>;
-  wifiTether: Record<string, WifiTether>;
-  wifiTetherInterfaces: Array<WifiInterfaceTether>;
-  ethConnection: Record<string, EthernetConnection>;
+  ethState: Record<string, EthernetInterfaceState>;
+  wifiState: Record<string, WifiInterfaceState>;
 
+  diskHealth: DiskHealth[]
 
   importDevices: Record<string, DeviceImportSummary>;
   activeMediaImports: Record<string, ImportProgressEvent>;
@@ -62,14 +58,13 @@ export const initialSseState: SseState = {
   wifiScanStatuses: {},
   wifiScanResults: {},
 
-  wifiConnection: {},
-  wifiConnectionInterfaces: [],
-  wifiTether: {},
-  wifiTetherInterfaces: [],
-  ethConnection: {},
+  ethState: {},
+  wifiState: {},
 
 
   activeUploadProgress: {},
+
+  diskHealth: [],
 
   importDevices: {},
   activeMediaImports: {},

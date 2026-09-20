@@ -2,7 +2,7 @@ import { Popover, Box, Typography, Button, IconButton, Badge, Tooltip, Divider, 
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import CheckIcon from '@mui/icons-material/Check';
 import { useMemo, useState } from "react";
-import { useSseSelector } from "../sse/useSseSelector";
+import { useSseSelector } from "../hooks/useSseSelector";
 import { formatNotificationTime } from "../utils/format";
 import type { Notification, NotificationKey } from "../types/types";
 import { dismissNotification, dismissNotifications } from "../api/requests/notifications";

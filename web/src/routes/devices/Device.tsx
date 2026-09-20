@@ -4,7 +4,7 @@ import { Box, Typography, CircularProgress, Grid } from "@mui/material";
 import { getDeviceInfo, getFiles, updateDeviceSettings } from "../../api/requests/camera";
 import type { DeviceInfo, DeviceSettingsDto, WFile, RemovableDevice } from "../../types/types";
 import { BreadcrumbPath } from "../../components/BreadcrumbPath";
-import { useSseSelector } from "../../sse/useSseSelector";
+import { useSseSelector } from "../../hooks/useSseSelector";
 import { toast } from "react-toastify";
 
 import { DeviceCard } from "../../components/devices/DeviceCard";

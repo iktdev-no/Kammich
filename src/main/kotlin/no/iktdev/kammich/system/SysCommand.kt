@@ -50,6 +50,12 @@ class SysCommand {
        return runCommand(listOf("sudo") + command)
     }
 
+    fun sudoCheck(vararg params: String): Result {
+        return runCommand(
+            listOf("sudo", "-n", "-l") + params
+        )
+    }
+
     private fun runCommand(command: List<String>): Result {
         return try {
             val process = ProcessBuilder(command).start()
@@ -65,7 +71,12 @@ class SysCommand {
 
             val exitCode = process.exitValue()
             if (exitCode != 0) {
-                log.error("Could not run command successfully (Exit Code: $exitCode): ${command.joinToString(" ")}\nOutput:\n${output}\nError:\n${errorOutput}")
+                if (!output.isNullOrBlank() && errorOutput.isNullOrBlank()) {
+                    log.error("Could not run command successfully (Exit Code: $exitCode): but proper output was provided")
+                } else {
+                    log.error("Could not run command successfully (Exit Code: $exitCode):  Error:\n${errorOutput}")
+
+                }
                 Result.Failure(output, errorOutput.trim(), exitCode)
             } else {
                 Result.Success(output)

@@ -1,6 +1,7 @@
 package no.iktdev.kammich.storage.internal
 
 import no.iktdev.kammich.models.shared.storage.DiskHealth
+import no.iktdev.kammich.models.shared.storage.DiskVariant
 import no.iktdev.kammich.models.shared.storage.SataAttribute
 import no.iktdev.kammich.models.shared.storage.SataRoot
 
@@ -37,20 +38,33 @@ object DiskVendorParsing {
     fun parseCommon(root: SataRoot): ParsedSataData {
         val table = root.attrs.table
 
-        val wearAttr: SataAttribute? = table.find { it.name.contains("Wear", ignoreCase = true) }
+        val wearAttr: SataAttribute? =
+            table.find {
+                it.name.contains(
+                    "Wear",
+                    ignoreCase = true
+                )
+            }
+
         val normalizedWear = wearAttr?.value
         val rawWear = wearAttr?.raw?.value?.toInt()
 
-        val tempString = table.find { it.name.contains("Temp", ignoreCase = true) }?.raw?.value
+        val tempString =
+            table.find {
+                it.name.contains(
+                    "Temp",
+                    ignoreCase = true
+                )
+            }?.raw?.value
 
-        // Finn det første numeriske tallet i strengen, eller bruk 0
         val temp = tempString?.let { str ->
-            // Regex som finner det første tallet
             val match = Regex("""\d+""").find(str)
             match?.value?.toInt()
         } ?: 0
 
-        val vendor = DiskVendor.fromModel(root.modelName)
+        val vendor = DiskVendor.fromModel(
+            root.modelName
+        )
 
         return ParsedSataData(
             normalizedWear = normalizedWear,
@@ -60,34 +74,44 @@ object DiskVendorParsing {
         )
     }
 
-    fun calculateHealth(parsed: ParsedSataData): Int {
+    fun calculateHealth(
+        parsed: ParsedSataData
+    ): Int {
         return when (parsed.vendor) {
             DiskVendor.SAMSUNG,
-            DiskVendor.WD_SANDISK -> {
-                val normalized = parsed.normalizedWear ?: 100
-                100 - normalized
-            }
-
+            DiskVendor.WD_SANDISK,
             DiskVendor.INTEL -> {
-                val normalized = parsed.normalizedWear ?: 100
+                val normalized =
+                    parsed.normalizedWear ?: 100
+
                 100 - normalized
             }
 
             DiskVendor.CRUCIAL -> {
-                val remaining = parsed.rawWear ?: 100
+                val remaining =
+                    parsed.rawWear ?: 100
+
                 100 - remaining
             }
 
             DiskVendor.GENERIC -> {
-                val normalized = parsed.normalizedWear ?: 100
+                val normalized =
+                    parsed.normalizedWear ?: 100
+
                 100 - normalized
             }
         }
     }
 
-    fun toDiskHealth(root: SataRoot, device: String): DiskHealth {
+    fun toDiskHealth(
+        root: SataRoot,
+        device: String,
+        diskVariant: DiskVariant
+    ): DiskHealth {
         val parsed = parseCommon(root)
-        val percentageUsed = calculateHealth(parsed)
+
+        val percentageUsed =
+            calculateHealth(parsed)
 
         return DiskHealth(
             deviceName = device,
@@ -96,7 +120,8 @@ object DiskVendorParsing {
             protocol = "SATA",
             isHealthy = root.smartStatus.passed,
             percentageUsed = percentageUsed,
-            temperatureCelsius = parsed.temperature
+            temperatureCelsius = parsed.temperature,
+            diskVariant = diskVariant
         )
     }
 }

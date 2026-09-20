@@ -3,12 +3,15 @@ package no.iktdev.kammich.system.network
 import no.iktdev.kammich.models.internal.network.InterfaceAvailability
 import no.iktdev.kammich.models.shared.network.*
 import no.iktdev.kammich.models.shared.network.NetworkInterfaceMode.*
+import no.iktdev.kammich.sse.SseManager
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.util.concurrent.ConcurrentHashMap
 
 @Component
-class NetworkInterfaceRegistryV2() {
+class NetworkInterfaceRegistryV2(
+    private val sseManager: SseManager,
+) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val registry = ConcurrentHashMap<String, NetworkInterface>()
@@ -35,6 +38,14 @@ class NetworkInterfaceRegistryV2() {
 
     fun listNetworkInterfaces(): List<NetworkInterface> = registry.values.toList()
 
+    fun getActiveLeaseMode(interfaceName: String): NetworkInterfaceMode? {
+        synchronized(registry) {
+            return activeLeases[interfaceName]
+                ?.entries
+                ?.firstOrNull { it.value.refCount > 0 }
+                ?.key
+        }
+    }
 
     fun registerOrUpdate(iface: NetworkInterface) {
         registry.compute(iface.interfaceName) { _, existing ->

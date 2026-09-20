@@ -1,4 +1,4 @@
-import type { StorageInfo, Notification, MediaStats, ImportProgressEvent, DeviceImportSummary, ImmichUserMe, ImmichApiKeyPostResponseDto, ImmichAvailability, WifiScanStatus, WifiScanResult, WifiConnection, WifiInterfaceTether, WifiTether, WifiInterfaceClient, UploadProgressEvent, AppUpdateProgress, EthernetConnection } from "../types/types";
+import type { StorageInfo, Notification, MediaStats, ImportProgressEvent, DeviceImportSummary, ImmichUserMe, ImmichApiKeyPostResponseDto, ImmichAvailability, WifiScanStatus, WifiScanResult, UploadProgressEvent, AppUpdateProgress, EthernetInterfaceState, WifiInterfaceState, DiskHealth } from "../types/types";
 
 export type SseEvent =
   | { type: 'ping'; timestamp: number }
@@ -14,10 +14,6 @@ export type SseEvent =
   | { type: "storage-stats-media"; payload: MediaStats }
   | { type: "wifi-scan-status"; state: WifiScanStatus }
   | { type: "wifi-scan-result"; payload: WifiScanResult }
-  | { type: "wifi-connect"; ifName: string; payload: WifiConnection | undefined }
-  | { type: "wifi-interface-client"; payload: Array<WifiInterfaceClient> }
-  | { type: "wifi-tether"; ifName: string; payload: WifiTether | undefined }
-  | { type: "wifi-interface-tether"; payload: Array<WifiInterfaceTether> }
   | { type: "import-media-progress"; payload: ImportProgressEvent }
   | { type: "import-device-state"; states: Array<DeviceImportSummary> }
   | { type: "immich-user-me"; payload: ImmichUserMe }
@@ -25,5 +21,7 @@ export type SseEvent =
   | { type: "immich-availability"; payload: ImmichAvailability }
   | { type: "upload-media-progress"; payload: UploadProgressEvent }
   | { type: "app-updater"; payload: AppUpdateProgress }
-  | { type: "ethernet-connect"; ifName: string; payload: EthernetConnection | undefined }
+  | { type: "ethernet-state"; ifName: string; payload: EthernetInterfaceState | undefined }
+  | { type: "wifi-state"; ifName: string; payload: WifiInterfaceState | undefined }
+  | { type: "storage-health"; payload: DiskHealth[] }
   ;

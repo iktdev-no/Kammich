@@ -157,14 +157,17 @@ class NmcliAL(private val exec: SysCommand) : INmcliAL {
     override fun getDeviceIpv4Address(interfaceName: String): String? {
         val result = exec.sudo("nmcli", "-t", "-f", "IP4.ADDRESS", "device", "show", interfaceName)
         if (!result.isSuccess()) return null
-
-        return result.getOrNull()
+        val ipv4 = result.getOrNull()
             ?.lineSequence()
             ?.map { it.trim() }
             ?.firstOrNull { it.startsWith("IP4.ADDRESS") }
             ?.substringAfter(":")
             ?.substringBefore("/")
             ?.takeIf { it.isNotBlank() }
+        if (ipv4.isNullOrBlank()) {
+            log.info("No IPv4 address for $interfaceName, got this out though '$result'")
+        }
+        return ipv4
     }
 
     override fun createEthernetHostConnection(

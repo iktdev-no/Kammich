@@ -25,7 +25,7 @@ class ExposedInitializer(
     private val environment: Environment,
 ) : InitializingBean {
 
-    private val log = LoggerFactory.getLogger(ExposedInitializer::class.java)
+    private val log = LoggerFactory.getLogger(javaClass)
 
 
     override fun afterPropertiesSet() {

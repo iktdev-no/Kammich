@@ -1,24 +1,20 @@
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
-import Settings from './routes/Settings';
-import AppLayout from './layouts/AppLayout';
-import Upload from './routes/Upload';
-import Photo from './routes/Photo';
-import Devices from './routes/Devices';
-import WifiSettings from './routes/settings/WifiSettings';
-import WifiApSettings from './routes/settings/WifiApSettings';
-import Networking from './routes/settings/Networking';
-import { Import } from './routes/Import';
+import Settings from './pages/Settings';
+import AppLayout from './components/layouts/AppLayout';
+import Upload from './pages/Upload';
+import Photo from './pages/Photo';
+import Devices from './pages/Devices';
+import Networking from './pages/Networking';
+import { Import } from './pages/import/Import';
 import Device from './routes/devices/Device';
-import Immich from './routes/Immich';
+import Immich from './pages/immich/Immich';
 import ImmichLogin from './components/immich/ImmichLogin';
-import { Album } from './routes/Album';
-import ImportOwnership from './routes/ImportOwnership';
-import ImmichProfiles from './routes/immich/ImmichProfiles';
-import ImmichMe from './routes/immich/ImmichMe';
-import { System } from './routes/System';
+import { Album } from './pages/Album';
+import ImportOwnership from './pages/import/ImportOwnership';
+import ImmichProfiles from './pages/immich/ImmichProfiles';
+import ImmichMe from './pages/immich/ImmichMe';
+import { System } from './pages/System';
 import { useEffect } from 'react';
-import Tailscale from './routes/settings/Tailscale';
-import Ethernet from './routes/settings/Ethernet';
 
 const router = createBrowserRouter([
   {
@@ -36,10 +32,6 @@ const router = createBrowserRouter([
       { path: 'settings/info', element: <Settings /> },
       { path: 'ownership', element: <ImportOwnership /> },
       { path: 'settings/networking', element: <Networking /> },
-      { path: 'settings/networking/tailscale', element: <Tailscale /> },
-      { path: 'settings/networking/ethernet', element: <Ethernet /> },
-      { path: 'settings/networking/wifi', element: <WifiSettings /> },
-      { path: 'settings/networking/ap', element: <WifiApSettings /> },
       { path: 'settings/immich', element: <Immich /> },
       { path: 'settings/immich/login', element: <ImmichLogin /> },
       { path: 'settings/immich/me', element: <ImmichMe /> },

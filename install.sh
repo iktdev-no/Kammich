@@ -65,6 +65,11 @@ chown -R "$TARGET_USER:$TARGET_USER" "$APP_DATA_ROOT"
 chmod -R 775 "$APP_DATA_ROOT"
 find "$APP_DATA_ROOT" -type d -exec chmod g+s {} +
 
+# Opprett kiosk URL-konfigurasjon dersom den ikke finnes
+if [ ! -f "$APP_DATA_ROOT/url.cfg" ]; then
+    echo "http://127.0.0.1:8080" > "$APP_DATA_ROOT/url.cfg"
+fi
+
 echo "MOUNT_ROOT=\"$MOUNT_ROOT\"" > /etc/kammich.conf
 echo "STATE_ROOT=\"$STATE_ROOT\"" >> /etc/kammich.conf
 echo "APP_DATA_ROOT=\"$APP_DATA_ROOT\"" >> /etc/kammich.conf
@@ -97,6 +102,8 @@ sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install pykiosk -U
 cat <<'EOF' > /usr/local/bin/update-pykiosk
 #!/bin/bash
 
+set -e
+
 if [[ $EUID -ne 0 ]]; then
     echo "Dette scriptet må kjøres som root (sudo)"
     exit 1
@@ -104,15 +111,21 @@ fi
 
 TARGET_USER="kammich"
 VENV_DIR="/var/lib/kammich/kiosk-env"
+PYTHON="$VENV_DIR/bin/python3"
 
 echo "[+] Stopper Kammich kiosk..."
 systemctl stop kammich-kiosk.service
 
-echo "[+] Oppdaterer pip..."
-sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install --upgrade pip
-
 echo "[+] Oppdaterer PyKiosk..."
-sudo -u "$TARGET_USER" "$VENV_DIR/bin/pip" install --upgrade pykiosk
+sudo -u "$TARGET_USER" "$PYTHON" -m pip install \
+    --upgrade \
+    --no-cache-dir \
+    --force-reinstall \
+    pykiosk
+
+echo "[+] Installert PyKiosk-versjon:"
+sudo -u "$TARGET_USER" "$PYTHON" -c \
+    'import importlib.metadata; print(importlib.metadata.version("pykiosk"))'
 
 echo "[+] Starter Kammich kiosk..."
 systemctl start kammich-kiosk.service
@@ -298,6 +311,7 @@ echo "Venter på at Kammich backend skal starte..."
 until curl -s http://localhost:8080 > /dev/null; do
     sleep 1
 done
+
 echo "Backend er oppe! Starter kiosk..."
 
 # Start Openbox
@@ -306,7 +320,7 @@ openbox-session &
 sleep 1
 
 # Start pykiosk fra /var/lib/kammich/kiosk-env
-exec /var/lib/kammich/kiosk-env/bin/pykiosk
+exec /var/lib/kammich/kiosk-env/bin/python3 -u -m pykiosk
 EOF
 
 chown kammich:kammich /var/lib/kammich/kiosk-start.sh

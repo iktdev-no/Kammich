@@ -30,6 +30,12 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
         devices: event.payload
       };
 
+    case 'storage-health':
+      return {
+        ...state,
+        diskHealth: event.payload
+      }
+
     case 'storage-info-internal':
       return {
         ...state,
@@ -70,45 +76,21 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
         }
       };
 
-    case 'wifi-connect':
-      const updatedWifiConnections = { ...state.wifiConnection };
+    case 'wifi-state':
+      const updatedWifiStates = { ...state.wifiState };
       if (event.payload === undefined || event.payload === null) {
-        delete updatedWifiConnections[event.ifName];
+        delete updatedWifiStates[event.ifName];
       } else {
-        updatedWifiConnections[event.ifName] = event.payload;
+        updatedWifiStates[event.ifName] = event.payload;
       }
       return {
         ...state,
-        wifiConnection: updatedWifiConnections,
+        wifiState: updatedWifiStates,
       };
 
-    case 'wifi-interface-client':
-      return {
-        ...state,
-        wifiConnectionInterfaces: event.payload,
-      };
 
-    case 'wifi-tether':
-      const updatedWifiTether = { ...state.wifiTether };
-      if (event.payload === undefined || event.payload === null) {
-        delete updatedWifiTether[event.ifName];
-      } else {
-        updatedWifiTether[event.ifName] = event.payload;
-      }
-      return {
-        ...state,
-        wifiTether: updatedWifiTether,
-      };
-
-    case 'wifi-interface-tether':
-      return {
-        ...state,
-        wifiTetherInterfaces: event.payload,
-      };
-    // ---------------------------------------
-
-    case 'ethernet-connect':
-      const updatedEthConnections = { ...state.ethConnection };
+    case 'ethernet-state':
+      const updatedEthConnections = { ...state.ethState };
       if (event.payload === undefined || event.payload === null) {
         delete updatedEthConnections[event.ifName];
       } else {
@@ -116,7 +98,7 @@ export function sseReducer(state: SseState, event: SseEvent): SseState {
       }
       return {
         ...state,
-        ethConnection: updatedEthConnections,
+        ethState: updatedEthConnections,
       };
 
     case "upload-media-progress":

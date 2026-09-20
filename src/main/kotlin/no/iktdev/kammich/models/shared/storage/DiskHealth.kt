@@ -9,8 +9,15 @@ data class DiskHealth(
     val protocol: String,       // f.eks. SATA eller NVMe
     val isHealthy: Boolean,
     val percentageUsed: Int,
-    val temperatureCelsius: Int
+    val temperatureCelsius: Int,
+    val diskVariant: DiskVariant
 )
+
+enum class DiskVariant {
+    SSD,
+    HDD,
+    UNKNOWN
+}
 
 
 // Felles rot-elementer finnes i begge

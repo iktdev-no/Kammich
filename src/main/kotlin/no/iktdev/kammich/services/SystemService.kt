@@ -1,81 +1,56 @@
 package no.iktdev.kammich.services
 
+import no.iktdev.kammich.system.SysCommand
 import org.springframework.stereotype.Service
-import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
 
 @Service
-class SystemPowerService {
+class SystemPowerService(
+    private val exec: SysCommand
+) {
 
-    private val logger = Logger.getLogger(SystemPowerService::class.java.name)
-
-    private fun checkPermission(vararg command: String): Boolean {
-        return try {
-            val process = ProcessBuilder(
-                listOf("sudo", "-n", "-l") + command
-            )
-                .redirectErrorStream(true)
-                .start()
-
-            val finished = process.waitFor(2, TimeUnit.SECONDS)
-
-            if (!finished) {
-                process.destroyForcibly()
-                return false
-            }
-
-            process.exitValue() == 0
-        } catch (e: Exception) {
-            logger.warning("Kunne ikke sjekke sudo-rettigheter: ${e.message}")
-            false
-        }
-    }
+    private val logger =
+        Logger.getLogger(SystemPowerService::class.java.name)
 
     fun canPowerOff(): Boolean =
-        checkPermission("/usr/bin/systemctl", "poweroff")
+        exec
+            .sudoCheck("/usr/bin/systemctl", "poweroff")
+            .isSuccess()
 
     fun canReboot(): Boolean =
-        checkPermission("/usr/bin/systemctl", "reboot")
+        exec
+            .sudoCheck("/usr/bin/systemctl", "reboot")
+            .isSuccess()
 
     fun executePowerOff(): Boolean {
         if (!canPowerOff()) {
-            logger.warning("Mangler sudo-rettigheter for poweroff.")
+            logger.warning(
+                "Mangler sudo-rettigheter for poweroff."
+            )
             return false
         }
 
-        return try {
-            ProcessBuilder(
-                "sudo",
-                "-n",
+        return exec
+            .sudo(
                 "/usr/bin/systemctl",
                 "poweroff"
-            ).start()
-
-            true
-        } catch (e: Exception) {
-            logger.severe("Klarte ikke å utføre poweroff: ${e.message}")
-            false
-        }
+            )
+            .isSuccess()
     }
 
     fun executeReboot(): Boolean {
         if (!canReboot()) {
-            logger.warning("Mangler sudo-rettigheter for reboot.")
+            logger.warning(
+                "Mangler sudo-rettigheter for reboot."
+            )
             return false
         }
 
-        return try {
-            ProcessBuilder(
-                "sudo",
-                "-n",
+        return exec
+            .sudo(
                 "/usr/bin/systemctl",
                 "reboot"
-            ).start()
-
-            true
-        } catch (e: Exception) {
-            logger.severe("Klarte ikke å utføre reboot: ${e.message}")
-            false
-        }
+            )
+            .isSuccess()
     }
 }
