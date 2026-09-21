@@ -120,18 +120,66 @@ export default function Photo() {
         }
     }, [sn]);
 
-    const lastElementRef = useCallback((node: HTMLDivElement | null) => {
-        if (loadingRef.current) return;
-        if (observerRef.current) observerRef.current.disconnect();
+    const sentinelRef =
+        useRef<HTMLDivElement | null>(null);
 
-        observerRef.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current) {
-                loadMore();
+    const lastElementRef = useCallback(
+        (node: HTMLDivElement | null) => {
+            sentinelRef.current = node;
+
+            if (observerRef.current) {
+                observerRef.current.disconnect();
             }
-        });
 
-        if (node) observerRef.current.observe(node);
-    }, [loadMore]);
+            if (!node) {
+                return;
+            }
+
+            observerRef.current =
+                new IntersectionObserver(
+                    entries => {
+                        if (
+                            entries[0].isIntersecting &&
+                            hasMoreRef.current &&
+                            !loadingRef.current
+                        ) {
+                            void loadMore();
+                        }
+                    },
+                    {
+                        rootMargin: "400px",
+                    }
+                );
+
+            observerRef.current.observe(node);
+        },
+        [loadMore]
+    );
+
+    useEffect(() => {
+        if (
+            loading ||
+            !hasMore ||
+            !sentinelRef.current
+        ) {
+            return;
+        }
+
+        const rect =
+            sentinelRef.current.getBoundingClientRect();
+
+        const isVisible =
+            rect.top <= window.innerHeight;
+
+        if (isVisible) {
+            void loadMore();
+        }
+    }, [
+        photos,
+        loading,
+        hasMore,
+        loadMore,
+    ]);
 
     const photoColumns = useMemo(() => {
         const cols: RemoteFile[][] = Array.from({ length: numCols }, () => []);

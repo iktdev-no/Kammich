@@ -17,19 +17,21 @@ import { useTranslation } from "react-i18next";
 
 interface LanguageOption {
     code: string;
-    label: string;
+    translationKey:
+    | "settings.language.norwegian"
+    | "settings.language.english";
     countryCode: string;
 }
 
 const languages: LanguageOption[] = [
     {
         code: "en",
-        label: "English",
+        translationKey: "settings.language.english",
         countryCode: "GB",
     },
     {
         code: "no",
-        label: "Norsk",
+        translationKey: "settings.language.norwegian",
         countryCode: "NO",
     },
 ];
@@ -138,11 +140,10 @@ export default function LanguageSelectionCard() {
                     </Stack>
 
                     <FormControl
-                        size="small"
                         sx={{
-                            minWidth: {
+                            width: {
                                 xs: "100%",
-                                sm: 180,
+                                sm: 220,
                             },
                         }}
                     >
@@ -162,10 +163,13 @@ export default function LanguageSelectionCard() {
                                     event.target.value
                                 );
                             }}
+                            sx={{
+                                minHeight: 56,
+                            }}
                             renderValue={() => (
                                 <Stack
                                     direction="row"
-                                    spacing={1}
+                                    spacing={1.25}
                                     sx={{
                                         alignItems:
                                             "center",
@@ -178,18 +182,18 @@ export default function LanguageSelectionCard() {
                                         svg
                                         style={{
                                             width:
-                                                "1.25em",
+                                                "1.5em",
                                             height:
-                                                "1.25em",
+                                                "1.5em",
                                         }}
                                     />
 
                                     <Typography
                                         component="span"
                                     >
-                                        {
-                                            selectedLanguage.label
-                                        }
+                                        {t(
+                                            selectedLanguage.translationKey
+                                        )}
                                     </Typography>
                                 </Stack>
                             )}
@@ -203,13 +207,20 @@ export default function LanguageSelectionCard() {
                                         value={
                                             language.code
                                         }
+                                        sx={{
+                                            minHeight:
+                                                56,
+                                            py: 1.5,
+                                        }}
                                     >
                                         <Stack
                                             direction="row"
-                                            spacing={1}
+                                            spacing={1.25}
                                             sx={{
                                                 alignItems:
                                                     "center",
+                                                width:
+                                                    "100%",
                                             }}
                                         >
                                             <ReactCountryFlag
@@ -219,18 +230,18 @@ export default function LanguageSelectionCard() {
                                                 svg
                                                 style={{
                                                     width:
-                                                        "1.25em",
+                                                        "1.5em",
                                                     height:
-                                                        "1.25em",
+                                                        "1.5em",
                                                 }}
                                             />
 
                                             <Typography
                                                 component="span"
                                             >
-                                                {
-                                                    language.label
-                                                }
+                                                {t(
+                                                    language.translationKey
+                                                )}
                                             </Typography>
                                         </Stack>
                                     </MenuItem>

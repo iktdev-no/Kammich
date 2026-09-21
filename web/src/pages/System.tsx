@@ -4,7 +4,6 @@ import {
     Box,
     Card,
     CardContent,
-    Chip,
     CircularProgress,
     Container,
     Grid,
@@ -155,7 +154,6 @@ export function System() {
         });
     };
 
-    const disks = diskHealth ?? [];
 
     const canReboot =
         permissions?.canReboot === true;
@@ -259,7 +257,7 @@ export function System() {
                     )
             }
         >
-            {!canPerformPowerAction && (
+            {(permissions && !canPerformPowerAction) && (
                 <Alert
                     severity="warning"
                     icon={<WarningAmberIcon />}
@@ -296,6 +294,7 @@ export function System() {
                         </Alert>
                     )}
 
+                    <LanguageSelectionCard />
                     <DiskHealthOverviewCard disks={diskHealth} />
 
                     <Box>
@@ -309,7 +308,7 @@ export function System() {
                             Disk health
                         </Typography>
 
-                        {disks.length === 0 ? (
+                        {diskHealth.length === 0 ? (
                             <Card
                                 sx={{
                                     borderRadius: 3,
@@ -343,7 +342,7 @@ export function System() {
                                 container
                                 spacing={2}
                             >
-                                {disks.map(
+                                {diskHealth.map(
                                     disk => (
                                         <Grid
                                             key={
@@ -366,7 +365,6 @@ export function System() {
                     </Box>
                 </Stack>
             </Container>
-            <LanguageSelectionCard />
             {warningDialog}
         </PageLayout>
     );
